@@ -154,17 +154,19 @@ EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default=os.getenv('EMAIL_HOST_P
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = "porraf1pwcofficial@gmail.com"
 
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
+
+# STATIC_URL = '/static/'
+# STATICFILES_DIRS = []
+# STATIC_ROOT = BASE_DIR / 'staticfiles'
+# STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 # Static and media files
 if DEBUG=="True":
-    STATIC_URL = '/static/'
-    STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 else:
-    STATIC_URL = '/static/'
-    STATICFILES_DIRS = []
-    STATIC_ROOT = BASE_DIR / 'staticfiles'
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
     MEDIA_URL = '/media/'
     MEDIA_ROOT = '/home/site/wwwroot/media'
 
