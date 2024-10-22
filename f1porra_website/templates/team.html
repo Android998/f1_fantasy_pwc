@@ -1,0 +1,737 @@
+<!-- prices.html -->
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="container-home">
+    <div class="subcontainer-home">
+        <div class="left-home">
+            <img src="{% static 'theme/assets/gps/' %}{{data.photo_link}}" alt="Left Image" class="image-gp-home-left">
+        </div>
+        <div class="center-home">
+            <section style="flex-direction: column; width:80%; margin-left: 3%; font-size: 2vw;">
+                <h1 class="title-home">
+                    <img src="{% static 'theme/assets/gps/' %}{{data.country_link}}" alt="Small Photo" class="image-gp-home-flag">
+                    <span>{{data.name}}</span>
+                </h1>
+                <div class="subtitle-home">
+                    {{data.official_name}}
+                </div>
+            </section>
+            <section style="display:flex; justify-content: flex-end; width:25%">
+                <img src="{% static 'theme/assets/gps/' %}{{data.gp_photo}}" alt="Right Image" class="image-gp-home">
+            </section>
+        </div>
+        <div class="right-home">
+            <section class="timer-container-home">
+                <h2 class="timer-title">
+                    <span>Fecha límite para cerrar el equipo:</span>
+                </h2>
+                <div class="timer-main">
+                    <ul>
+                        <li>
+                            <span>{{data.days}}</span>
+                            <span>DIAS</span>
+                        </li>
+                        <li>
+                            <span>:</span>
+                        </li>
+                        <li>
+                            <span>{{data.hours}}</span>
+                            <span>HORAS</span>
+                        </li>
+                        <li>
+                            <span>:</span>
+                        </li>
+                        <li>
+                            <span>{{data.minutes}}</span>
+                            <span>MIN</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div class="main-team">
+    <div class="general-selections">
+        <div class="section">
+            <div class="pole-position">
+                <div class="section-name">
+                    <span>Poleman</span>
+                </div>
+                <div class="dropdown">
+                    {% if user_porra.poleman %}
+                    <button id="poleman-dropdown" class="dropbtn">{{user_porra.poleman.name}}</button>
+                    {% else %}
+                    <button id="poleman-dropdown" class="dropbtn">Dropdown</button>
+                    {% endif %}
+                    <div class="dropdown-content">
+                        {% for piloto in pilotos %}
+                        <a>{{ piloto.name }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="section">
+            <div class="first-place">
+                <div class="section-name">
+                    <span>1st Position</span>
+                </div>
+                <div class="dropdown">
+                    {% if user_porra.first_pos %}
+                    <button id="first-pos-dropdown" class="dropbtn">{{user_porra.first_pos.name}}</button>
+                    {% else %}
+                    <button id="first-pos-dropdown" class="dropbtn">Dropdown</button>
+                    {% endif %}
+                    <div class="dropdown-content">
+                        {% for piloto in pilotos %}
+                            {% if latest_first_pos == piloto.name %}
+                                <span style="color: lightgray; pointer-events: none;">{{ piloto.name }}</span>
+                            {% else %}
+                                <a>{{piloto.name}}</a>
+                            {%endif%}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="section">
+            <div class="second-place">
+                <div class="section-name">
+                    <span>2nd Position</span>
+                </div>
+                <div class="dropdown">
+                    {% if user_porra.second_pos %}
+                    <button id="second-pos-dropdown" class="dropbtn">{{user_porra.second_pos.name}}</button>
+                    {% else %}
+                    <button id="second-pos-dropdown" class="dropbtn">Dropdown</button>
+                    {% endif %}
+                    <div class="dropdown-content">
+                        {% for piloto in pilotos %}
+                        <a>{{piloto.name}}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="section">
+            <div class="third-place">
+                <div class="section-name">
+                    <span>3rd Position</span>
+                </div>
+                <div class="dropdown">
+                    {% if user_porra.third_pos %}
+                    <button id="third-pos-dropdown" class="dropbtn">{{user_porra.third_pos.name}}</button>
+                    {% else %}
+                    <button id="third-pos-dropdown" class="dropbtn">Dropdown</button>
+                    {% endif %}
+                    <div class="dropdown-content">
+                        {% for piloto in pilotos %}
+                        <a>{{piloto.name}}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="section">
+            <div class="fastest-lap">
+                <div class="section-name">
+                    <span>Fast Lap</span>
+                </div>
+                <div class="dropdown">
+                    {% if user_porra.fast_lap %}
+                    <button id="fast-lap-dropdown" class="dropbtn">{{user_porra.fast_lap.name}}</button>
+                    {% else %}
+                    <button id="fast-lap-dropdown"class="dropbtn">Dropdown</button>
+                    {% endif %}
+                    <div class="dropdown-content">
+                        {% for piloto in pilotos %}
+                        <a>{{piloto.name}}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="section">
+            <div class="best-team">
+                <div class="section-name">
+                    <span>Best Team</span>
+                </div>
+                <div class="dropdown">
+                    {% if user_porra.team_winner %}
+                    <button id="best-team-dropdown" class="dropbtn">{{user_porra.team_winner.name}}</button>
+                    {% else %}
+                    <button id="best-team-dropdown" class="dropbtn">Dropdown</button>
+                    {% endif %}
+                    <div class="dropdown-content">
+                        {% for equipo in equipos %}
+                        <a>{{equipo.name}}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="fantasy-team">
+        <div class="team-selections">
+            <div class="top-selection">
+                <section>
+                    <label id="available-budget" class="budget-selection">
+                        <span style="font-family: Formula1Regular; font-weight: 100;font-size: 1rem;">Límite de coste:</span>
+                        <span style="font-weight:900;margin: 2%;">${{remain_price}} M</span>
+                    </label>
+                    <div class="budgetBar">
+                        <progress id="budget-progressBar" value="{{remain_price}}" max="150"></progress>
+                        <span id="budget-span" style="width: {{bar_length}}px;"></span>
+                    </div>
+                </section>
+                <section>
+                    <button class="btn button-reset-team" type="button">
+                        <span>Reset Team</span>
+                    </button>
+                    {% if data.due_date%}
+                        <button class="btn button-save-deactivated" type="button">
+                            <span>Save Team</span>
+                        </button>
+                    {%else%}
+                        <button id="save-team-button" class="btn button-save-team" type="button">
+                            <span>Save Team</span>
+                        </button>
+                    {%endif%}
+                    <div id="save-success-modal" class="modal" style="display:none;">
+                        <div class="modal-content">
+                            <span class="close-button" onclick="closeModal()">&times;</span>
+                            <p>Team saved successfully!</p>
+                        </div>
+                    </div>                    
+                </section>
+            </div>
+            <section style=" margin-top: 5vh; padding: 2%;">
+                <div style="padding-bottom: 2%; width: 100%;">
+                    <div class=driver-selected-li>
+                        <li>
+                            {% if user_porra.driver1 %}
+                            <div id="no-selection1" class="selection-div" style="display: none;">
+                            {% else %}
+                            <div id="no-selection1" class="selection-div" style="display: flex;">
+                            {% endif %}
+                                <button class="add-selection" type="button">
+                                    <span>+</span>
+                                </button>
+                                <span class="selection-text">Añadir Piloto</span>
+                            </div>
+                            {% if user_porra.driver1 %}
+                            <div id="selection1" class="selected-div" style="display: flex;">
+                            {% else %}
+                            <div id="selection1" class="selected-div" style="display: none;">
+                            {% endif %}
+                                <div style="background-color:{{user_porra.driver1.team.color_rgb}}" class="driver-selected-photo">
+                                    <div>
+                                        <img id="piloto-photo-1" src="{% static 'theme/assets/drivers/selected/' %}{{user_porra.driver1.photo_link}}" width="140rem" height="auto"></img>
+                                    </div>
+                                </div>
+                                <div class="driver-selected-data">
+                                    <div style="height:100%;width: 100%;padding: 2%;" class="driver-selected-name">
+                                        <span id="piloto-name-1">{{user_porra.driver1.name}}</span>
+                                    </div>
+                                    <hr class="gray-line-driver"></hr>
+                                    <div class="driver-selected-price">
+                                        <span id="piloto-price-1">{{user_porra.driver1.current_price}}.0 M</span>
+                                        {% if user_porra.driver1.price_change >= 0%}
+                                        <span style="font-size: 0.5rem;" id="piloto-price-change-1" class="price-up">&#x25B2; ${{user_porra.driver1.price_change}}.0 M</span>
+                                        {%else%}
+                                        <span style="font-size: 0.5rem;" id="piloto-price-change-1" class="price-down">&#x25BC; ${{user_porra.driver1.price_change}}.0 M</span>
+                                        {%endif%}
+                                    </div>
+                                </div>
+                                <div class="remove-selected">
+                                    <button id="remove-driver-1" style="padding: 4px; background-color: hsla(0, 0%, 100%, .25); border: none; box-shadow: none; border-radius: 5px; cursor: pointer;">
+                                        <span class="remove-driver">&#x2715;</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            {% if user_porra.driver2 %}
+                            <div id="no-selection2" class="selection-div" style="display: none;">
+                            {% else %}
+                            <div id="no-selection2" class="selection-div" style="display: flex;">
+                            {% endif %}
+                                <button class="add-selection" type="button">
+                                    <span>+</span>
+                                </button>
+                                <span class="selection-text">Añadir Piloto</span>
+                            </div>
+                            {% if user_porra.driver2 %}
+                            <div id="selection2" class="selected-div" style="display: flex;">
+                            {% else %}
+                            <div id="selection2" class="selected-div" style="display: none;">
+                            {% endif %}
+                                <div style="background-color:{{user_porra.driver2.team.color_rgb}}" class="driver-selected-photo">
+                                    <div>
+                                        <img id="piloto-photo-2" src="{% static 'theme/assets/drivers/selected/' %}{{user_porra.driver2.photo_link}}" width="140rem" height="auto"></img>
+                                    </div>
+                                </div>
+                                <div class="driver-selected-data">
+                                    <div style="height:100%;width: 100%;padding: 2%;" class="driver-selected-name">
+                                        <span id="piloto-name-2">{{user_porra.driver2.name}}</span>
+                                    </div>
+                                    <hr class="gray-line-driver"></hr>
+                                    <div class="driver-selected-price">
+                                        <span id="piloto-price-2">{{user_porra.driver2.current_price}}.0 M</span>
+                                        {% if user_porra.driver2.price_change >= 0%}
+                                        <span style="font-size: 0.5rem;" id="piloto-price-change-2" class="price-up">&#x25B2; ${{user_porra.driver2.price_change}}.0 M</span>
+                                        {%else%}
+                                        <span style="font-size: 0.5rem;" id="piloto-price-change-2" class="price-down">&#x25BC; ${{user_porra.driver2.price_change}}.0 M</span>
+                                        {%endif%}
+                                    </div>
+                                </div>
+                                <div class="remove-selected">
+                                    <button id="remove-driver-2" style="padding: 4px; background-color: hsla(0, 0%, 100%, .25); border: none; box-shadow: none; border-radius: 5px; cursor: pointer;">
+                                        <span class="remove-driver">&#x2715;</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                    </div>
+                    <div class=driver-selected-li>
+                        <li>
+                            {% if user_porra.driver3 %}
+                            <div id="no-selection3" class="selection-div" style="display: none;">
+                            {% else %}
+                            <div id="no-selection3" class="selection-div" style="display: flex;">
+                            {% endif %}
+                                <button class="add-selection" type="button">
+                                    <span>+</span>
+                                </button>
+                                <span class="selection-text">Añadir Piloto</span>
+                            </div>
+                            {% if user_porra.driver3 %}
+                            <div id="selection3" class="selected-div" style="display: flex;">
+                            {% else %}
+                            <div id="selection3" class="selected-div" style="display: none;">
+                            {% endif %}
+                                <div style="background-color:{{user_porra.driver3.team.color_rgb}}" class="driver-selected-photo">
+                                    <div>
+                                        <img id="piloto-photo-3" src="{% static 'theme/assets/drivers/selected/' %}{{user_porra.driver3.photo_link}}" width="140rem" height="auto"></img>
+                                    </div>
+                                </div>
+                                <div class="driver-selected-data">
+                                    <div style="height:100%;width: 100%;padding: 2%;" class="driver-selected-name">
+                                        <span id="piloto-name-3">{{user_porra.driver3.name}}</span>
+                                    </div>
+                                    <hr class="gray-line-driver"></hr>
+                                    <div class="driver-selected-price">
+                                        <span id="piloto-price-3">{{user_porra.driver3.current_price}}.0 M</span>
+                                        {% if user_porra.driver3.price_change >= 0%}
+                                        <span style="font-size: 0.5rem;" id="piloto-price-change-3" class="price-up">&#x25B2; ${{user_porra.driver3.price_change}}.0 M</span>
+                                        {%else%}
+                                        <span style="font-size: 0.5rem;" id="piloto-price-change-3" class="price-down">&#x25BC; ${{user_porra.driver3.price_change}}.0 M</span>
+                                        {%endif%}
+                                    </div>
+                                </div>
+                                <div class="remove-selected">
+                                    <button id="remove-driver-3" style="padding: 4px; background-color: hsla(0, 0%, 100%, .25); border: none; box-shadow: none; border-radius: 5px; cursor: pointer;">
+                                        <span class="remove-driver">&#x2715;</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            {% if user_porra.driver4 %}
+                            <div id="no-selection4" class="selection-div" style="display: none;">
+                            {% else %}
+                            <div id="no-selection4" class="selection-div" style="display: flex;">
+                            {% endif %}
+                                <button class="add-selection" type="button">
+                                    <span>+</span>
+                                </button>
+                                <span class="selection-text">Añadir Piloto</span>
+                            </div>
+                            {% if user_porra.driver4 %}
+                            <div id="selection4" class="selected-div" style="display: flex;">
+                            {% else %}
+                            <div id="selection4" class="selected-div" style="display: none;">
+                            {% endif %}
+                                <div style="background-color:{{user_porra.driver4.team.color_rgb}}" class="driver-selected-photo">
+                                    <div>
+                                        <img id="piloto-photo-4" src="{% static 'theme/assets/drivers/selected/' %}{{user_porra.driver4.photo_link}}" width="140rem" height="auto"></img>
+                                    </div>
+                                </div>
+                                <div class="driver-selected-data">
+                                    <div style="height:100%;width: 100%;padding: 2%;" class="driver-selected-name">
+                                        <span id="piloto-name-4">{{user_porra.driver4.name}}</span>
+                                    </div>
+                                    <hr class="gray-line-driver"></hr>
+                                    <div class="driver-selected-price">
+                                        <span id="piloto-price-4">{{user_porra.driver4.current_price}}.0 M</span>
+                                        {% if user_porra.driver4.price_change >= 0%}
+                                        <span style="font-size: 0.5rem;" id="piloto-price-change-4" class="price-up">&#x25B2; ${{user_porra.driver4.price_change}}.0 M</span>
+                                        {%else%}
+                                        <span style="font-size: 0.5rem;" id="piloto-price-change-4" class="price-down">&#x25BC; ${{user_porra.driver4.price_change}}.0 M</span>
+                                        {%endif%}
+                                    </div>
+                                </div>
+                                <div class="remove-selected">
+                                    <button id="remove-driver-4" style="padding: 4px; background-color: hsla(0, 0%, 100%, .25); border: none; box-shadow: none; border-radius: 5px; cursor: pointer;">
+                                        <span class="remove-driver">&#x2715;</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            {% if user_porra.driver5 %}
+                            <div id="no-selection5" class="selection-div" style="display: none;">
+                            {% else %}
+                            <div id="no-selection5" class="selection-div" style="display: flex;">
+                            {% endif %}
+                                <button class="add-selection" type="button">
+                                    <span>+</span>
+                                </button>
+                                <span class="selection-text">Añadir Piloto</span>
+                            </div>
+                            {% if user_porra.driver5 %}
+                            <div id="selection5" class="selected-div" style="display: flex;">
+                            {% else %}
+                            <div id="selection5" class="selected-div" style="display: none;">
+                            {% endif %}
+                                <div style="background-color:{{user_porra.driver5.team.color_rgb}}" class="driver-selected-photo">
+                                    <div>
+                                        <img id="piloto-photo-5" src="{% static 'theme/assets/drivers/selected/' %}{{user_porra.driver5.photo_link}}" width="140rem" height="auto"></img>
+                                    </div>
+                                </div>
+                                <div class="driver-selected-data">
+                                    <div style="height:100%;width: 100%;padding: 2%;" class="driver-selected-name">
+                                        <span id="piloto-name-5">{{user_porra.driver5.name}}</span>
+                                    </div>
+                                    <hr class="gray-line-driver"></hr>
+                                    <div class="driver-selected-price">
+                                        <span id="piloto-price-5">{{user_porra.driver5.current_price}}.0 M</span>
+                                        {% if user_porra.driver5.price_change >= 0%}
+                                        <span style="font-size: 0.5rem;" id="piloto-price-change-5" class="price-up">&#x25B2; ${{user_porra.driver5.price_change}}.0 M</span>
+                                        {%else%}
+                                        <span style="font-size: 0.5rem;" id="piloto-price-change-5" class="price-down">&#x25BC; ${{user_porra.driver5.price_change}}.0 M</span>
+                                        {%endif%}
+                                    </div>
+                                </div>
+                                <div class="remove-selected">
+                                    <button id="remove-driver-5" style="padding: 4px; background-color: hsla(0, 0%, 100%, .25); border: none; box-shadow: none; border-radius: 5px; cursor: pointer;">
+                                        <span class="remove-driver">&#x2715;</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </li>                
+                    </div>
+                </div>
+                <hr class="gray-line">
+                <div style="padding-top: 2%; width: 100%;">
+                    <div class="team-selected-li">
+                        <li>
+                            {% if user_porra.team1 %}
+                            <div id="no-selection6" class="selection-div" style="display: none;">
+                            {% else %}
+                            <div id="no-selection6" class="selection-div" style="display: flex;">
+                            {% endif %}
+                                <button class="add-selection" type="button">
+                                    <span>+</span>
+                                </button>
+                                <span class="selection-text">Añadir Equipo</span>
+                            </div>
+                            {% if user_porra.team1 %}
+                            <div id="selection6" class="selected-div" style="display: flex;">
+                            {% else %}
+                            <div id="selection6" class="selected-div" style="display: none;">
+                            {% endif %}
+                                <div style="background-color: {{user_porra.team1.color_rgb}}" class="driver-selected-photo">
+                                    <div>
+                                        <img id="equipo-photo-1" src="{% static 'theme/assets/teams/cars/' %}{{user_porra.team1.photo_link}}" width="220rem" height="auto"></img>
+                                    </div>
+                                </div>
+                                <div class="driver-selected-data">
+                                    <div style="height:100%;width: 100%;padding: 2%;" class="driver-selected-name">
+                                        <span id="equipo-name-1">{{user_porra.team1.name}}</span>
+                                    </div>
+                                    <hr class="gray-line-driver"></hr>
+                                    <div class="driver-selected-price">
+                                        <span id="equipo-price-1">{{user_porra.team1.current_price}}.0 M</span>
+                                        {% if user_porra.team1.price_change >= 0%}
+                                        <span style="font-size: 0.5rem;" id="equipo-price-change-1" class="price-up">&#x25B2; ${{user_porra.team1.price_change}}.0 M</span>
+                                        {%else%}
+                                        <span style="font-size: 0.5rem;" id="equipo-price-change-1" class="price-down">&#x25BC; ${{user_porra.team1.price_change}}.0 M</span>
+                                        {%endif%}
+                                    </div>
+                                </div>
+                                <div class="remove-selected">
+                                    <button id="remove-team-1" style="padding: 4px; background-color: hsla(0, 0%, 100%, .25); border: none; box-shadow: none; border-radius: 5px; cursor: pointer;">
+                                        <span class="remove-driver">&#x2715;</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            {% if user_porra.team2 %}
+                            <div id="no-selection7" class="selection-div" style="display: none;">
+                            {% else %}
+                            <div id="no-selection7" class="selection-div" style="display: flex;">
+                            {% endif %}
+                                <button class="add-selection" type="button">
+                                    <span>+</span>
+                                </button>
+                                <span class="selection-text">Añadir Equipo</span>
+                            </div>
+                            {% if user_porra.team2 %}
+                            <div id="selection7" class="selected-div" style="display: flex;">
+                            {% else %}
+                            <div id="selection7" class="selected-div" style="display: none;">
+                            {% endif %}
+                                <div style="background-color: {{user_porra.team2.color_rgb}}" class="driver-selected-photo">
+                                    <div>
+                                        <img id="equipo-photo-2" src="{% static 'theme/assets/teams/cars/' %}{{user_porra.team2.photo_link}}" width="220rem" height="auto"></img>
+                                    </div>
+                                </div>
+                                <div class="driver-selected-data">
+                                    <div style="height:100%;width: 100%;padding: 2%;" class="driver-selected-name">
+                                        <span id="equipo-name-2">{{user_porra.team2.name}}</span>
+                                    </div>
+                                    <hr class="gray-line-driver"></hr>
+                                    <div class="driver-selected-price">
+                                        <span id="equipo-price-2">{{user_porra.team2.current_price}}.0 M</span>
+                                        {% if user_porra.team2.price_change >= 0%}
+                                        <span style="font-size: 0.5rem;" id="equipo-price-change-2" class="price-up">&#x25B2; ${{user_porra.team2.price_change}}.0 M</span>
+                                        {%else%}
+                                        <span style="font-size: 0.5rem;" id="equipo-price-change-2" class="price-down">&#x25BC; ${{user_porra.team2.price_change}}.0 M</span>
+                                        {%endif%}
+                                    </div>
+                                </div>
+                                <div class="remove-selected">
+                                    <button id="remove-team-2" style="padding: 4px; background-color: hsla(0, 0%, 100%, .25); border: none; box-shadow: none; border-radius: 5px; cursor: pointer;">
+                                        <span class="remove-driver">&#x2715;</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <div class="selectable-list">
+            <div class="team-driver-selectable">
+                <ul >
+                    <li>
+                        <a id="drivers-tab" class="active" aria-label="Drivers">
+                            <div>
+                                <span>Drivers</span>
+                            </div>
+                            <div class="dotted-selector">
+                                {% if user_porra.driver1 %}
+                                <span style="background-color: hsl(240, 18%, 10%);" id="span-piloto1"> </span>
+                                {% else %}
+                                <span id="span-piloto1"> </span>
+                                {% endif %}
+
+                                {% if user_porra.driver2 %}
+                                <span style="background-color: hsl(240, 18%, 10%);" id="span-piloto2"> </span>
+                                {% else %}
+                                <span id="span-piloto2"> </span>
+                                {% endif %}
+
+                                {% if user_porra.driver3 %}
+                                <span style="background-color: hsl(240, 18%, 10%);" id="span-piloto3"> </span>
+                                {% else %}
+                                <span id="span-piloto3"> </span>
+                                {% endif %}
+
+                                {% if user_porra.driver4 %}
+                                <span style="background-color: hsl(240, 18%, 10%);" id="span-piloto4"> </span>
+                                {% else %}
+                                <span id="span-piloto4"> </span>
+                                {% endif %}
+
+                                {% if user_porra.driver5 %}
+                                <span style="background-color: hsl(240, 18%, 10%);" id="span-piloto5"> </span>
+                                {% else %}
+                                <span id="span-piloto5"> </span>
+                                {% endif %}
+                            </div>
+                        </a>
+                    </li>
+                    <hr></hr>
+                    <li>
+                        <a id="constructors-tab" class="" aria-label="Teams">
+                            <div>
+                                <span>Constructors</span>
+                            </div>
+                            <div class="dotted-selector">
+                                {% if user_porra.team1 %}
+                                <span style="background-color: hsl(240, 18%, 10%);" id="span-equipo1"> </span>
+                                {%else%}
+                                <span id="span-equipo1"> </span>
+                                {%endif%}
+
+                                {% if user_porra.team2 %}
+                                <span style="background-color: hsl(240, 18%, 10%);" id="span-equipo2"> </span>
+                                {%else%}
+                                <span id="span-equipo2"> </span>
+                                {%endif%}
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div id="drivers-table" class="tabla">
+                <table class="tabla-pilotos">
+                    <ul>
+                        {% for piloto in pilotos %}
+                        <li>
+                            <div class="fila-piloto" data-selected-container="{% if piloto.name in porra_list_names %}{{ piloto_positions|dict_lookup:piloto.name}}{% else %}null{% endif %}">
+                                <div class="foto-piloto" style="background-color: {{piloto.team.color_rgb|safe}}">
+                                    <div class="foto-piloto-inside">
+                                    <img src="{% static 'theme/assets/drivers/driver/' %}{{ piloto.photo_link }}" width="80rem" height="auto"> 
+                                    </div>
+                                    <div class="driver-team-number">
+                                        <div>
+                                            <img src="{% static 'theme/assets/teams/logos/' %}{{ piloto.team.photo_link }}" width="35rem" height="auto"> 
+                                        </div>
+                                        <div class="foto-piloto-number">
+                                            <img src="{% static 'theme/assets/drivers/numbers/' %}{{ piloto.photo_link }}" width="32rem" height="auto"> 
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="data-piloto">
+                                    <div class="piloto-equipo">
+                                        <div class="driver-name">
+                                            <span>{{piloto.name}}</span>
+                                        </div>
+                                        <div class="driver-team">
+                                            <span>{{piloto.team.name}}</span>
+                                        </div>
+                                        <div class="driver-stats">
+                                            <ul>
+                                                <li>
+                                                    <div>
+                                                        <span>{{piloto.total_points}} Pts</span>
+                                                    </div>
+                                                </li>
+                                                <li>
+                                                    <div>
+                                                        <span>{{piloto.pick_rate}} %</span>
+                                                    </div>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="driver-price">
+                                        <span>${{piloto.current_price}}.0M</span>
+                                        {% if piloto.price_change >= 0%}
+                                        <span class="price-up">&#x25B2; {{piloto.price_change}}.0 M</span>
+                                        {%else%}
+                                        <span class="price-down">&#x25BC; {{piloto.price_change}}.0 M</span>
+                                        {%endif%}
+                                    </div>
+                                </div>
+                                {% if piloto.name in porra_list_names %}
+                                <div style="display:none;" class="selectable-piloto">
+                                {% else %}
+                                <div class="selectable-piloto">
+                                {% endif %}
+                                    <button id="add-selection" class="btn add-piloto">
+                                        <span style="height: 100%; width: 100%;">+</span>
+                                    </button>
+                                </div>
+                                {% if piloto.name in porra_list_names %}
+                                <div class="no-selectable-piloto">
+                                {% else %}
+                                <div style="display:none;" class="no-selectable-piloto">
+                                {% endif %}
+                                    <button id="remove-selection" class="remove-driver-table">
+                                        <span style="height: 100%; width: 100%;">&#x2715;</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </table>
+            </div>
+            <div id="constructors-table" class="tabla" style="display:none;">
+                <table class="tabla-pilotos" >
+                    <ul>
+                        {% for equipo in equipos %}
+                        <li>
+                            <div class="fila-equipo" data-selected-container="{% if equipo.name in porra_list_names %}{{ piloto_positions|dict_lookup:equipo.name }}{% else %}null{% endif %}">
+                                <div class="foto-piloto" style="background-color: {{equipo.color_rgb|safe}};">
+                                    <div class="foto-piloto-inside" style="position: absolute; right: -5%; bottom: 0; " >
+                                        <img src="{% static 'theme/assets/teams/cars/' %}{{ equipo.photo_link }}" width="auto" height="60rem"> 
+                                    </div>
+                                    <div class="team-logo">
+                                        <div>
+                                            <img src="{% static 'theme/assets/teams/logos/' %}{{ equipo.photo_link }}" width="35rem" height="auto"> 
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="data-piloto">
+                                    <div class="piloto-equipo">
+                                        <div class="driver-name">
+                                            <span>{{equipo.name}}</span>
+                                        </div>
+                                        <div class="driver-stats">
+                                            <ul>
+                                                <li>
+                                                    <div>
+                                                        <span>{{equipo.total_points}} Pts</span>
+                                                    </div>
+                                                </li>
+                                                <li>
+                                                    <div>
+                                                        <span>{{equipo.pick_rate}} %</span>
+                                                    </div>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="driver-price">
+                                        <span>${{equipo.current_price}}.0M</span>
+                                        {% if equipo.price_change >= 0%}
+                                        <span class="price-up">&#x25B2; {{equipo.price_change}}.0 M</span>
+                                        {%else%}
+                                        <span class="price-down">&#x25BC; {{equipo.price_change}}.0 M</span>
+                                        {%endif%}
+                                    </div>
+                                </div>
+                                {% if equipo.name in porra_list_names %}
+                                <div style="display:none;" class="selectable-piloto">
+                                {% else %}
+                                <div class="selectable-piloto">
+                                {% endif %}
+                                    <button id="add-selection" class="btn add-equipo">
+                                        <span style="height: 100%; width: 100%;">+</span>
+                                    </button>
+                                </div>
+                                {% if equipo.name in porra_list_names %}
+                                <div class="no-selectable-piloto">
+                                {% else %}
+                                <div style="display:none;" class="no-selectable-piloto">
+                                {% endif %}
+                                    <button id="remove-selection" class="remove-team-table">
+                                        <span style="height: 100%; width: 100%;">&#x2715;</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="{% static 'js/teams.js' %}"></script>
+
+<meta name="csrf-token" content="{{ csrf_token }}">
+<meta name="gp-id" content="{{data.name}}">
+{% endblock %}
+

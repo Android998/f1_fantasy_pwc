@@ -1,0 +1,11 @@
+Django==4.2.11
+psycopg2-binary
+whitenoise
+gunicorn
+pytz
+pillow
+dj-database-url
+scikit-learn
+pandas
+requests
+django-environ

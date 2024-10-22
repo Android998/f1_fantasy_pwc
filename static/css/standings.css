@@ -1,0 +1,286 @@
+.mastmain {
+    /* Default padding */
+    padding-top: 11rem;
+  }
+
+  
+@font-face {
+    font-family: 'Formula1Black';
+    src: local('Formula1Black'),
+         url('../fonts/Formula1-Black.ttf') format("truetype");
+}
+  
+@font-face {
+    font-family: 'Formula1Wide';
+    src: local('Formula1Wide'),
+        url('../fonts/Formula1-Wide.ttf') format("truetype");
+}
+  
+@font-face {
+    font-family: 'Formula1Bold';
+    src: local('Formula1Bold'),
+        url('../fonts/Formula1-Bold.ttf') format("truetype");
+}
+  
+@font-face {
+    font-family: 'Formula1Regular';
+    src: local('Formula1Regular'),
+        url('../fonts/Formula1-Regular.ttf') format("truetype");
+}
+
+.main-standings{
+    background-color: hsl(240, 2%, 91%);
+    height:auto;
+    width: 100%;
+    padding: 2% 1% 2% 1%;
+}
+
+/* Top filters */
+.top-filters{
+    background-color: hsl(240, 2%, 64%);
+    margin: 0% 1% 2% 1%;
+    padding: 1%;
+    border-radius: 10px;
+}
+
+.gray-line-top{
+    border: none;
+    height: 1px;
+    background-color: hsl(240, 5%, 28%);
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.section-std {
+    width:20%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0.5%;
+    font-family: "Formula1Bold";
+    font-size: 0.6rem;
+}
+
+.section-name-std{
+    font-size: 1.2em;
+    padding: 2%;
+    margin-bottom: 2%;
+    margin-left: 3%;
+    border-left: 3px solid #E10600;
+    border-bottom: 3px solid #E10600;
+    border-radius: 5px;
+}
+
+.grand-prixes{
+    font-size: 1vw;
+    text-transform: uppercase;
+}
+
+.grand-prixes > div > button{
+    border: 3px solid #E10600;
+    text-transform: uppercase;
+}
+
+.dropdown-std {
+    font-size: 1em;
+    position: relative;
+    display: inline-block;
+    padding: 2%;
+    width:100%;
+}
+
+.dropbtn-std {
+    width: 100%;
+    border-radius: 10px;
+    background-color: gray;
+    color: white;
+    padding: 2%;
+    border: none;
+    cursor: pointer;
+}
+
+.dropdown-content-std {
+    display: none;
+    position: absolute;
+    background-color: hsl(240, 2%, 91%);
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 5px;
+    width: 100%;
+}
+
+.dropdown-content-std a {
+    color: black;
+    padding: 2% 3%;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content-std a:hover {
+    background-color: #f1f1f1;
+}
+
+.dropdown-std:hover .dropdown-content-std {
+    display: block;
+}
+
+.dropdown-std:hover .dropbtn-std {
+    background-color: hsl(240, 2%, 91%);
+}
+
+
+
+
+/* User Standings */
+.user-standings{
+    background-color: hsl(240, 2%, 64%);
+    margin: 1%;
+    padding: 3%;
+    border-radius: 10px;
+    display: grid;
+}
+
+.gray-line{
+    border: none;
+    height: 1px;
+    background-color: hsl(240, 5%, 28%);
+    margin-top: 0;
+    margin-bottom: 30px;
+}
+
+.standings-table{
+    table-layout: fixed;
+    width: 90%;
+    border-collapse: collapse;
+    background-color: white;
+    font-size: 1vw;
+    border: 2px solid #4CAF50; /* Border color for the table */
+    border-radius: 20px;
+    overflow: hidden; /* Ensures the rounded corners are applied correctly */
+    justify-self: center;
+}
+
+.standings-table thead{
+    font-family: "Formula1Black";
+    font-size: 1.2em;
+}
+
+.standings-table tbody{
+    font-family: "Formula1Bold";
+    font-size: 01.1em;
+}
+
+.standings-table th {
+    background-color: #E10600; /* Title row background color */
+    color: white; /* Title row text color */
+    padding: 10px; /* Padding for table headers */
+}
+
+.standings-table td {
+    padding: 0.5%; /* Padding for normal table cells */
+    border-bottom: 1px solid #ccc; /* Gray line separating rows */
+}
+
+.standings-table tr:hover {
+    background-color: #f1f1f1; /* Highlight row on hover */
+}
+
+.standings-table tr:nth-child(even) {
+    background-color: #f9f9f9; /* Alternating row colors */
+}
+
+/* Variable width styles */
+.user-name{
+    width: 30%; /* Wider for user and team names */
+    text-align: left; /* Left align user and team names */
+}
+
+.team-name {
+    width: 25%; /* Wider for user and team names */
+    text-align: left; /* Left align user and team names */
+}
+
+.points, .wins, .podiums, .last-2{
+    width: 8%; /* Narrower for numeric columns */
+    text-align: center; /* Center align all data in table cells */
+}
+
+.view-team{
+    width: 9%; /* Narrower for numeric columns */
+    text-align: center; /* Center align all data in table cells */
+}
+
+.view-team a{
+    color: #E10600;
+
+}
+
+.rank{
+    width: 6%; /* Narrower for numeric columns */
+    text-align: center; /* Center align all data in table cells */
+}
+
+.profile-photo {
+    width: 2.5em;
+    height: 2.5em;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.standings-table img {
+    max-width: 25%; /* Adjust size as needed */
+    max-height: 85%; /* Adjust size as needed */
+    margin-right: 5px; /* Space between image and text */
+}
+
+
+
+/* Team Standings */
+.teams-standings{
+    background-color: hsl(240, 2%, 64%);
+    margin: 1%;
+    padding: 3%;
+    border-radius: 10px;
+    display: grid;
+}
+
+.standings-table-team{
+    table-layout: fixed;
+    width: 80%;
+    border-collapse: collapse;
+    background-color: white;
+    font-size: 1vw;
+    border: 2px solid #4CAF50; /* Border color for the table */
+    border-radius: 20px;
+    overflow: hidden; /* Ensures the rounded corners are applied correctly */
+    justify-self: center;
+}
+
+.standings-table-team thead{
+    font-family: "Formula1Black";
+    font-size: 1.2em;
+}
+
+.standings-table-team tbody{
+    font-family: "Formula1Bold";
+    font-size: 01.1em;
+}
+
+.standings-table-team th {
+    background-color: #E10600; /* Title row background color */
+    color: white; /* Title row text color */
+    padding: 10px; /* Padding for table headers */
+}
+
+.standings-table-team td {
+    padding: 0.5%; /* Padding for normal table cells */
+    border-bottom: 1px solid #ccc; /* Gray line separating rows */
+}
+
+.standings-table-team tr:hover {
+    background-color: #f1f1f1; /* Highlight row on hover */
+}
+
+.standings-table-team tr:nth-child(even) {
+    background-color: #f9f9f9; /* Alternating row colors */
+}

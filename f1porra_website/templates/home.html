@@ -1,0 +1,84 @@
+<!-- home.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div>
+    <!-- Masthead-->
+   <header class="bg-primary2 text-white flex-column" style="padding-left: 2vh; padding-top: 10vh;">
+       <!-- Masthead Heading-->
+       <div class="masthead-heading mb-3" style="display:flex;">
+           <img src="{% static 'theme/assets/logos/f1_white_logo.png' %}" style="height:7vh; margin-right: 20px;">
+           <h2 style="font-family: Formula1Bold;">PwC F1 Fantasy Home Page</h2>
+       </div>
+       <h5 class="masthead-heading mb-1" style="font-family: Formula1Regular">Welcome to the official PwC F1 Fantasy Site!</h5> 
+       <!-- Icon Divider-->
+       <div class="divider-custom divider-light">
+           <div class="divider-custom-line"></div>
+           <div class="divider-custom-icon"><i class="fas fa-star"></i></div>
+           <div class="divider-custom-line"></div>
+       </div>
+   </header>
+</div>
+<div class="container-home">
+    <div class="subcontainer-home">
+        <div class="left-home">
+            <img src="{% static 'theme/assets/gps/' %}{{data.photo_link}}" alt="Left Image" class="image-gp-home-left">
+        </div>
+        <div class="center-home">
+            <section style="flex-direction: column; width:80%; margin-left: 3%; font-size: 2vw;">
+                <h1 class="title-home">
+                    <img src="{% static 'theme/assets/gps/' %}{{data.country_link}}" alt="Small Photo" class="image-gp-home-flag">
+                    <span>{{data.name}}</span>
+                </h1>
+                <div class="subtitle-home">
+                    {{data.official_name}}
+                </div>
+            </section>
+            <section style="display:flex; justify-content: flex-end; width:25%">
+                <img src="{% static 'theme/assets/gps/' %}{{data.gp_photo}}" alt="Right Image" class="image-gp-home">
+            </section>
+        </div>
+        <div class="right-home">
+            <section class="timer-container-home">
+                <h2 class="timer-title">
+                    <span>Fecha límite para cerrar el equipo:</span>
+                </h2>
+                <div class="timer-main">
+                    <ul>
+                        <li>
+                            <span>{{data.days}}</span>
+                            <span>DIAS</span>
+                        </li>
+                        <li>
+                            <span>:</span>
+                        </li>
+                        <li>
+                            <span>{{data.hours}}</span>
+                            <span>HORAS</span>
+                        </li>
+                        <li>
+                            <span>:</span>
+                        </li>
+                        <li>
+                            <span>{{data.minutes}}</span>
+                            <span>MIN</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+            
+            <div style="height: 35%; display: flex; align-items: center; flex-wrap: wrap;font-size: 1.1vw;">
+                {% if data.due_date %}
+                    {% url 'public:standings' as standings_url %}
+                    <a href="{{ standings_url }}?gp={{ data.name }}" data-gp-id="{{ data.namey }}" class="btn button-home">View Live</a>
+                {% else %}
+                    {% url 'public:team' as team_url %}
+                    <a href="{{ team_url }}" class="btn button-home">Escoge tu Equipo</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

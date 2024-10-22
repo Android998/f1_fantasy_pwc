@@ -1,0 +1,337 @@
+<!-- standings.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="main-view-team">
+    <div class="view-team-gp">
+        <div class="main-title-team">
+            {% if user_profile.photo %}
+                <img src="/media/{{ user_profile.photo }}" alt="User Photo" class="profile-photo-large">
+            {% else %}
+                <img src="{% static 'theme/assets/users/default.png' %}" alt="Default Profile Photo" class="profile-photo-large">
+            {% endif %}
+            <h1 style="font-family: Formula1Bold; font-size: 2rem; margin-left: 2%;margin-bottom: 0;">{{teamuser}}´s Team</h1>
+        </div>
+        <hr class="gray-line-top"></hr>
+        <div class="subcontainer-gp">
+            <div class="left-gp">
+                <img src="{% static 'theme/assets/gps/' %}{{porra_entries.gp.photo_link}}" alt="Left Image" class="image-gp-left">
+            </div>
+            <div class="center-gp">
+                <h1 class="round-gp">
+                    <span>Round {{porra_entries.gp.nround}}</span>
+                </h1>
+                <h1 class="title-gp">
+                    <img src="{% static 'theme/assets/gps/' %}{{porra_entries.gp.country_link}}" alt="Small Photo" class="image-gp-flag">
+                    <span>{{porra_entries.gp.country}}</span>
+                </h1>
+                <div class="subtitle-gp">
+                    {{porra_entries.gp.name}}
+                </div>
+            </div>
+            <div class="right-gp">
+                <section style="display:flex; justify-content: flex-end;">
+                    <img src="{% static 'theme/assets/gps/' %}{{porra_entries.gp.gp_photo}}" alt="Right Image" class="image-gp-right">
+                </section>
+            </div>
+        </div>
+        <div class="main-view-porra">
+            <div class="left-view-porra">
+                <div class="section-team">
+                    <div class="pole-position-team">
+                        <div class="section-name-team">
+                            <span>Poleman</span>
+                        </div>
+                        <div class="view-selection-basic" style="border: 3px solid {{porra_entries.poleman.team.color_rgb}};border-radius: 5px;">
+                            <div style="align-self: auto; background-color: {{porra_entries.poleman.team.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                <img src="{% static 'theme/assets/drivers/driver/' %}{{porra_entries.poleman.photo_link}}"style="width: 100%; max-width: 5em; height: auto;"></img>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.poleman.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{bonus_points.poleman}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section-team">
+                    <div class="first-place-team">
+                        <div class="section-name-team">
+                            <span>1st Position</span>
+                        </div>
+                        <div class="view-selection-basic" style="border: 3px solid {{porra_entries.first_pos.team.color_rgb}};border-radius: 5px;">
+                            <div style="align-self: auto; background-color: {{porra_entries.first_pos.team.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                <img src="{% static 'theme/assets/drivers/driver/' %}{{porra_entries.first_pos.photo_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.first_pos.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{bonus_points.first_pos}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section-team">
+                    <div class="second-place-team">
+                        <div class="section-name-team">
+                            <span>2nd Position</span>
+                        </div>
+                        <div class="view-selection-basic" style="border: 3px solid {{porra_entries.second_pos.team.color_rgb}};border-radius: 5px;">
+                            <div style="align-self: auto; background-color: {{porra_entries.second_pos.team.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                <img src="{% static 'theme/assets/drivers/driver/' %}{{porra_entries.second_pos.photo_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.second_pos.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{bonus_points.second_pos}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section-team">
+                    <div class="third-place-team">
+                        <div class="section-name-team">
+                            <span>3rd Position</span>
+                        </div>
+                        <div class="view-selection-basic" style="border: 3px solid {{porra_entries.third_pos.team.color_rgb}};border-radius: 5px;">
+                            <div style="align-self: auto; background-color: {{porra_entries.third_pos.team.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                <img src="{% static 'theme/assets/drivers/driver/' %}{{porra_entries.third_pos.photo_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.third_pos.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{bonus_points.third_pos}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section-team">
+                    <div class="fastest-lap-team">
+                        <div class="section-name-team">
+                            <span>Fast Lap</span>
+                        </div>
+                        <div class="view-selection-basic" style="border: 3px solid {{porra_entries.fast_lap.team.color_rgb}};border-radius: 5px;">
+                            <div style="align-self: auto; background-color: {{porra_entries.fast_lap.team.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                <img src="{% static 'theme/assets/drivers/driver/' %}{{porra_entries.fast_lap.photo_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.fast_lap.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{bonus_points.fast_lap}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section-team">
+                    <div class="best-team-team">
+                        <div class="section-name-team">
+                            <span>Best Team</span>
+                        </div>
+                        <div class="view-selection-basic" style="border: 3px solid {{porra_entries.team_winner.color_rgb}};border-radius: 5px;">
+                            <div style="align-self: auto; background-color: {{porra_entries.team_winner.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                <img src="{% static 'theme/assets/teams/logos/' %}{{ porra_entries.team_winner.photo_link }}" style="width: 100%; max-width: 5em; height: auto;"></img>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.team_winner.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{bonus_points.team_winner}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="right-view-porra">
+                <div class="show-points">
+                    <div class="cost-cap">
+                        <span style="font-family: 'Formula1Regular';text-transform: uppercase;font-size:0.8em;">Cost Cap:</span>
+                        <span style="font-family: 'Formula1Bold';">${{cost_cap}}.0M</span>
+                    </div>
+                    <div class="total-points">
+                        <span style="font-family: 'Formula1Regular';font-size:0.8em;">Total Points:</span>
+                        {% if porra_entries.points %}
+                            <span style="font-family: 'Formula1Bold'; align-self: flex-end;">{{porra_entries.points}} pts</span>
+                        {% else %}
+                            <span style="font-family: 'Formula1Bold'; align-self: flex-end;">0 pts</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class=driver-selected-li>
+                    <li>
+                        <div id="selection1" class="selected-div">
+                            <div style="background-color:{{porra_entries.driver1.team.color_rgb}};" class="driver-selected-photo">
+                                <div>
+                                    <img src="{% static 'theme/assets/drivers/selected/' %}{{porra_entries.driver1.photo_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
+                                </div>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.driver1.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{driver_points.driver1.points}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="selected-div">
+                            <div style="background-color:{{porra_entries.driver2.team.color_rgb}}" class="driver-selected-photo">
+                                <div>
+                                    <img src="{% static 'theme/assets/drivers/selected/' %}{{porra_entries.driver2.photo_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
+                                </div>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.driver2.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{driver_points.driver2.points}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                </div>
+                <div class=driver-selected-li>
+                    <li>
+                        <div class="selected-div">
+                            <div style="background-color:{{porra_entries.driver3.team.color_rgb}}" class="driver-selected-photo">
+                                <div>
+                                    <img src="{% static 'theme/assets/drivers/selected/' %}{{porra_entries.driver3.photo_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
+                                </div>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.driver3.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{driver_points.driver3.points}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="selected-div">
+                            <div style="background-color:{{porra_entries.driver4.team.color_rgb}}" class="driver-selected-photo">
+                                <div>
+                                    <img src="{% static 'theme/assets/drivers/selected/' %}{{porra_entries.driver4.photo_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
+                                </div>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.driver4.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{driver_points.driver4.points}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="selected-div">
+                            <div style="background-color:{{porra_entries.driver5.team.color_rgb}}" class="driver-selected-photo">
+                                <div>
+                                    <img src="{% static 'theme/assets/drivers/selected/' %}{{porra_entries.driver5.photo_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
+                                </div>
+                            </div>
+                            <div class="driver-selected-data-team">
+                                <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                    <span id="piloto-name-1">{{porra_entries.driver5.name}}</span>
+                                </div>
+                                <hr class="gray-line-driver"></hr>
+                                <div class="driver-selected-points">
+                                    <span>Points</span>
+                                    <span>{{driver_points.driver5.points}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                </div>
+                <hr class="gray-line" style="margin:2% 0 0 0;">
+                <div class=driver-selected-li>
+                    <div class="team-selected-li">
+                        <li>
+                            <div class="selected-div">
+                                <div style="background-color: {{porra_entries.team1.color_rgb}}" class="driver-selected-photo">
+                                    <div>
+                                        <img id="equipo-photo-1" src="{% static 'theme/assets/teams/cars/' %}{{porra_entries.team1.photo_link}}" style="width: 100%; max-width: 100%; height: auto;"></img>
+                                    </div>
+                                </div>
+                                <div class="driver-selected-data-team">
+                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                        <span id="equipo-name-1">{{porra_entries.team1.name}}</span>
+                                    </div>
+                                    <hr class="gray-line-driver"></hr>
+                                    <div class="driver-selected-price">
+                                        <span>Points</span>
+                                        <span>{{team_points.team1.points}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </div>
+                    <div class="team-selected-li">
+                        <li>
+                            <div class="selected-div">
+                                <div style="background-color: {{porra_entries.team2.color_rgb}}" class="driver-selected-photo">
+                                    <div>
+                                        <img id="equipo-photo-1" src="{% static 'theme/assets/teams/cars/' %}{{porra_entries.team2.photo_link}}" style="width: 100%; max-width: 100%; height: auto;"></img>
+                                    </div>
+                                </div>
+                                <div class="driver-selected-data-team">
+                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                        <span id="equipo-name-1">{{porra_entries.team2.name}}</span>
+                                    </div>
+                                    <hr class="gray-line-driver"></hr>
+                                    <div class="driver-selected-price">
+                                        <span>Points</span>
+                                        <span>{{team_points.team2.points}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

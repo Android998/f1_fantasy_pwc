@@ -1,0 +1,1008 @@
+.mastmain {
+  /* Default padding */
+  padding-top: 11rem;
+}
+
+@font-face {
+  font-family: 'Formula1Black';
+  src: local('Formula1Black'),
+       url('../fonts/Formula1-Black.ttf') format("truetype");
+}
+
+@font-face {
+  font-family: 'Formula1Wide';
+  src: local('Formula1Wide'),
+       url('../fonts/Formula1-Wide.ttf') format("truetype");
+}
+
+@font-face {
+  font-family: 'Formula1Bold';
+  src: local('Formula1Bold'),
+       url('../fonts/Formula1-Bold.ttf') format("truetype");
+}
+
+@font-face {
+  font-family: 'Formula1Regular';
+  src: local('Formula1Regular'),
+       url('../fonts/Formula1-Regular.ttf') format("truetype");
+}
+
+
+/* Define styles for top pane */
+.top-pane {
+  background-color: white;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  padding-right: calc(var(--bs-gutter-x) * 0.5);
+  padding-left: calc(var(--bs-gutter-x) * 0.5);
+}
+
+/* Define styles for top right buttons container */
+.top-right-buttons {
+  height:100%;
+  display: flex;
+  align-items: center; /* Vertically center the buttons */
+  margin-left: auto; /* Pushes the buttons to the right */
+}
+
+/* Define styles for buttons in top pane */
+.top-right-buttons .btn {
+  padding: 3px;
+  border-radius: 5px;
+  cursor: pointer;
+  height: 80%; 
+  width: 130px;
+  text-decoration: none; /* Remove underline */
+}
+
+/* Define styles for sign in button */
+.sign-in-btn {
+  color: white;
+  background-color: black;
+  margin-right: 5px;
+}
+
+.signed-in-btn {
+  color: #E10600;
+  background-color: lightgrey;
+  border-style: "solid";
+  border-color: #E10600;
+  margin-right: 5px;
+  padding: 2%;
+}
+
+.circular-photo {
+  width: 20%;
+  height: 90%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-link img {
+  max-width: 25%; /* Adjust size as needed */
+  max-height: 85%; /* Adjust size as needed */
+  margin-right: 5px; /* Space between image and text */
+}
+
+/* Define styles for register button */
+.register-btn {
+  color: white;
+  background-color: #E10600;
+  text-align: center; 
+  margin-right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-login {
+  width: 20%;
+  margin-right: 8px;
+}
+
+
+
+/* **************************************************
+************* HOME PAGE GP & TIMER ***************
+************************************************** */
+.container-home {
+  width:  var(--screen-desk);
+  /* height: 25vh; */
+  padding: 1%;
+  margin-bottom: 10px;
+}
+
+.subcontainer-home{
+  width: 100%;
+  border-radius: 15px;
+  background-color: lightgrey;
+  display: flex;
+}
+
+.left-home {
+  width: 25%;
+  padding: 1%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-gp-home-left {
+  width: 100%;
+  height: auto;
+  border-radius: 15px;
+}
+
+.center-home {
+  width: 55%;
+  display: flex;  
+  padding: 1%;
+  align-items: center;
+  text-transform: uppercase;
+}
+
+.title-home {
+  align-items: center;
+  display: flex;  
+  font-family: "Formula1Bold";
+  font-size: 1.5em;
+  line-height: 1.5em;
+  letter-spacing: 0;
+}
+
+.subtitle-home {
+  font-family: "Formula1Regular";
+  margin-top: 10px;
+  font-size: 1.1rem;
+}
+
+.image-gp-home-flag {
+  width: 3.6rem;
+  margin-right: 20px;
+}
+
+.image-gp-home {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.right-home {
+  width: 20%;  
+  padding: 0.5%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.timer-container-home {
+  width: 90%;
+  height: 75%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+}
+
+.timer-title {
+  position: relative;
+  padding: 0.3rem;
+  z-index: 2;
+  width: auto;
+  background: hsl(240, 5%, 28%);
+  border-radius: .2rem;
+  text-align: center;
+  color: hsl(0, 0%, 100%);
+  font-size: 1vw;
+  letter-spacing: .005rem;
+  margin-bottom: 0.4rem;
+}
+
+.timer-title span{
+  font-size: 0.7em;
+}
+
+.timer-main {
+  position: relative;
+  top: -1.3rem; /* Adjust vertical overlap */
+  width: 100%;
+  height:100%;
+  padding: 1rem 0.6rem 0.6rem;
+  background: hsl(240, 18%, 10%);
+  border-radius: .8rem;
+  color: hsl(0, 0%, 100%);
+  display: flex;
+  justify-content: center;
+  z-index: 1;
+  font-weight: 800;
+  font-size: 3vw; /* Make the font size responsive to viewport width */
+}
+
+.timer-main ul {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: "Formula1Regular";
+}
+
+.timer-main li {
+  display: flex;
+  align-items: center;
+  flex-direction: column; /* Stack items vertically */
+  margin: 0 0.5rem; /* Adjust margin as needed */
+  justify-content: center; /* Center the content horizontally */
+}
+
+.timer-main li span {
+  display: flex;
+  align-items: center; /* Center items vertically */
+}
+
+.timer-main li span:first-child {
+  font-size: 0.6em; /* Adjust font size as needed */
+}
+
+.timer-main li span:last-child {
+  font-size: 0.3em; /* Adjust font size as needed */
+  text-transform: uppercase;
+  margin-top: 0.2rem; /* Adjust spacing between number and unit */
+}
+
+
+.button-home {
+  height: 80%;
+  background-color: red;
+  text-align: center;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 5px;
+  color: white;
+  font-size: 1em;
+  font-family: "Formula1Bold";
+  display: flex;
+  align-items: center;
+}
+
+
+.main-team{
+  border-radius: 1%;
+  margin-bottom: 10px;
+  width:  var(--screen-desk);
+  height: 140vh;
+  background-color: lightgrey;
+  padding:1%;
+  margin: 0.5%;
+  display: flex; 
+  flex-direction: column;
+  align-items: center;
+}
+
+.fantasy-team{
+  width: 100%;
+  margin-top: 10px;
+  height: 90%;
+  display: flex; 
+  justify-content: center;
+}
+
+.team-selections{
+  width: 55%
+}
+
+.top-selection{
+  justify-content: space-between;
+  align-items: center;
+  display: flex;
+  margin-left: 20px;
+} 
+
+.budget-selection{
+  font-size: 1.3rem;
+  line-height: 1.6rem;
+  letter-spacing: .002rem;
+  display: flex;
+  flex-direction: column;
+  font-family: "Formula1Bold";
+}
+
+.budgetBar{
+  width: 14rem;
+  height: .6rem;
+  position: relative;
+  overflow: hidden;
+  background-color: gray;
+  margin-top: 5%;
+  width: 220px;
+  border-radius: 100px;
+}
+
+.budgetBar progress{
+  opacity: 0;
+}
+
+.budgetBar span{
+  position: absolute;
+  left: 0;
+  height: 100%;
+  top: 0;
+  background-color: hsl(114, 100%, 38%);
+  transition: width .1s linear;
+  border-radius: 100px;
+}
+
+.btn:disabled{
+  pointer-events: none;
+  opacity: .4;
+}
+
+.button-reset-team{
+  color: white;
+  background-color: black;
+  margin-right: 10px;
+  border-radius: 5px;
+}
+
+.button-save-team{
+    color: white;
+    background-color: #E10600;
+    text-align: center; 
+    margin-right: 20px;
+    border-radius: 5px;
+}
+
+.button-save-deactivated{
+  color: lightgray;
+  background-color: darkgray;
+  text-align: center; 
+  margin-right: 20px;
+  border-radius: 5px;
+}
+
+.selection-div{
+  height: 100%;
+  display:flex; 
+  flex-direction: column; 
+  align-items: center;
+  margin-left:5vh; 
+  margin-right:5vh;
+  justify-content: center;
+}
+
+.selected-div{
+  display:flex; 
+  flex-direction: column; 
+  align-items: center;
+  background-color: white;
+  border-radius: 5px;
+  margin-left:5%; 
+  margin-right:5%;
+  position: relative;
+}
+
+#selection1{
+  border: 3px solid red
+}
+
+#selection1::after{
+  position: absolute;
+  margin: 2px;
+  top: 1%; /* Adjust the value as needed to position the button correctly */
+  left: 1%; /* Adjust the value as needed to position the button correctly */
+  font-weight: 700;
+  content:"2x";
+  text-transform: uppercase;
+  color: white;
+  background-color: black;
+  font-family: "Formula1Bold";
+  font-size: 0.6rem;
+  box-shadow: none;
+  padding: 3%;
+  border-radius: 100px; /* Optional: Add border-radius for rounded corners */
+  cursor: pointer; /* Change cursor to pointer to indicate it's clickable */
+  z-index: 2; /* Ensure it overlays the other components */
+}
+
+.driver-selected-photo{
+  width: 100%;
+  height: 60%;
+  display:flex;
+  justify-content: center;
+}
+
+.driver-selected-data{
+  width: 100%;
+  height: 40%;
+  font-family: "Formula1Bold";
+  text-transform: uppercase;
+  font-size: 0.5rem;
+  padding: 2%;
+}
+
+.driver-selected-price{
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2%;
+}
+
+.gray-line-driver{
+  border: none;
+  height: 1px;
+  background-color: hsl(240, 5%, 28%);
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.remove-selected{
+  position: absolute;
+  margin: 2px;
+  top: 1%; /* Adjust the value as needed to position the button correctly */
+  right: 1%; /* Adjust the value as needed to position the button correctly */
+  font-weight: 700;
+  box-shadow: none;
+  border-radius: 10px; /* Optional: Add border-radius for rounded corners */
+  cursor: pointer; /* Change cursor to pointer to indicate it's clickable */
+  z-index: 1; /* Ensure it overlays the other components */
+}
+
+.remove-driver{
+  font-size: 0.9rem;
+  display: flex;
+  width: 0.8rem;
+  height: 0.8rem;
+  justify-content: center;
+  align-items: center;
+  color: hsl(0, 0%, 100%) !important;
+  font-weight: 900;
+}
+
+.driver-selected-li{
+  padding: 1%; 
+  display: flex; 
+  justify-content: center; 
+  margin-top: 2%; 
+  list-style-type: none;
+}
+
+.driver-selected-li li{
+  width: 33%;
+}
+
+.team-selected-li{
+  padding: 1%; 
+  display: flex; 
+  justify-content: center; 
+  margin-top: 1%; 
+  list-style-type: none;
+}
+
+.team-selected-li li{
+  width: 80%;
+}
+
+.add-selection{
+  color: white;
+  background-color: #E10600;
+  text-align: center; 
+  border-radius: 3px;
+  border: none;
+  padding: 0;
+  width: 4vh;
+  height: 4vh;
+}
+
+.selection-text {
+  margin-top: 5vh;
+  font-weight: 800;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-decoration-color: red;
+}
+
+.gray-line {
+  border: none;
+  height: 1px;
+  background-color: hsl(240, 5%, 28%);;
+  margin-top: 0; /* Reset default margin */
+  margin-bottom: 10px; /* Adjust margin as needed */
+}
+
+.team-options{
+  flex-basis: 46rem;
+  flex-shrink: 0;
+  position: static;
+  background-color: white;
+  border-radius: 10px;
+}
+
+
+
+.selectable-list{  
+  width: 45%;
+  height: 100%;
+  
+}
+
+.team-driver-selectable{  
+  height: 5.2rem;
+  width:95%;
+  padding: var(--gutter10) var(--gutter16) var(--gutter16);
+  margin: 2%;
+  background-color: white;
+  font-size: 1.2rem;
+  color: black;
+  align-items: center;
+}
+
+.team-driver-selectable ul{
+  width: 100%;
+  display:flex;
+}
+
+.team-driver-selectable ul li{
+  flex-grow: 1;
+  flex-basis: 100%;
+  margin: 2%;
+  text-align: center;
+}
+
+.team-driver-selectable ul li:first-child{
+  border-right:2px solid ;
+  height: 100%;
+  background-color: hsl(240, 5%, 28%);
+  background-color: var(--primary-hot-red);
+}
+
+.team-driver-selectable a{
+  color:grey;
+  text-decoration: none;
+  font-family: "Formula1Bold";
+  padding-bottom: var(--gutter16);
+  position: relative;
+  display: block;
+
+}
+
+.team-driver-selectable a.active {
+  color:black;
+  font-weight: bold;
+}
+
+.team-driver-selectable a.active::after {
+  content: "";
+  position: absolute;
+  justify-self: center;
+  left: 0;
+  right: 0;
+  margin: 1%;
+  height: 0.2rem;
+  width: 80%;
+  background-color: hsl(2, 100%, 44%);
+  border-radius: 100px;
+  transition: max-width .1s linear;
+}
+
+.dotted-selector{
+  width:94%;
+  display: flex;
+  margin: 3%;
+  justify-content: center;
+}
+
+.dotted-selector span{
+  margin: 2%;
+  display: block;
+  width: .6rem;
+  height: .6rem;
+  background-color: lightgray;
+  border-radius: 10px;
+}
+
+img {
+  overflow-clip-margin: content-box;
+  overflow: clip;
+}
+
+.tabla{ 
+  overflow: auto;
+  display: block;
+  scrollbar-width: thin;
+  scrollbar-color: var(--grey-20) var(--grey-70);
+  height: 26rem;
+  padding-right: 1%;
+}
+
+.tabla-pilotos{
+  align-items: center;
+  
+}
+
+.fila-piloto{
+  display:flex;
+  height: 6rem;
+  width: 100%;  
+  padding: 1%;
+  background-color: white;
+  margin-top: 0.5%;
+  margin-bottom: 0.5%;
+}
+
+.fila-equipo{
+  display:flex;
+  height: 6rem;
+  width: 100%;  
+  padding: 1%;
+  background-color: white;
+  margin-top: 0.5%;
+  margin-bottom: 0.5%;
+}
+
+ul {
+  list-style-type: none;
+  padding-left: 0.5rem;
+}
+
+.foto-piloto{
+  height: 100%;
+  width: 25%;
+  border-radius: 10px;
+  display: flex;
+  vertical-align: middle;
+  position: relative; 
+  overflow: hidden;
+}
+
+
+
+.driver-team-number{
+  margin: auto;
+  float: right;
+  flex-direction: column; /* Stack items vertically */
+  margin-top: 4%;
+}  
+
+.team-logo{
+  display:flex;
+  width:100%;
+  justify-content: end;
+  margin-top: 6%;
+  margin-right: 7%;
+}
+
+.foto-piloto-inside{
+  align-self: flex-end;
+}
+
+.foto-piloto-number{
+  align-items: flex-end;
+  margin-top: 30%;
+}
+
+.data-piloto{
+  height: 100%;
+  width: 65%;
+  display: flex;
+  vertical-align: middle;
+  margin-right: 2%;
+}
+
+.piloto-equipo{
+  margin-right: 4%;
+  margin-left: 2%;
+  width: 75%;
+  vertical-align: middle;
+  align-items: center;
+  flex-direction: column; /* Stack items vertically */
+  justify-content: center;
+}
+
+.driver-name{
+  text-align: left;
+  text-transform: uppercase;
+  font-family: "Formula1Bold";
+  font-size: 1.1rem;
+  line-height: 1.7rem;
+  letter-spacing: .02rem;
+}
+
+.driver-team{
+  text-align: left;
+  font-family: "Formula1Regular";
+  font-size: 0.8rem;
+  line-height: 1.5rem;
+  letter-spacing: .02rem;
+}
+
+.driver-stats{
+  width: 100%;
+  height:auto;
+  display: flex;
+  justify-content: space-around;
+}
+
+.driver-stats ul{
+  padding-left: 0.2rem;
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.driver-stats li{
+  margin-left: 2%;
+  margin-right: 2%;
+  width: 30%;
+  background-color: lightgray;
+  border-radius: 4px;
+  font-family: "Formula1Bold";
+  font-size: 0.65rem;
+  padding: 1%;
+  display: flex;
+  justify-content: center;
+}
+
+.driver-price{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: "Formula1Bold";
+  margin: auto;
+  font-size: 1.25rem;
+  line-height: 1.4rem;
+  letter-spacing: .03rem;
+}
+
+.price-up{
+  color: hsl(206, 100%, 39%); 
+  font-size: 0.8rem;
+  line-height:0.9rem
+}
+
+.price-down{
+  color: hsl(4, 77%, 48%); 
+  font-size: 0.8rem;
+  line-height:0.9rem
+}
+
+.selectable-piloto{
+  height: 100%;
+  width: 10%;
+  display:flex;  
+  justify-content: center
+}
+
+.add-piloto{
+  align-self: center;
+  display: grid;
+  color: white;
+  background-color: black;
+  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  align-content: center;
+  justify-content: center;
+}
+
+.add-equipo{
+  align-self: center;
+  display: grid;
+  color: white;
+  background-color: black;
+  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  align-content: center;
+  justify-content: center;
+}
+
+.no-selectable-piloto{
+  height: 100%;
+  width: 10%;
+  display:flex;  
+  justify-content: center
+}
+
+.remove-driver-table{
+  align-self: center;
+  display: grid;
+  color: black;
+  background-color: white;
+  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  align-content: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.remove-team-table{
+  align-self: center;
+  display: grid;
+  color: black;
+  background-color: white;
+  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  align-content: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+
+
+.general-selections{
+  margin: 1% 0.5% 4% 0.5%;
+  width:  var(--screen-desk);
+  height: 10%;
+  width: 100%;
+  display: flex; 
+  justify-content: space-around;
+}
+
+.section {
+  width:15%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5%;
+  font-family: "Formula1Bold";
+  font-size: 0.6rem;
+}
+
+.section-name{
+  font-size: 0.8rem;
+  padding: 3%;
+  margin-bottom: 2%;
+  margin-left: 3%;
+}
+
+.pole-position > *{
+  border-left: 3px solid gray;
+  border-bottom: 3px solid gray;
+  border-radius: 5px;
+}
+
+.pole-position > div > button{
+  border: 3px solid gray;
+}
+
+.first-place > *{
+  border-left: 3px solid gold;
+  border-bottom: 3px solid gold;
+  border-radius: 5px;
+}
+
+.first-place > div > button{
+  border: 3px solid gold;
+}
+
+.second-place > *{
+  border-left: 3px solid silver;
+  border-bottom: 3px solid silver;
+  border-radius: 5px;
+}
+
+.second-place > div > button{
+  border: 3px solid silver;
+}
+
+.third-place > *{
+  border-left: 3px solid hsla(30, 61%, 50%, 1);
+  border-bottom: 3px solid hsla(30, 61%, 50%, 1);
+  border-radius: 5px;
+}
+
+.third-place > div > button{
+  border: 3px solid hsla(30, 61%, 50%, 1);
+}
+
+.fastest-lap > *{
+  border-left: 3px solid hsl(300, 100%, 50%);
+  border-bottom: 3px solid hsl(300, 100%, 50%);
+  border-radius: 5px;
+}
+
+.fastest-lap > div > button{
+  border: 3px solid hsl(300, 100%, 50%);
+}
+
+.best-team > *{
+  border-left: 3px solid hsla(90, 100%, 32%, 1);
+  border-bottom: 3px solid hsla(90, 100%, 32%, 1);
+  border-radius: 5px;
+}
+
+.best-team > div > button{
+  border: 3px solid hsla(90, 100%, 32%, 1);
+}
+
+.dropdown {
+  border: 0;
+  width: 100%;
+  position: relative;
+  display: inline-block;
+  padding: 3%;
+}
+
+.dropbtn {
+  width: 100%;
+  border-radius: 10px;
+  background-color: gray;
+  color: white;
+  padding: 16px;
+  border: none;
+  cursor: pointer;
+}
+
+.dropbtn:hover, .dropbtn:focus {
+  background-color: white;
+  color: gray;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+}
+
+.dropdown-content a {
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdown-content span {
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdown-content a:hover {
+  background-color: #f1f1f1;
+}
+
+.show {
+  display: block;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  text-align: center;
+  width: 300px;
+  font-family: "Formula1Bold";
+}
+
+.close-button {
+  float: right;
+  cursor: pointer;
+  font-size: 20px;
+}

@@ -1,0 +1,254 @@
+@font-face {
+    font-family: 'Formula1Black';
+    src: local('Formula1Black'),
+         url('../fonts/Formula1-Black.ttf') format("truetype");
+}
+  
+@font-face {
+    font-family: 'Formula1Wide';
+    src: local('Formula1Wide'),
+        url('../fonts/Formula1-Wide.ttf') format("truetype");
+}
+  
+@font-face {
+    font-family: 'Formula1Bold';
+    src: local('Formula1Bold'),
+        url('../fonts/Formula1-Bold.ttf') format("truetype");
+}
+  
+@font-face {
+    font-family: 'Formula1Regular';
+    src: local('Formula1Regular'),
+        url('../fonts/Formula1-Regular.ttf') format("truetype");
+}
+
+.main-view-team{
+    background-color: hsl(240, 2%, 91%);
+    height:auto;
+    width: 100%;
+    padding: 2% 1% 2% 1%;
+}
+
+/* Top title */
+.view-team-gp{
+    background-color: hsl(240, 2%, 64%);
+    margin: 0% 1% 2% 1%;
+    padding: 1%;
+    border-radius: 10px;
+}
+
+.main-title-team{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-left: 1%;
+    margin-bottom: 1%;
+    text-transform: uppercase;
+}
+
+.profile-photo-large {
+    width: 3.5em;
+    height: 3.5em;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+
+.gray-line-top{
+    border: none;
+    height: 1px;
+    background-color: hsl(240, 8%, 19%);
+    margin-top: 0;
+    margin-bottom: 2%;
+}
+
+
+/* Selected gp container */
+.subcontainer-gp{
+    width: 100%;
+    border-radius: 15px;
+    background-color: lightgrey;
+    display: flex;
+    margin-bottom: 2%;
+}
+
+.left-gp {
+    width: 25%;
+    padding: 1%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-gp-left {
+    width: 100%;
+    height: auto;
+    border-radius: 15px;
+}
+
+.center-gp {
+    width: 55%; 
+    padding: 1%;
+    text-transform: uppercase;
+    margin-left: 1%; 
+    font-size: 2vw;
+    align-self: center;
+}
+
+.round-gp{
+    font-family: "Formula1Black";
+    font-size: 1em;
+    line-height: 1.5em;
+}
+
+.title-gp {
+    align-items: center;
+    display: flex;  
+    font-family: "Formula1Bold";
+    font-size: 1.2em;
+    line-height: 1.2em;
+    letter-spacing: 0;
+}
+  
+.subtitle-gp {
+    font-family: "Formula1Regular";
+    margin-top: 10px;
+    font-size: 0.7em;
+}
+  
+.image-gp-flag {
+    width: 2em;
+    margin-right: 20px;
+}
+
+.right-gp{
+    width: 20%;
+    padding: 1%;
+    display: dlex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-gp-right {
+    width: 100%;
+    height: auto;
+    border-radius: 15px;
+}
+
+
+
+/* Actual porra display */
+.main-view-porra{
+    width: 100%;
+    border-radius: 15px;
+    background-color: lightgrey;
+    display: flex;
+    margin-bottom: 2%;
+}
+
+.left-view-porra{
+    width:25%;
+    padding: 2%;
+    display: flex;
+    flex-direction: column;
+    font-size: 1vw;
+    justify-content: center;
+}
+
+.right-view-porra{
+    width: 70%;
+    padding: 2%;  
+}
+
+.driver-selected-data-team{
+    width: 100%;
+    height: 40%;
+    font-family: "Formula1Bold";
+    font-size: 1vw;
+    padding: 2%;
+    background-color: white;
+}
+
+.driver-selected-points{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1%;
+    font-size: 0.9em;
+    padding-right: 2%;
+ }
+
+.section-team{
+    width:100%;
+    padding: 0.5%;
+    font-family: "Formula1Bold";
+    font-size: 1em;
+    margin-bottom: 4%;
+}
+
+.section-name-team{
+    padding: 1% 3%;
+    margin-bottom: 1%;
+    margin-left: 1%;
+}
+
+.view-selection-basic{
+    display: flex;
+    margin-bottom: 2%;
+}
+
+
+.pole-position-team > div:first-child{
+    border-left: 3px solid gray;
+    border-bottom: 3px solid gray;
+    border-radius: 5px;
+}
+
+.first-place-team > div:first-child{
+    border-left: 3px solid gold;
+    border-bottom: 3px solid gold;
+    border-radius: 3px;
+}
+
+.second-place-team > div:first-child{
+    border-left: 3px solid silver;
+    border-bottom: 3px solid silver;
+    border-radius: 5px;
+}
+
+.third-place-team > div:first-child{
+    border-left: 3px solid hsla(30, 61%, 50%, 1);
+    border-bottom: 3px solid hsla(30, 61%, 50%, 1);
+    border-radius: 5px;
+}
+
+.fastest-lap-team > div:first-child{
+    border-left: 3px solid hsl(300, 100%, 50%);
+    border-bottom: 3px solid hsl(300, 100%, 50%);
+    border-radius: 5px;
+}
+
+.best-team-team > div:first-child{
+    border-left: 3px solid hsla(90, 100%, 32%, 1);
+    border-bottom: 3px solid hsla(90, 100%, 32%, 1);
+    border-radius: 5px;
+}
+
+.show-points{
+    padding: 2%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cost-cap{
+    padding: 2%;
+    display: flex;
+    flex-direction: column;
+}
+
+.total-points{
+    padding: 2%;
+    display: flex;
+    flex-direction: column;
+}

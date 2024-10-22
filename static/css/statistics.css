@@ -1,0 +1,101 @@
+@font-face {
+    font-family: 'Formula1Black';
+    src: local('Formula1Black'),
+         url('../fonts/Formula1-Black.ttf') format("truetype");
+  }
+  
+  @font-face {
+    font-family: 'Formula1Wide';
+    src: local('Formula1Wide'),
+         url('../fonts/Formula1-Wide.ttf') format("truetype");
+  }
+  
+  @font-face {
+    font-family: 'Formula1Bold';
+    src: local('Formula1Bold'),
+         url('../fonts/Formula1-Bold.ttf') format("truetype");
+  }
+  
+  @font-face {
+    font-family: 'Formula1Regular';
+    src: local('Formula1Regular'),
+         url('../fonts/Formula1-Regular.ttf') format("truetype");
+  }
+
+.global-header{
+    height: 12rem;
+    width: 100%;
+}
+
+.button-login{
+    height: 25%;
+    width: 100%;
+    background-color: #38383f;
+}
+
+.button-login ul{
+    height: 100%;
+    padding: 0 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 3% 0 3%;
+    list-style: none;
+    list-style-type: none;
+}
+
+.button-login ul li{
+    font-family: "Formula1Bold";
+    font-size: 0.9rem;
+    margin: 2%;
+    display: inline;
+}
+
+
+.button-login ul li a{
+    cursor: pointer;
+    padding: 5px;
+    border-bottom: 3px solid transparent;
+    color: white;
+    text-decoration: none;
+}
+
+.button-login ul li a:hover, .button-login ul li a:focus{
+    border-bottom: white;
+    color: lightgray;
+}
+
+.fantasy-statistics {
+    width: 80%;
+    margin: auto;
+    padding: 20px;
+}
+
+#pointsChart {
+    max-width: 100%;
+    height: 400px; /* Adjust as needed */
+}
+
+/* Style the container holding the Chosen elements */
+.chosen-container {
+    font-family: 'Roboto', sans-serif;
+}
+
+/* Custom styling for the chosen-drop */
+.chosen-container .chosen-drop {
+    background-color: #f8f9fa; /* Light background */
+    border: 1px solid #ced4da; /* Grey border */
+}
+
+/* Custom styling for chosen results */
+.chosen-container .chosen-results li {
+    color: #495057; /* Text color */
+    padding: 5px 10px;
+}
+
+/* Styling selected items */
+.chosen-container .chosen-choices .search-choice {
+    background-color: #007bff; /* Selected item background */
+    color: white; /* Selected item text */
+    border-radius: 3px;
+}

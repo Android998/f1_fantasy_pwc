@@ -1,0 +1,21 @@
+[metadata]
+name = f1porra_website
+version = attr: f1porra_website.1.0
+author = Ander Gurtubay
+author_email = ander.gurtubay.regulez@pwc.com
+description = Website to support the F1 Fantasy game in PwC
+long_description = file: README.md
+keywords = django, views, models, settings, docker
+license = BSD-3-Clause
+classifiers =
+    Framework :: Django
+    Programming Language :: Python :: 3
+
+[options]
+zip_safe = False
+include_package_data = True
+packages = find:
+python_requires = ==3.9
+install_requires =
+    django
+

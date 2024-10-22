@@ -1,0 +1,116 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Personal F1 website Login</title>
+    <meta name="description" content="">
+    <link href="{% static 'css/login.css' %}" rel="stylesheet" />
+</head>
+<body style="margin: 0; padding: 0;">
+    <div class="global-header">
+        <div class="logo-header">
+            <img src="{% static 'theme/assets/logos/f1_logo_red.png' %}" style="height:10vh; margin-left: 20px;">
+        </div>
+        <div class="button-login">
+            <ul>
+                <li>
+                    <a style="border-bottom: 3px solid red;" id="sign-in-button" onclick="showLoginForm()">Sign In</a>
+                </li>
+                <li>
+                    <a id="register-button" onclick="showSignupForm()">Register</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <main class="main-login-page">
+        <div id="login-form" class="login-container">
+            <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase;margin-bottom: 5%;">Sign In</h1>
+            <hr class="gray-line-driver"></hr>
+            <form method="post" action="{% url 'accounts:login' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username">
+                    {% if login_form.username.errors %}
+                        {{ login_form.username.errors }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password">
+                    {% if login_form.password.errors %}
+                        {{ login_form.password.errors }}
+                    {% endif %}
+                </div>
+                <div class="actions">
+                    {%url 'public:home' as home_url %}
+                    <a href="{% url 'accounts:password_reset' %}" class="reset-password" text="Forgotten password?">Forgotten password?</a>
+                    <button class="submit-button" type="submit" name="login">Sign In</button>
+                </div>
+            </form>
+        </div>
+        <div id="signup-form" class="login-container" style="display:none;">
+            <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase;margin-bottom: 5%;">Create an account</h1>
+            <hr class="gray-line-driver"></hr>
+            <form method="post" action="{% url 'accounts:login' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username">
+                    {% if signup_form.username.errors %}
+                        {{ signup_form.username.errors }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <label for="first_name">First Name</label>
+                    <input type="text" id="first_name" name="first_name">
+                    {{ signup_form.first_name.errors }}
+                </div>
+                <div class="form-group">
+                    <label for="last_name">Last Name</label>
+                    <input type="text" id="last_name" name="last_name">
+                    {{ signup_form.last_name.errors }}
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email">
+                    {% if signup_form.email.errors %}
+                        {{ signup_form.email.errors }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <label for="password1">Password</label>
+                    <input type="password" id="password1" name="password1">
+                    {% if signup_form.password1.errors %}
+                        {{ signup_form.password1.errors }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <label for="password2">Confirm your Password</label>
+                    <input type="password" id="password2" name="password2">
+                    {% if signup_form.password2.errors %}
+                        {{ signup_form.password2.errors }}
+                    {% endif %}
+                </div>
+                <div class="actions">
+                    {%url 'public:home' as home_url %}
+                    <a href="{% url 'accounts:login' %}?form=login" class="already-account" text="Already have an account?">Already have an account?</a>
+                    <button class="submit-button" type="submit" name="signup">Register</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    <div style="width:  var(--screen-desk); height: 20vh;"></div>
+    <div style="width: var(--screen-desk); height: 10vh; background-color: black; display:flex; padding: 1%; align-items: center;">
+        <a class="navbar-brand" href="#page-top" style="height: 100%; flex: 1;align-content: center;">
+            <img src="{% static 'theme/assets/logos/f1_white_logo.png' %}" alt="Logo F1 bottom pane" style="height: 5vh; align-self: center;">
+        </a>
+        <a style="display: flex; color: white; flex: 1; justify-content: flex-end; align-items: center;font-family: Formula1Regular;font-size: 0.8rem;">
+            2003-2024 Formula One World Championship Limited
+        </a>
+    </div>
+    <script src="{% static 'js/login.js' %}"></script>
+</body>
+</html>

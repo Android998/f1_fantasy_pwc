@@ -1,0 +1,113 @@
+<!-- standings.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="main-standings">
+    <div class="top-filters">
+        <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase;margin-bottom: 2%;">Select Standings Grand Prix</h1>
+        <hr class="gray-line-top"></hr>
+        <div class="section-std ">
+            <div class="grand-prixes">
+                <div class="section-name-std">
+                    <span>Grand Prixes</span>
+                </div>
+                <div class="dropdown-std">
+                    <button id="gp-dropdown" class="dropbtn-std">{{ selected_gp|default:"Overall" }}</button>
+                    <div id="gp-dropdown-content" class="dropdown-content-std">
+                        <a href="?gp=overall" data-gp-id="overall">Overall</a>
+                        {% for gp in grand_prix_list %}
+                        <a href="?gp={{ gp.country }}" data-gp-id="{{ gp.country }}">{{ gp.country }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="user-standings">
+        <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase;margin-bottom: 2%;">Users Standings</h1>
+        <hr class="gray-line"></hr>
+        <table class="standings-table">
+            <thead>
+                <tr>
+                    <th class="rank">Rank</th>
+                    <th class="user-name">Name</th>
+                    <th class="team-name">Team</th>
+                    <th class="points">Points</th>
+                    <th class="wins">Wins</th>
+                    <th class="podiums">Podiums</th>
+                    <th class="last-2">Last 2</th>
+                    <th class="view-team">Picked Team</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in user_standings %}
+                <tr>
+                    <td class="rank">{{ forloop.counter }}</td>
+                    <td class="user-name">
+                        {% if user.user__userprofile__photo %}
+                            <img src="/media/{{ user.user__userprofile__photo }}" class="profile-photo" alt="Profile Photo">
+                        {% else %}
+                            <img src="{% static 'theme/assets/users/default.png' %}"  class="profile-photo" alt="Default Profile Photo">
+                        {% endif %}
+                        {{ user.user__first_name }}
+                    </td>
+                    <td class="team-name">
+                        {% if user.user__userprofile__users_team__name %}
+                            {{ user.user__userprofile__users_team__name }}
+                        {% else %}
+                            No Team
+                        {% endif %}
+                    </td>
+                    <td class="points">{{ user.total_points }}</td>
+                    <td class="wins">{{ user.wins }}</td>
+                    <td class="podiums">{{ user.podiums }}</td>
+                    <td class="last-2">{{ user.last_2 }}</td>
+                    <td style="font-size: 0.8em;" class="view-team">
+                        {% if selected_gp != 'overall' %}
+                            <a href="{% url 'public:view_team' user.user__username selected_gp %}">View team</a>
+                        {% else %}
+                            <span></span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">No standings available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="teams-standings">
+        <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase;margin-bottom: 2%;">Teams Standings</h1>
+        <hr class="gray-line"></hr>
+        <table class="standings-table-team">
+            <thead>
+                <tr>
+                    <th class="rank">Rank</th>
+                    <th class="team-name">Team</th>
+                    <th class="points">Points</th>
+                    <th class="wins">Wins</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for team in team_standings %}
+                <tr>
+                    <td class="rank">{{ forloop.counter }}</td>
+                    <td class="team-name">{{ team.user__userprofile__users_team__name }}</td>
+                    <td class="points">{{ team.total_points }}</td>
+                    <td class="wins">{{ team.wins }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">No team standings available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<script src="{% static 'js/standings.js' %}"></script>
+{% endblock %}
+

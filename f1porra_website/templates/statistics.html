@@ -1,0 +1,68 @@
+statistics.html
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <!-- Chosen CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.min.css">
+    
+    <!-- Custom CSS -->
+    <link href="{% static 'css/statistics.css' %}" rel="stylesheet" />
+    
+    <title>Multi-Select #9</title>
+</head>
+
+<body>
+    <div class="container">
+        <h2 class="text-center">Multi-Select #9</h2>
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <!-- Chosen Multi-Select -->
+                <select data-placeholder="Select Categories" multiple class="chosen-select">
+                    <option>Design</option>
+                    <option>HTML5</option>
+                    <option>CSS3</option>
+                    <option>jQuery</option>
+                    <option>BS4</option>
+                    <option>Bootstrap</option>
+                    <option>WordPress</option>
+                    <option>FrontEnd</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Chosen JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.jquery.min.js"></script>
+
+    <!-- Custom JS -->
+    <script src="/static/js/statistics.js"></script>
+
+    <script>
+        // Initialize the chosen-select after the DOM is fully loaded
+        $(document).ready(function() {
+            $(".chosen-select").chosen({
+                width: "100%" // Optional: Set the width of the select box
+            });
+        });
+    </script>
+</body>
+{% endblock %}

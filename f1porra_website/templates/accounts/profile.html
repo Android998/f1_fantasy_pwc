@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="main-user">
+    <div id="login-form" class="main-user-container">
+        <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase;margin-bottom: 5%;">Personal Information</h1>
+        <hr class="gray-line"></hr>
+
+        <!-- Display messages -->
+        {% if messages %}
+            <div class="alert alert-danger">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Profile photo section -->
+            <div class="profile-photo-container">
+                <label for="id_photo" class="clickable-photo">
+                    {% if profile_photo_url %}
+                        <img src="{{ profile_photo_url }}" alt="Profile Photo" class="user-photo" id="profileImagePreview">
+                    {% else %}
+                        <img src="{% static 'theme/assets/users/default.png' %}" alt="Default Photo" class="user-photo" id="profileImagePreview">
+                    {% endif %}
+                </label>
+                <input type="file" id="id_photo" name="photo" accept="image/*" style="display: none;">
+            </div>
+            
+            <div class="form-group">
+                <label for="id_username">Username</label>
+                <input type="text" id="id_username" name="username" value="{{ user_form.username.value|default:'' }}">
+                {% if user_form.username.errors %}
+                    {{ user_form.username.errors }}
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="id_first_name">First Name</label>
+                <input type="text" id="id_first_name" name="first_name" value="{{ user_form.first_name.value|default:'' }}">
+                {% if user_form.first_name.errors %}
+                    {{ user_form.first_name.errors }}
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="id_last_name">Last Name</label>
+                <input type="text" id="id_last_name" name="last_name" value="{{ user_form.last_name.value|default:'' }}">
+                {% if user_form.last_name.errors %}
+                    {{ user_form.last_name.errors }}
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="id_email">Email</label>
+                <input type="email" id="id_email" name="email" value="{{ user_form.email.value|default:'' }}">
+                {% if user_form.email.errors %}
+                    {{ user_form.email.errors }}
+                {% endif %}
+            </div>
+        
+            <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase; margin-bottom: 5%;">Team Information</h1>
+            <hr class="gray-line"></hr>
+            <div class="profile-photo-container">
+                {% if user_profile.users_team.photo %}
+                    <img src="{{ user_profile.users_team.photo.url }}" alt="Team Photo" class="profile-photo" style="border-radius: 50%;">
+                {% else %}
+                    <img src="" alt="Team Photo" class="profile-photo" style="border-radius: 50%;">
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="team_name">Team Name</label>
+                <input type="text" id="team_name" name="team_name" value="{{ user_profile.users_team.name }}">
+            </div>
+            <div class="actions">
+                <button class="submit-button" type="submit" name="update_team">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script src="{% static 'js/user.js' %}"></script>
+{% endblock %}
