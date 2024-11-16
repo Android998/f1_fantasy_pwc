@@ -157,11 +157,6 @@ DEFAULT_FROM_EMAIL = "porraf1pwcofficial@gmail.com"
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 
-# STATIC_URL = '/static/'
-# STATICFILES_DIRS = []
-# STATIC_ROOT = BASE_DIR / 'staticfiles'
-# STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
 # Static and media files
 if DEBUG=="True":
     MEDIA_URL = '/media/'

@@ -53,7 +53,7 @@ def calculate_race_points(row):
     total_points = int(row['Points'])
     
     # If the driver is "Retired," apply the -10 penalty
-    if row['Status'] in ['Retired', 'Accident', 'Power Unit']:
+    if row['Status'] in ['Retired', 'Accident', 'Power Unit', 'Brakes', 'Collision']:
         return total_points - 10
     
     # Points for positions gained (comparing qualy position and race position)
