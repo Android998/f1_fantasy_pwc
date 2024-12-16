@@ -12,6 +12,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Points calculation completed.'))
 
 
-        # self.stdout.write(self.style.SUCCESS('Computing Porras results...'))
-        # compute_porra_points()
-        # self.stdout.write(self.style.SUCCESS('Points calculation completed.'))
+        self.stdout.write(self.style.SUCCESS('Computing Porras results...'))
+        compute_porra_points()
+        self.stdout.write(self.style.SUCCESS('Points calculation completed.'))

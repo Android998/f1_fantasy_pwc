@@ -53,8 +53,8 @@ def calculate_race_points(row):
     total_points = int(row['Points'])
     
     # If the driver is "Retired," apply the -10 penalty
-    if row['Status'] in ['Retired', 'Accident', 'Power Unit', 'Brakes', 'Collision']:
-        return total_points - 10
+    if row['Status'] in ['Retired', 'Accident', 'Power Unit', 'Brakes', 'Collision', 'Engine', 'Radiator', 'Collision Damage']:
+        return -10
     
     # Points for positions gained (comparing qualy position and race position)
     positions_gained = int(row['Position_Qualy']) - int(row['Position_Race'])
@@ -252,10 +252,14 @@ def compute_gp_points():
 
     total_team_points["Total Points"] = total_team_points.RacePoints + total_team_points.QualyPoints
 
-    print("Updating drivers and teams points...", end="\t")
+    print(total_driver_points, total_team_points)
+
+    print("Updating drivers and teams points...")
 
     # Save updated driver prices for the next GP
     for _, row in total_driver_points.iterrows():
+        if row.Driver == "Jack Doohan": continue
+        print(f"Inserting driver points: {row.Driver}...",  end="\t")
         driver = Driver.objects.filter(name = row.Driver).first()
 
         DriverPoints.objects.update_or_create(
@@ -264,8 +268,11 @@ def compute_gp_points():
             defaults={'points': row['Total Points']}
         )
 
+        print("Done!")
+
     # Save updated team prices for the next GP
     for _, row in total_team_points.iterrows():
+        print(f"Inserting team points: {row.Constructor}...",  end="\t")
         team = Team.objects.filter(name = row.Constructor).first()
 
         TeamPoints.objects.update_or_create(
@@ -273,6 +280,8 @@ def compute_gp_points():
             gp=latest_gp,
             defaults={'points': row['Total Points']}
         )
+
+        print("Done!")
 
     print("Done!!")
 
