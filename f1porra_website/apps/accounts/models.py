@@ -2,6 +2,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from f1porra_website.apps.public.models import Season
 
 class UsersTeam(models.Model):
     name = models.CharField(max_length=255)
@@ -19,6 +20,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     photo = models.ImageField(upload_to='user_photos/', null=True, blank=True)
     users_team = models.ForeignKey(UsersTeam, on_delete=models.SET_NULL, null=True, blank=True)
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
         return self.user.username

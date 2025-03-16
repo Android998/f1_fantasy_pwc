@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import GrandPrix, Driver, Team, TeamPoints, DriverPoints, Porra, RaceResults
+from .models import GrandPrix, Driver, Team, TeamPoints, DriverPoints, Porra, RaceResults, Season
 
 
 # Register your models here.
@@ -10,3 +10,4 @@ admin.site.register(TeamPoints)
 admin.site.register(DriverPoints)
 admin.site.register(RaceResults)
 admin.site.register(Porra)
+admin.site.register(Season)
