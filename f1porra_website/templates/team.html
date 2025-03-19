@@ -231,7 +231,7 @@
                             {% endif %}
                                 <div style="background-color:{{user_porra.driver1.team.color_rgb}}" class="driver-selected-photo">
                                     <div>
-                                        <img id="piloto-photo-1" src="{% static 'theme/assets/drivers/selected/' %}{{user_porra.driver1.photo_link}}" width="140rem" height="auto"></img>
+                                        <img id="piloto-photo-1" src="{% static 'theme/assets/drivers/' %}{{user_porra.driver1.selected_link}}" width="140rem" height="auto"></img>
                                     </div>
                                 </div>
                                 <div class="driver-selected-data">
@@ -273,7 +273,7 @@
                             {% endif %}
                                 <div style="background-color:{{user_porra.driver2.team.color_rgb}}" class="driver-selected-photo">
                                     <div>
-                                        <img id="piloto-photo-2" src="{% static 'theme/assets/drivers/selected/' %}{{user_porra.driver2.photo_link}}" width="140rem" height="auto"></img>
+                                        <img id="piloto-photo-2" src="{% static 'theme/assets/drivers/' %}{{user_porra.driver2.selected_link}}" width="140rem" height="auto"></img>
                                     </div>
                                 </div>
                                 <div class="driver-selected-data">
@@ -317,7 +317,7 @@
                             {% endif %}
                                 <div style="background-color:{{user_porra.driver3.team.color_rgb}}" class="driver-selected-photo">
                                     <div>
-                                        <img id="piloto-photo-3" src="{% static 'theme/assets/drivers/selected/' %}{{user_porra.driver3.photo_link}}" width="140rem" height="auto"></img>
+                                        <img id="piloto-photo-3" src="{% static 'theme/assets/drivers/' %}{{user_porra.driver3.selected_link}}" width="140rem" height="auto"></img>
                                     </div>
                                 </div>
                                 <div class="driver-selected-data">
@@ -359,7 +359,7 @@
                             {% endif %}
                                 <div style="background-color:{{user_porra.driver4.team.color_rgb}}" class="driver-selected-photo">
                                     <div>
-                                        <img id="piloto-photo-4" src="{% static 'theme/assets/drivers/selected/' %}{{user_porra.driver4.photo_link}}" width="140rem" height="auto"></img>
+                                        <img id="piloto-photo-4" src="{% static 'theme/assets/drivers/' %}{{user_porra.driver4.selected_link}}" width="140rem" height="auto"></img>
                                     </div>
                                 </div>
                                 <div class="driver-selected-data">
@@ -401,7 +401,7 @@
                             {% endif %}
                                 <div style="background-color:{{user_porra.driver5.team.color_rgb}}" class="driver-selected-photo">
                                     <div>
-                                        <img id="piloto-photo-5" src="{% static 'theme/assets/drivers/selected/' %}{{user_porra.driver5.photo_link}}" width="140rem" height="auto"></img>
+                                        <img id="piloto-photo-5" src="{% static 'theme/assets/drivers/' %}{{user_porra.driver5.selected_link}}" width="140rem" height="auto"></img>
                                     </div>
                                 </div>
                                 <div class="driver-selected-data">
@@ -448,7 +448,7 @@
                             {% endif %}
                                 <div style="background-color: {{user_porra.team1.color_rgb}}" class="driver-selected-photo">
                                     <div>
-                                        <img id="equipo-photo-1" src="{% static 'theme/assets/teams/cars/' %}{{user_porra.team1.photo_link}}" width="220rem" height="auto"></img>
+                                        <img id="equipo-photo-1" src="{% static 'theme/assets/teams/' %}{{user_porra.team1.selected_link}}" width="220rem" height="auto"></img>
                                     </div>
                                 </div>
                                 <div class="driver-selected-data">
@@ -490,7 +490,7 @@
                             {% endif %}
                                 <div style="background-color: {{user_porra.team2.color_rgb}}" class="driver-selected-photo">
                                     <div>
-                                        <img id="equipo-photo-2" src="{% static 'theme/assets/teams/cars/' %}{{user_porra.team2.photo_link}}" width="220rem" height="auto"></img>
+                                        <img id="equipo-photo-2" src="{% static 'theme/assets/teams/' %}{{user_porra.team2.selected_link}}" width="220rem" height="auto"></img>
                                     </div>
                                 </div>
                                 <div class="driver-selected-data">
@@ -590,15 +590,7 @@
                             <div class="fila-piloto" data-selected-container="{% if piloto.name in porra_list_names %}{{ piloto_positions|dict_lookup:piloto.name}}{% else %}null{% endif %}">
                                 <div class="foto-piloto" style="background-color: {{piloto.team.color_rgb|safe}}">
                                     <div class="foto-piloto-inside">
-                                    <img src="{% static 'theme/assets/drivers/driver/' %}{{ piloto.photo_link }}" width="80rem" height="auto"> 
-                                    </div>
-                                    <div class="driver-team-number">
-                                        <div>
-                                            <img src="{% static 'theme/assets/teams/logos/' %}{{ piloto.team.photo_link }}" width="35rem" height="auto"> 
-                                        </div>
-                                        <div class="foto-piloto-number">
-                                            <img src="{% static 'theme/assets/drivers/numbers/' %}{{ piloto.photo_link }}" width="32rem" height="auto"> 
-                                        </div>
+                                    <img src="{% static 'theme/assets/drivers/' %}{{ piloto.photo_link }}" width="135rem" height="auto"> 
                                     </div>
                                 </div>
                                 <div class="data-piloto">
@@ -665,12 +657,7 @@
                             <div class="fila-equipo" data-selected-container="{% if equipo.name in porra_list_names %}{{ piloto_positions|dict_lookup:equipo.name }}{% else %}null{% endif %}">
                                 <div class="foto-piloto" style="background-color: {{equipo.color_rgb|safe}};">
                                     <div class="foto-piloto-inside" style="position: absolute; right: -5%; bottom: 0; " >
-                                        <img src="{% static 'theme/assets/teams/cars/' %}{{ equipo.photo_link }}" width="auto" height="60rem"> 
-                                    </div>
-                                    <div class="team-logo">
-                                        <div>
-                                            <img src="{% static 'theme/assets/teams/logos/' %}{{ equipo.photo_link }}" width="35rem" height="auto"> 
-                                        </div>
+                                        <img src="{% static 'theme/assets/teams/' %}{{ equipo.photo_link }}" width="auto" height="90rem"> 
                                     </div>
                                 </div>
                                 <div class="data-piloto">

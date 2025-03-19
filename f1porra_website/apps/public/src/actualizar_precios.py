@@ -1,8 +1,9 @@
-from f1porra_website.apps.public.models import DriverPoints, TeamPoints, Porra, GrandPrix, Driver, Team
+from f1porra_website.apps.public.models import Season, DriverPoints, TeamPoints, Porra, GrandPrix, Driver, Team
 from collections import Counter
 from sklearn.preprocessing import MinMaxScaler
 from django.db.models import Max
 import pandas as pd
+from datetime import date
 
 def scale_data(df, field, feature_range):
     scaler = MinMaxScaler(feature_range=feature_range)
@@ -61,17 +62,24 @@ def cuadrar_precios(df):
     return df.drop("Cuadrar", axis = 1)
 
 def update_points():
+    # Get the latest Grand Prix based on round number
+    current_year = date.today().year
+    try:
+        current_season = Season.objects.get(year=current_year)
+    except Season.DoesNotExist:
+        current_season = None  # or handle it as appropriate
+ 
     # Get the current and next GP
-    current_gp = DriverPoints.objects.aggregate(max_nround=Max('gp__nround'))['max_nround']
-    next_gp = GrandPrix.objects.filter(nround__gt=current_gp).order_by('nround').first()
+    current_gp = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+    next_gp = GrandPrix.objects.filter(season=current_season, nround__gt=current_gp).order_by('nround').first()
 
     # Get the prices for drivers and teams for the current GP
-    driver_prices = DriverPoints.objects.filter(gp__nround=current_gp).values('driver__name', 'points', 'price')
-    team_prices = TeamPoints.objects.filter(gp__nround=current_gp).values('team__name', 'points', 'price')
+    driver_prices = DriverPoints.objects.filter(season=current_season, gp__nround=current_gp).values('driver_id', 'driver__name', 'points', 'price')
+    team_prices = TeamPoints.objects.filter(season=current_season, gp__nround=current_gp).values('team_id', 'team__name', 'points', 'price')
 
     # Get all fantasy picks for drivers and teams from user Porra submissions
-    driver_picks = Porra.objects.filter(gp__nround=current_gp).values('driver1', 'driver2', 'driver3', 'driver4', 'driver5')
-    team_picks = Porra.objects.filter(gp__nround=current_gp).values('team1', 'team2')
+    driver_picks = Porra.objects.filter(season=current_season, gp__nround=current_gp).values('driver1', 'driver2', 'driver3', 'driver4', 'driver5')
+    team_picks = Porra.objects.filter(season=current_season, gp__nround=current_gp).values('team1', 'team2')
 
     # Count picks for drivers
     driver_picks_flat = [pick for sublist in driver_picks.values_list('driver1', 'driver2', 'driver3', 'driver4', 'driver5') for pick in sublist]
@@ -86,12 +94,13 @@ def update_points():
     team_prices_df = pd.DataFrame(team_prices)
 
     # Add the number of picks to drivers and teams dataframes
-    driver_prices_df['Picks'] = driver_prices_df['driver__name'].map(driver_pick_count).fillna(0)
-    team_prices_df['Picks'] = team_prices_df['team__name'].map(team_pick_count).fillna(0)
+    driver_prices_df['Picks'] = driver_prices_df['driver_id'].map(driver_pick_count).fillna(0)
+    team_prices_df['Picks'] = team_prices_df['team_id'].map(team_pick_count).fillna(0)
 
     driver_prices_df['Total Points'] = driver_prices_df['Picks'] * driver_prices_df['points']
     team_prices_df['Total Points'] = team_prices_df['Picks'] * team_prices_df['points']
-
+    print(driver_prices_df)
+    print(team_prices_df)
     # Scale the picks and total points
     driver_prices_df = scale_data(driver_prices_df, 'Picks', (-1, 1))
     driver_prices_df = scale_data(driver_prices_df, 'Total Points', (-1.5, 1.5))
@@ -129,7 +138,8 @@ def update_points():
     for _, row in driver_prices_df.iterrows():
         driver = Driver.objects.filter(name = row.driver__name).first()
         
-        DriverPoints.objects.update_or_create(
+        DriverPoints.objects.filter(season=current_season).update_or_create(
+            season=next_gp.season,
             driver=driver,
             gp=next_gp,
             defaults={'price': row['Precio Final']}
@@ -139,7 +149,8 @@ def update_points():
     for _, row in team_prices_df.iterrows():
         team = Team.objects.filter(name = row.team__name).first()
 
-        TeamPoints.objects.update_or_create(
+        TeamPoints.objects.filter(season=current_season).update_or_create(
+            season=next_gp.season,
             team=team,
             gp=next_gp,
             defaults={'price': row['Precio Final']}

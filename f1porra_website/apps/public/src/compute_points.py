@@ -1,19 +1,25 @@
 from django.db.models import Max
-from f1porra_website.apps.public.models import DriverPoints, TeamPoints, Porra, RaceResults
+from datetime import date
+from f1porra_website.apps.public.models import Season, DriverPoints, TeamPoints, Porra, RaceResults
 
 def compute_porra_points():
     # Get the latest Grand Prix based on round number
-    latest_gp = DriverPoints.objects.aggregate(max_nround=Max('gp__nround'))['max_nround']
-    
+    current_year = date.today().year
+    try:
+        current_season = Season.objects.get(year=current_year)
+    except Season.DoesNotExist:
+        current_season = None  # or handle it as appropriate
+    latest_gp = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+
     if latest_gp is None:
         print("No Grand Prix found.")
         return
 
     # Get the results for the latest Grand Prix
-    race_results = RaceResults.objects.get(gp__nround=latest_gp)
+    race_results = RaceResults.objects.filter(season=current_season).get(gp__nround=latest_gp)
 
     # Get all Porras for the latest Grand Prix
-    porras = Porra.objects.filter(gp__nround=latest_gp)
+    porras = Porra.objects.filter(season=current_season, gp__nround=latest_gp)
 
     for porra in porras:
         total_points = 0
@@ -46,8 +52,8 @@ def compute_porra_points():
 
         # Fantasy Section
         # Get driver and team points for the latest Grand Prix
-        driver_points = DriverPoints.objects.filter(gp__nround=latest_gp)
-        team_points = TeamPoints.objects.filter(gp__nround=latest_gp)
+        driver_points = DriverPoints.objects.filter(season=current_season, gp__nround=latest_gp)
+        team_points = TeamPoints.objects.filter(season=current_season, gp__nround=latest_gp)
 
         # Summing up points for selected drivers
         for i, driver in enumerate([porra.driver1, porra.driver2, porra.driver3, porra.driver4, porra.driver5], start=1):

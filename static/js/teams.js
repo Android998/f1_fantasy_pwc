@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const bgColor = row.querySelector('.foto-piloto').style.backgroundColor;
 
         // Modificar la ruta de la imagen del piloto si es piloto
-        const selectedPhotoSrc = type === 'piloto' ? photoSrc.replace('/drivers/driver/', '/drivers/selected/') : photoSrc;
+        const selectedPhotoSrc = photoSrc.replace('/drivers/drivers/', '/drivers/selected/');
 
         // Obtener presupuesto disponible actual
         const BudgetEle = document.getElementById('available-budget').querySelector('span:last-child')

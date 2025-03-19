@@ -12,9 +12,9 @@ class UsersTeam(models.Model):
     def __str__(self):
         return self.name
 
-    def clean(self):
-        if self.userprofile_set.count() > 2:
-            raise ValidationError('A team can have at most 2 users.')
+    # def clean(self):
+    #     if self.userprofile_set.count() > 2:
+    #         raise ValidationError('A team can have at most 2 users.')
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

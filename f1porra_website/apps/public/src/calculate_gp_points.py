@@ -4,7 +4,7 @@ import datetime
 import pandas as pd
 
 from django.db.models import Max
-from f1porra_website.apps.public.models import DriverPoints, TeamPoints, Driver, Team, GrandPrix
+from f1porra_website.apps.public.models import Season, DriverPoints, TeamPoints, Driver, Team, GrandPrix
 
 # 1. Driver Points: Participation based on Q3, Q2, Q1
 def assign_participation_points(row):
@@ -65,9 +65,15 @@ def calculate_race_points(row):
 
 def compute_gp_points():
     # Get the latest Grand Prix based on round number
-    latest_gp_nround = DriverPoints.objects.aggregate(max_nround=Max('gp__nround'))['max_nround']
-    latest_gp = GrandPrix.objects.filter(nround = latest_gp_nround).first()
     season = datetime.datetime.now().year
+    try:
+        current_season = Season.objects.get(year=season)
+    except Season.DoesNotExist:
+        current_season = None  # or handle it as appropriate
+
+    latest_gp_nround = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+    latest_gp = GrandPrix.objects.filter(season=current_season).filter(nround = latest_gp_nround).first()
+    
 
     url_race   = f"http://ergast.com/api/f1/{season}/{latest_gp_nround}/results"
     url_qualy  = f"http://ergast.com/api/f1/{season}/{latest_gp_nround}/qualifying"
@@ -78,7 +84,7 @@ def compute_gp_points():
     
     
     print("Request result: " + str(r.status_code))
-    print("calculating qualy results...", end="\t")
+    print("Calculating qualy results...", end="\t")
 
     # Parse the XML content
     root = ET.fromstring(r.content)
@@ -258,11 +264,10 @@ def compute_gp_points():
 
     # Save updated driver prices for the next GP
     for _, row in total_driver_points.iterrows():
-        if row.Driver == "Jack Doohan": continue
         print(f"Inserting driver points: {row.Driver}...",  end="\t")
-        driver = Driver.objects.filter(name = row.Driver).first()
+        driver = Driver.objects.filter(season=current_season).filter(name = row.Driver).first()
 
-        DriverPoints.objects.update_or_create(
+        DriverPoints.objects.filter(season=current_season).update_or_create(
             driver=driver,
             gp=latest_gp,
             defaults={'points': row['Total Points']}
@@ -273,9 +278,9 @@ def compute_gp_points():
     # Save updated team prices for the next GP
     for _, row in total_team_points.iterrows():
         print(f"Inserting team points: {row.Constructor}...",  end="\t")
-        team = Team.objects.filter(name = row.Constructor).first()
+        team = Team.objects.filter(season=current_season).filter(name = row.Constructor).first()
 
-        TeamPoints.objects.update_or_create(
+        TeamPoints.objects.filter(season=current_season).update_or_create(
             team=team,
             gp=latest_gp,
             defaults={'points': row['Total Points']}

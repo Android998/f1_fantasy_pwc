@@ -44,6 +44,7 @@ class Team(models.Model):
     name = models.CharField(max_length=64)
     color_rgb = models.CharField(max_length=7, blank=True, null=True)
     photo_link = models.CharField(max_length=300, blank=True, null=True)
+    selected_link = models.CharField(max_length=300, blank=True, null=True)
 
     class Meta:
         db_table = 'public_teams'
@@ -61,6 +62,7 @@ class Driver(models.Model):
     name = models.CharField(max_length=64)
     team = models.ForeignKey(Team, on_delete=models.SET_NULL, blank=True, null=True)
     photo_link = models.CharField(max_length=300, blank=True, null=True)
+    selected_link = models.CharField(max_length=300, blank=True, null=True)
 
     class Meta:
         db_table = 'public_drivers'
@@ -84,6 +86,9 @@ class DriverPoints(models.Model):
     price = models.PositiveIntegerField(blank=True, null=True)
     points = models.IntegerField(blank=True, null=True)
 
+    def __str__(self):
+        return str(self.season.year) + " " + self.gp.country + " - " + self.driver.name
+
 #
 # TEAM POINTS
 #
@@ -97,6 +102,10 @@ class TeamPoints(models.Model):
     gp = models.ForeignKey(GrandPrix, to_field='id', on_delete=models.CASCADE, blank=True, null=True)
     price = models.PositiveIntegerField(blank=True, null=True)
     points = models.IntegerField(blank=True, null=True)
+
+    def __str__(self):
+        return str(self.season.year) + " " + self.gp.country + " - " + self.team.name
+
 
 #
 # PORRA
