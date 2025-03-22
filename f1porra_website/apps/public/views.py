@@ -255,7 +255,7 @@ def view_team(request, username, gp):
 
     porra_entry = Porra.objects.filter(season=current_season, user=user, gp__country=gp).first()
     try:
-        race_results = RaceResults.objects.get(gp=porra_entry.gp)
+        race_results = RaceResults.objects.get(season=current_season, gp=porra_entry.gp)
     except ObjectDoesNotExist:
         race_results = None
 
@@ -266,7 +266,7 @@ def view_team(request, username, gp):
     driver_points = {}
     drivers = {'driver1': porra_entry.driver1, 'driver2': porra_entry.driver2, 'driver3': porra_entry.driver3, 'driver4': porra_entry.driver4, 'driver5': porra_entry.driver5}
     for key, driver in drivers.items():
-        driver_point = DriverPoints.objects.filter(season=current_season).get(driver=driver, gp=porra_entry.gp)
+        driver_point = DriverPoints.objects.get(season=current_season, driver=driver, gp=porra_entry.gp)
         driver_points[key] = {'points': driver_point.points if driver_point.points else 0, 'price': driver_point.price if driver_point.price else 0}
         cost_cap += driver_point.price if driver_point.price else 0
 
@@ -275,7 +275,7 @@ def view_team(request, username, gp):
     teams = {'team1': porra_entry.team1, 'team2': porra_entry.team2}
     for key, team in teams.items():
         print(team, porra_entry.gp)
-        team_point = TeamPoints.filter(season=current_season).objects.get(team=team, gp=porra_entry.gp)
+        team_point = TeamPoints.objects.get(season=current_season, team=team, gp=porra_entry.gp)
         team_points[key] = {'points': team_point.points if team_point.points else 0, 'price': team_point.price if team_point.price else 0}
         cost_cap += team_point.price if team_point.price else 0
 

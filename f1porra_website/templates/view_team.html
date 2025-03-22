@@ -45,7 +45,7 @@
                         </div>
                         <div class="view-selection-basic" style="border: 3px solid {{porra_entries.poleman.team.color_rgb}};border-radius: 5px;">
                             <div style="align-self: auto; background-color: {{porra_entries.poleman.team.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                <img src="{% static 'theme/assets/drivers/driver/' %}{{porra_entries.poleman.photo_link}}"style="width: 100%; max-width: 5em; height: auto;"></img>
+                                <img src="{% static 'theme/assets/drivers/' %}{{porra_entries.poleman.selected_link}}"style="width: 100%; max-width: 5em; height: auto;"></img>
                             </div>
                             <div class="driver-selected-data-team">
                                 <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
@@ -67,7 +67,7 @@
                         </div>
                         <div class="view-selection-basic" style="border: 3px solid {{porra_entries.first_pos.team.color_rgb}};border-radius: 5px;">
                             <div style="align-self: auto; background-color: {{porra_entries.first_pos.team.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                <img src="{% static 'theme/assets/drivers/driver/' %}{{porra_entries.first_pos.photo_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
+                                <img src="{% static 'theme/assets/drivers/' %}{{porra_entries.first_pos.selected_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
                             </div>
                             <div class="driver-selected-data-team">
                                 <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
@@ -89,7 +89,7 @@
                         </div>
                         <div class="view-selection-basic" style="border: 3px solid {{porra_entries.second_pos.team.color_rgb}};border-radius: 5px;">
                             <div style="align-self: auto; background-color: {{porra_entries.second_pos.team.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                <img src="{% static 'theme/assets/drivers/driver/' %}{{porra_entries.second_pos.photo_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
+                                <img src="{% static 'theme/assets/drivers/' %}{{porra_entries.second_pos.selected_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
                             </div>
                             <div class="driver-selected-data-team">
                                 <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
@@ -111,7 +111,7 @@
                         </div>
                         <div class="view-selection-basic" style="border: 3px solid {{porra_entries.third_pos.team.color_rgb}};border-radius: 5px;">
                             <div style="align-self: auto; background-color: {{porra_entries.third_pos.team.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                <img src="{% static 'theme/assets/drivers/driver/' %}{{porra_entries.third_pos.photo_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
+                                <img src="{% static 'theme/assets/drivers/' %}{{porra_entries.third_pos.selected_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
                             </div>
                             <div class="driver-selected-data-team">
                                 <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
@@ -133,7 +133,7 @@
                         </div>
                         <div class="view-selection-basic" style="border: 3px solid {{porra_entries.fast_lap.team.color_rgb}};border-radius: 5px;">
                             <div style="align-self: auto; background-color: {{porra_entries.fast_lap.team.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                <img src="{% static 'theme/assets/drivers/driver/' %}{{porra_entries.fast_lap.photo_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
+                                <img src="{% static 'theme/assets/drivers/' %}{{porra_entries.fast_lap.selected_link}}" style="width: 100%; max-width: 5em; height: auto;"></img>
                             </div>
                             <div class="driver-selected-data-team">
                                 <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
@@ -155,7 +155,7 @@
                         </div>
                         <div class="view-selection-basic" style="border: 3px solid {{porra_entries.team_winner.color_rgb}};border-radius: 5px;">
                             <div style="align-self: auto; background-color: {{porra_entries.team_winner.color_rgb}}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                <img src="{% static 'theme/assets/teams/logos/' %}{{ porra_entries.team_winner.photo_link }}" style="width: 100%; max-width: 5em; height: auto;"></img>
+                                <img src="{% static 'theme/assets/teams/' %}{{ porra_entries.team_winner.photo_link }}" style="width: 100%; max-width: 5em; height: auto;"></img>
                             </div>
                             <div class="driver-selected-data-team">
                                 <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
@@ -191,7 +191,7 @@
                         <div id="selection1" class="selected-div">
                             <div style="background-color:{{porra_entries.driver1.team.color_rgb}};" class="driver-selected-photo">
                                 <div>
-                                    <img src="{% static 'theme/assets/drivers/selected/' %}{{porra_entries.driver1.photo_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
+                                    <img src="{% static 'theme/assets/drivers/' %}{{porra_entries.driver1.selected_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
                                 </div>
                             </div>
                             <div class="driver-selected-data-team">
@@ -210,7 +210,7 @@
                         <div class="selected-div">
                             <div style="background-color:{{porra_entries.driver2.team.color_rgb}}" class="driver-selected-photo">
                                 <div>
-                                    <img src="{% static 'theme/assets/drivers/selected/' %}{{porra_entries.driver2.photo_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
+                                    <img src="{% static 'theme/assets/drivers/' %}{{porra_entries.driver2.selected_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
                                 </div>
                             </div>
                             <div class="driver-selected-data-team">
@@ -231,7 +231,7 @@
                         <div class="selected-div">
                             <div style="background-color:{{porra_entries.driver3.team.color_rgb}}" class="driver-selected-photo">
                                 <div>
-                                    <img src="{% static 'theme/assets/drivers/selected/' %}{{porra_entries.driver3.photo_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
+                                    <img src="{% static 'theme/assets/drivers/' %}{{porra_entries.driver3.selected_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
                                 </div>
                             </div>
                             <div class="driver-selected-data-team">
@@ -250,7 +250,7 @@
                         <div class="selected-div">
                             <div style="background-color:{{porra_entries.driver4.team.color_rgb}}" class="driver-selected-photo">
                                 <div>
-                                    <img src="{% static 'theme/assets/drivers/selected/' %}{{porra_entries.driver4.photo_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
+                                    <img src="{% static 'theme/assets/drivers/' %}{{porra_entries.driver4.selected_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
                                 </div>
                             </div>
                             <div class="driver-selected-data-team">
@@ -269,7 +269,7 @@
                         <div class="selected-div">
                             <div style="background-color:{{porra_entries.driver5.team.color_rgb}}" class="driver-selected-photo">
                                 <div>
-                                    <img src="{% static 'theme/assets/drivers/selected/' %}{{porra_entries.driver5.photo_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
+                                    <img src="{% static 'theme/assets/drivers/' %}{{porra_entries.driver5.selected_link}}" style="width: 100%; max-width: 12em; height: auto;"></img>
                                 </div>
                             </div>
                             <div class="driver-selected-data-team">
@@ -292,7 +292,7 @@
                             <div class="selected-div">
                                 <div style="background-color: {{porra_entries.team1.color_rgb}}" class="driver-selected-photo">
                                     <div>
-                                        <img id="equipo-photo-1" src="{% static 'theme/assets/teams/cars/' %}{{porra_entries.team1.photo_link}}" style="width: 100%; max-width: 100%; height: auto;"></img>
+                                        <img id="equipo-photo-1" src="{% static 'theme/assets/teams/' %}{{porra_entries.team1.selected_link}}" style="width: 100%; max-width: 100%; height: auto;"></img>
                                     </div>
                                 </div>
                                 <div class="driver-selected-data-team">
@@ -313,7 +313,7 @@
                             <div class="selected-div">
                                 <div style="background-color: {{porra_entries.team2.color_rgb}}" class="driver-selected-photo">
                                     <div>
-                                        <img id="equipo-photo-1" src="{% static 'theme/assets/teams/cars/' %}{{porra_entries.team2.photo_link}}" style="width: 100%; max-width: 100%; height: auto;"></img>
+                                        <img id="equipo-photo-1" src="{% static 'theme/assets/teams/' %}{{porra_entries.team2.selected_link}}" style="width: 100%; max-width: 100%; height: auto;"></img>
                                     </div>
                                 </div>
                                 <div class="driver-selected-data-team">
