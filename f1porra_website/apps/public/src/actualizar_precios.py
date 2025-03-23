@@ -136,7 +136,7 @@ def update_points():
 
     # Save updated driver prices for the next GP
     for _, row in driver_prices_df.iterrows():
-        driver = Driver.objects.filter(name = row.driver__name).first()
+        driver = Driver.objects.filter(season=current_season, name = row.driver__name).first()
         
         DriverPoints.objects.filter(season=current_season).update_or_create(
             season=next_gp.season,
@@ -147,7 +147,7 @@ def update_points():
 
     # Save updated team prices for the next GP
     for _, row in team_prices_df.iterrows():
-        team = Team.objects.filter(name = row.team__name).first()
+        team = Team.objects.filter(season=current_season, name = row.team__name).first()
 
         TeamPoints.objects.filter(season=current_season).update_or_create(
             season=next_gp.season,
