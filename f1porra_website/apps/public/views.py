@@ -502,10 +502,9 @@ def team(request):
 
     # Calculate total points for each UsersTeam
     users_teams = UsersTeam.objects.annotate(
-        total_points=Sum('userprofile__user__porra__points')
+        total_points=Coalesce(Sum('userprofile__user__porra__points', filter=Q(userprofile__user__porra__season=current_season)), Value(0))
     ).order_by('total_points')  # Ascending order to get the team with the lowest points
-
-    last_users_team = users_teams.last() if users_teams.exists() else None
+    last_users_team = users_teams.first() if users_teams.exists() else None
 
     # Check if the user is in the last-placed UsersTeam
     if user_team == last_users_team:
@@ -519,5 +518,3 @@ def team(request):
     piloto_positions = {name: index + 1 if index<6 else index-4 for index, name in enumerate(porra_list_names) if name != ""}
 
     return render(request, 'team.html', {'data': data, "pilotos": drivers, "equipos": teams, 'user_porra': user_porra, 'remain_price': remain_price, 'bar_length': bar_length, 'porra_list_names': porra_list_names, 'piloto_positions': piloto_positions, 'latest_first_pos':latest_first_pos})
-
-    # Cambio tontorrón para probar Git.
