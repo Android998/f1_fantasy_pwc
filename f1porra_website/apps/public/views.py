@@ -518,3 +518,5 @@ def team(request):
     piloto_positions = {name: index + 1 if index<6 else index-4 for index, name in enumerate(porra_list_names) if name != ""}
 
     return render(request, 'team.html', {'data': data, "pilotos": drivers, "equipos": teams, 'user_porra': user_porra, 'remain_price': remain_price, 'bar_length': bar_length, 'porra_list_names': porra_list_names, 'piloto_positions': piloto_positions, 'latest_first_pos':latest_first_pos})
+
+    # Cambio tontorrón para probar Git.
