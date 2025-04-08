@@ -502,9 +502,10 @@ def team(request):
 
     # Calculate total points for each UsersTeam
     users_teams = UsersTeam.objects.annotate(
-        total_points=Coalesce(Sum('userprofile__user__porra__points', filter=Q(userprofile__user__porra__season=current_season)), Value(0))
+        total_points=Sum('userprofile__user__porra__points')
     ).order_by('total_points')  # Ascending order to get the team with the lowest points
-    last_users_team = users_teams.first() if users_teams.exists() else None
+
+    last_users_team = users_teams.last() if users_teams.exists() else None
 
     # Check if the user is in the last-placed UsersTeam
     if user_team == last_users_team:
