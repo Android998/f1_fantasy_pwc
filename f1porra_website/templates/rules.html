@@ -1,20 +1,208 @@
-<!-- home.html -->
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title_content %}
-    Rules
+{% block content %}
+<div class="main-rules" style="padding: 2rem; font-family: Formula1Regular; background-color: #f9f6f2;">
+    <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase; margin-bottom: 1rem; text-align: center;">Normas y puntuaciones</h1>
+    <hr class="gray-line-top" style="margin-bottom: 2rem;" />
+
+    <div class="rules-wrapper" style="max-width: 900px; margin: 0 auto; background-color: #fff; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 10px rgba(0,0,0,0.08);">
+
+        Para competir, cada Participante debe tomar ciertas decisiones en forma de “Porra” y “Fantasy”, que resultarán en una puntuación gloabl en cada GP que servirá para clasificar a los Participantes en el Mundial de Pilotos y, agregando los puntos con su compañero, en el Mundial de Constructores.
+        <br><br>
+        Las puntuaciones se distribuyen de manera diferente en la Porra y el Fantasy. La lógica de cada uno se explica a continuación.
+
+        <section style="margin-top: 0.5rem; margin-bottom: 1rem; white-space: pre-line; line-height: 1.8; font-size: 1rem;">
+            <h2 style="font-family: Formula1Bold; font-size: 1.3rem; margin-bottom: 0.3rem;">Modo Porra</h2>
+            En el modo Porra, el participante debe elegir con total libertad al Piloto que considere que será el representante de las siguientes categorías: Poleman, Primera posición en carrera, Segunda posición en carrera, Tercera posición en carrera, Vuelta rápida de carrera, y Mejor Constructor del GP. Este último es el Constructor que más puntos sume en el cómputo global del GP en el apartado Fantasy. 
+            
+            En base a los resultados del GP, se otorgarán puntos a los Participantes que acierten en sus predicciones de la siguiente manera:
+
+            <table style="width: 80%; margin: 1rem auto; border-collapse: separate; border-spacing: 0; background-color: #f7f7f7; font-size: 0.95rem; border-radius: 10px; overflow: hidden;">
+                <thead>
+                  <tr style="background-color: #ececec;">
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Categoría</th>
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Poleman</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">5</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">1ª posición en carrera</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">10</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">2ª posición en carrera</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">10</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">3ª posición en carrera</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">10</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Vuelta rápida</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">3</td></tr>
+                  <tr><td style="text-align: center; padding: 8px;">Mejor Constructor</td><td style="text-align: center; padding: 8px;">5</td></tr>
+                </tbody>
+              </table>
+            Es importante resaltar que no está permitido elegir al mismo Piloto en la categoría de “Primera posición en carrera” en dos GPs consecutivos, y, aunque el propio sistema no lo permitirá, el Participante es responsable de cumplir esta norma en caso de fallo técnico.
+        </section>
+
+        <section style="margin-top: 0.5rem; margin-bottom: 1rem; white-space: pre-line; line-height: 1.8; font-size: 1rem;">
+            <h2 style="font-family: Formula1Bold; font-size: 1.3rem; margin-bottom: 0.3rem;">Modo Fantasy</h2>
+            En el modo Fantasy, los Participantes deben elegir 5 Pilotos y 2 Constructores, pero aquí sí que están sujetos a un presupuesto. El presupuesto standard es de $150M, pero el Equipo que esté situado en el último lugar del Mundial de Constructores al inicio del GP tendrá la posibilidad de aumentar el mismo a $160M.
+
+            Cada Piloto y Constructor tiene un precio estático a lo largo del GP, el cual está sujeto a variaciones después de cada GP en base a su desempeño y el porcentaje de picks del mismo, o, en otra palabras, los puntos que ha repartido a los Participantes en ese GP. 
+
+            La suma de los precios de los cinco Pilotos y dos Constructores elegidos no debe superar el presupuesto al que está sujeto el equipo. 
+
+            El primer hueco en el módulo de selección de equipos Fantasy corresponde al Piloto Turbo. El Piloto elegido para ocupar la posición de Piloto Turbo duplicará su puntuación al finalizar el GP. El Piloto Turbo debe tener un precio estrictamente menor a $35M. 
+        </section>
+
+        <section style="margin-top: 0.5rem; margin-bottom: 1rem; white-space: pre-line; line-height: 1.8; font-size: 1rem;">
+            <h2 style="font-family: Formula1Bold; font-size: 1.3rem; margin-bottom: 0.3rem;">Eventos del GP</h2>
+            Cada GP consta de dos eventos en los que los participantes tienen la posibilidad de puntuar: La clasificación y la carrera (“Quali” y “Carrera” de aquí en adelante).
+        </section>
+
+        <section style="margin-top: 0.5rem; margin-bottom: 1rem; white-space: pre-line; line-height: 1.8; font-size: 1rem;">
+            <h2 style="font-family: Formula1Bold; font-size: 1.3rem; margin-bottom: 0.3rem;">Quali</h2>
+            En la Quali, los puntos de distribuyen tanto a los Pilotos como a los Constructores. 
+            
+            <strong>Para los Pilotos:</strong>
+
+            <table style="width: 80%; margin: 1rem auto; border-collapse: separate; border-spacing: 0; background-color: #f7f7f7; font-size: 0.95rem; border-radius: 10px; overflow: hidden;">
+                <thead>
+                  <tr style="background-color: #ececec;">
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Condición</th>
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Eliminado en Q1</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">1</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Eliminado en Q2</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">2</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Clasificado a Q3</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">3</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Clasificar delante del compañero</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">1</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Posición final (del 1º al 10º)</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">10 a 1</td></tr>
+                  <tr><td style="text-align: center; padding: 8px;">Penalización por DNF/DNQ</td><td style="text-align: center; padding: 8px;">-10*</td></tr>
+                </tbody>
+              </table>
+            
+            <span style="font-size: 0.9em;">*Esto no resultará en una puntuación fija de -10pts, sino que, como ejemplo, si el Piloto llega a Q2 y sufre un accidente descalificatorio, y su compañero de Constructor ha quedado eliminado en Q1, el Piloto en cuestión sumará 2 puntos por eliminarse en Q2, 1 punto por clasificar delante de su compañero de Constructor, y se le restarán 10 puntos por el DNQ en Q2, resultando en una puntuación total en la Quali de -7 puntos.</span>
+           
+            <strong>Para los Constructores:</strong>
+
+            <table style="width: 80%; margin: 1rem auto; border-collapse: separate; border-spacing: 0; background-color: #f7f7f7; font-size: 0.95rem; border-radius: 10px; overflow: hidden;">
+                <thead>
+                  <tr style="background-color: #ececec;">
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Condición</th>
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Ambos Pilotos clasifican a Q3</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">5</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Uno o ambos eliminados en Q2</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">3</td></tr>
+                  <tr><td style="text-align: center; padding: 8px;">Uno o ambos eliminados en Q1</td><td style="text-align: center; padding: 8px;">1</td></tr>
+                </tbody>
+              </table>
+              Adicionalmente, a cada Constructor se le sumará el número de puntos obtenidos por sus Pilotos en la Quali.
+        <section style="margin-top: 0.5rem; margin-bottom: 1rem; white-space: pre-line; line-height: 1.8; font-size: 1rem;">
+            <h2 style="font-family: Formula1Bold; font-size: 1.3rem; margin-bottom: 0.3rem;">Carrera</h2>
+            En la Carrera, los puntos se distribuyen a los Pilotos, y posteriormente se agregan en los Constructores.
+
+            <strong>Para los Pilotos:</strong>
+
+            <table style="width: 80%; margin: 1rem auto; border-collapse: separate; border-spacing: 0; background-color: #f7f7f7; font-size: 0.95rem; border-radius: 10px; overflow: hidden;">
+                <thead>
+                  <tr style="background-color: #ececec;">
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Condición</th>
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Por cada posición ganada*</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">+ 1</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Por cada posición perdida*</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">- 1</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Terminar delante del compañero</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">+ 2</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Posición final según FIA</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Según reglamento</td></tr>
+                  <tr><td style="text-align: center; padding: 8px;">Penalización por abandono**</td><td style="text-align: center; padding: 8px;">- 10***</td></tr>
+                </tbody>
+              </table>
+            <span style="font-size: 0.9em;">* Se consideran posiciones ganadas o perdidas las posiciones que el Piloto ha ganado o perdido en la Carrera respecto a su posición de clasificación bruta, es decir, sin contar con sanciones que afecten a su posición en parrilla.</span>
+            <span style="font-size: 0.9em;">** Se considera abandono cualquier evento que impida al Piloto cruzar la bandera de cuadros (DNF, DNS…).</span>
+            <span style="font-size: 0.9em;">*** Esto invalida el resto de puntos obtenidos en la Carrera, resultando en una puntuación fija de -10 puntos para el Piloto.</span>
+            
+            
+            <strong>Para los Constructores:</strong>
+
+            Suma de las puntuaciones obtenidas por ambos Pilotos del Constructor durante la Carrera.
+        </section>
+        <section style="margin-top: 0.5rem; margin-bottom: 1rem; white-space: pre-line; line-height: 1.8; font-size: 1rem;">
+            <h2 style="font-family: Formula1Bold; font-size: 1.3rem; margin-bottom: 0.3rem;">Carrera al Sprint</h2>
+            En caso de un GP con Carrera al Sprint, las puntuaciones se repartirán de manera equivalente. Se tomarán los eventos Sprint y Regular como separados, y se sumarán sus puntuaciones al final del GP para dar con el cómputo global de puntos.
+            
+            En la Quali al Sprint, las puntuaciones serán calculadas al igual que en la Quali Regular.
+            
+            La única diferencia en el cálculo de precios de la Carrera al Sprint con respecto a la Carrera Regular se encuentra en las diferencias entre los puntos repartidos por la FIA a los Pilotos de acuerdo a su posición.
+            
+            <strong>Carrera Regular:</strong>
+
+            <table style="width: 80%; margin: 1rem auto; border-collapse: separate; border-spacing: 0; background-color: #f7f7f7; font-size: 0.95rem; border-radius: 10px; overflow: hidden;">
+                <thead>
+                  <tr style="background-color: #ececec;">
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Posición</th>
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">1</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">25 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">2</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">18 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">3</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">15 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">4</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">12 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">5</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">10 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">6</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">8 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">7</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">6 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">8</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">4 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">9</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">2 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px;">10</td><td style="text-align: center; padding: 8px;">1 punto</td></tr>
+                </tbody>
+              </table>
+              <strong>Carrera al Sprint:</strong>
+
+              <table style="width: 80%; margin: 1rem auto; border-collapse: separate; border-spacing: 0; background-color: #f7f7f7; font-size: 0.95rem; border-radius: 10px; overflow: hidden;">
+                <thead>
+                  <tr style="background-color: #ececec;">
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Posición</th>
+                    <th style="text-align: center; padding: 8px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;">Puntos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">1</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">8 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">2</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">7 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">3</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">6 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">4</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">5 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">5</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">4 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">6</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">3 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">7</td><td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">2 puntos</td></tr>
+                  <tr><td style="text-align: center; padding: 8px;">8</td><td style="text-align: center; padding: 8px;">1 punto</td></tr>
+                </tbody>
+              </table>
+        </section>
+        </section>
+        <section style="margin-top: 0.5rem; margin-bottom: 1rem; white-space: pre-line; line-height: 1.8; font-size: 1rem;">
+            <h2 style="font-family: Formula1Bold; font-size: 1.3rem; margin-bottom: 0.3rem;">Bote de la Liga</h2>
+            Cada GP, tras sumar las puntuaciones de la Quali y la Carrera, se establece una clasificación de ese GP, dejando un Ganador y dos Perdedores. Cada perdedor deberá aportar el monto estipulado al Bote de la Liga.
+            
+            En cada Liga, se deben estipular los montos al inicio de la Temporada.
+
+            En la actualidad, los dos últimos Participantes de cada GP deben aporta el monto de 2 euros, y los Pilotos pertenecientes al Constructor que se sitúe en la última posición del Mundial de Constructores al final de cada GP debe aporta el monto de 1 euro al bote. 
+            
+            De esta manera, al final de la Temporada se dispondrá de un Bote substancial que servirá para cubrir los gastos de la Gala Oficial que se celebrará con el fin de unir a los Participantes, celebrar la victoria de los campeones de la Temporada, y asentar las bases de la siguiente Temporada.
+            
+            La estructura de la distribución del Bote es flexible y debatible. Según el reglamento previo, el Bote se utilizaría para cubrir el monto total de la comida/cena de los 3 campeones de la Temporada previa, y el monto restante sería deducido de la cuenta total de la gala para beneficiar al resto de Participantes.
+        </section>
+        <section style="margin-top: 0.5rem; margin-bottom: 1rem; white-space: pre-line; line-height: 1.8; font-size: 1rem;">
+            <h2 style="font-family: Formula1Bold; font-size: 1.3rem; margin-bottom: 0.3rem;">Normas Generales</h2>
+            Los Participantes deberán completar sus elecciones formato Porra y Fantasy antes de la fecha y hora límite designadas para cada GP. Como norma general, la fecha y hora límite será a las 23:59 del día previo a la primera Quali del GP, sea Sprint o Regular. 
+            
+            Como ejemplo práctico, en un fin de semana de GP Regular, en el que la Quali se celebra el sábado a las 17:00, la fecha límite es el viernes a las 23:59, mientras que en un fin de semana de GP al Sprint en el que la Quali al Sprint se celebra el viernes a las 16:00, la fecha límite será a las 23:59 del jueves.
+           
+            En caso de no completar todas las elecciones antes de la fecha y hora límite, el Participante no recibirá ninguna puntuación en ese GP.
+            
+            Queda terminantemente prohibido manipular las elecciones de otro Participante sin su consentimiento previo.
+            
+            En caso de errores técnicos como pueden ser fallos en la asignación de presupuesto, precios de Pilotos o Constructores, o similar, que puedan beneficiar a algún Participante, el Participante tiene la obligación de comunicarlo al equipo técnico para asegurar la integridad de la Competición. 
+            
+            Si se descubre que algún Participante ha ganado una ventaja injusta con respecto al resto de Participantes por un error no comunicado, será descalificado del GP en cuestión (o tendrá sus puntos neutralizados en caso de acción en futuro) y no podrá participar en el GP posterior a la resolución del caso.
+        </section>
+
+    </div>
+</div>
 {% endblock %}
-
-{% block subtitle_content %}
-    This pages shows the rules and contract that all players accept when creating a user
-{% endblock %}
-
-{% block login_button %}
-    Login
-{% endblock %}
-
-<!-- {% block content %}
-     Additional content for the home page goes here 
-    <p>This is the home page content.</p>
-{% endblock %} -->
-
