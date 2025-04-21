@@ -656,7 +656,7 @@
                         <li>
                             <div class="fila-equipo" data-selected-container="{% if equipo.name in porra_list_names %}{{ piloto_positions|dict_lookup:equipo.name }}{% else %}null{% endif %}">
                                 <div class="foto-piloto" style="background-color: {{equipo.color_rgb|safe}};">
-                                    <div class="foto-piloto-inside" style="position: absolute; right: -5%; bottom: 0; " >
+                                    <div class="foto-piloto-inside" style="position: absolute; left: 0; bottom: 0; " >
                                         <img src="{% static 'theme/assets/teams/' %}{{ equipo.photo_link }}" width="auto" height="90rem"> 
                                     </div>
                                 </div>

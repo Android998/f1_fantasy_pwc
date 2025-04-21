@@ -115,14 +115,15 @@ def update_points():
     driver_prices_df = scale_data(driver_prices_df, 'Score', (-1, 1))
     team_prices_df = scale_data(team_prices_df, 'Score', (-1, 1))
     
-    driver_prices_df['Delta'] = driver_prices_df['price'] * 0.1 * driver_prices_df['Score']
+    
+    driver_prices_df['Delta'] = driver_prices_df.apply(lambda row: max(1, row['price'] * 0.1) * row['Score'], axis=1)
     driver_prices_df['Delta_final'] = driver_prices_df['Delta'].apply(round_deltas)
 
     # Prevent price drops below 1
     driver_prices_df.loc[(driver_prices_df['price'] == 1) & (driver_prices_df['Delta_final'] < 0), 'Delta_final'] = 0
 
     # Repeat the same logic for teams
-    team_prices_df['Delta'] = team_prices_df['price'] * 0.1 * team_prices_df['Score']
+    team_prices_df['Delta'] = team_prices_df.apply(lambda row: max(1, row['price'] * 0.1) * row['Score'], axis=1)
     team_prices_df['Delta_final'] = team_prices_df['Delta'].apply(round_deltas)
     team_prices_df.loc[(team_prices_df['price'] == 1) & (team_prices_df['Delta_final'] < 0), 'Delta_final'] = 0
 
