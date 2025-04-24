@@ -1,3 +1,5 @@
 djangoapp
 fantasy
 .env
+__pycache__/
+*.pyc
