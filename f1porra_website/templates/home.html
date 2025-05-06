@@ -47,21 +47,21 @@
                 <div class="timer-main">
                     <ul>
                         <li>
-                            <span>{{data.days}}</span>
+                            <span>{{data.days|stringformat:"02d"}}</span>
                             <span>DIAS</span>
                         </li>
                         <li>
                             <span>:</span>
                         </li>
                         <li>
-                            <span>{{data.hours}}</span>
+                            <span>{{data.hours|stringformat:"02d"}}</span>
                             <span>HORAS</span>
                         </li>
                         <li>
                             <span>:</span>
                         </li>
                         <li>
-                            <span>{{data.minutes}}</span>
+                            <span>{{data.minutes|stringformat:"02d"}}</span>
                             <span>MIN</span>
                         </li>
                     </ul>
