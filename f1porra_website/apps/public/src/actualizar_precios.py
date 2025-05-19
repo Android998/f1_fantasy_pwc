@@ -99,6 +99,8 @@ def update_points():
 
     driver_prices_df['Total Points'] = driver_prices_df['Picks'] * driver_prices_df['points']
     team_prices_df['Total Points'] = team_prices_df['Picks'] * team_prices_df['points']
+    driver_prices_df = driver_prices_df.loc[~driver_prices_df['Total Points'].isna()]
+    team_prices_df = team_prices_df.loc[~team_prices_df['Total Points'].isna()]
     print(driver_prices_df)
     print(team_prices_df)
     # Scale the picks and total points
