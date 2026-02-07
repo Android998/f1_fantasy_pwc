@@ -165,10 +165,15 @@ else:
     MEDIA_URL = '/media/'
     MEDIA_ROOT = '/home/site/wwwroot/media'
 
+csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+if csrf_env:
+    CSRF_TRUSTED_ORIGINS = [x.strip() for x in csrf_env.split(",") if x.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = []
 
-CSRF_TRUSTED_ORIGINS = [
-    'f1-fantasy-webapp-prod-cqaahnfxg5hkbxhd.francecentral-01.azurewebsites.net',
-    'f1-fantasy-webapp-dev-gxazcsbngxb0bagv.francecentral-01.azurewebsites.net',
+CSRF_TRUSTED_ORIGINS = CSRF_TRUSTED_ORIGINS or [
+    "https://f1-fantasy-webapp-dev-gxazcsbngxb0bagv.francecentral-01.azurewebsites.net",
+    "https://f1-fantasy-webapp-prod-cqaahnfxg5hkbxhd.francecentral-01.azurewebsites.net",
     'http://127.0.0.1',
     'https://f1fantasypwcofficial.com'
 ]
