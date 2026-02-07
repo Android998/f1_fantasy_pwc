@@ -3,7 +3,7 @@ from django.db.models import Max
 import pandas as pd
 import datetime
 
-PATH = "C:/Users/agurtubay/OneDrive - Microsoft/Desktop/PuntosF1.xlsx"
+PATH = "C:/Users/agurtubay/OneDrive - Microsoft/Documents/PuntosF1.xlsx"
 
 # Get the latest Grand Prix based on round number
 season = datetime.datetime.now().year
