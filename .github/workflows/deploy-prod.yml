@@ -17,7 +17,6 @@ env:
 jobs:
   build-push-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -29,7 +28,9 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: ACR Login
-        run: az acr login --name "${{ env.ACR_LOGIN_SERVER%%.* }}"
+        run: |
+          ACR_NAME="${ACR_LOGIN_SERVER%%.*}"
+          az acr login --name "$ACR_NAME"
 
       - name: Build & Push image (PROD)
         run: |
