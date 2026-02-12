@@ -1,68 +1,103 @@
-statistics.html
 {% extends 'base.html' %}
 {% load static %}
-{% load custom_filters %}
 
 {% block content %}
-<head>
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
+<div class="main-standings statistics-page">
+    <div class="top-filters stats-top-filters">
+        <h1 class="stats-title">User Statistics</h1>
+        <hr class="gray-line-top">
 
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-
-    <!-- Chosen CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.min.css">
-    
-    <!-- Custom CSS -->
-    <link href="{% static 'css/statistics.css' %}" rel="stylesheet" />
-    
-    <title>Multi-Select #9</title>
-</head>
-
-<body>
-    <div class="container">
-        <h2 class="text-center">Multi-Select #9</h2>
-        <div class="row justify-content-center">
-            <div class="col-md-5">
-                <!-- Chosen Multi-Select -->
-                <select data-placeholder="Select Categories" multiple class="chosen-select">
-                    <option>Design</option>
-                    <option>HTML5</option>
-                    <option>CSS3</option>
-                    <option>jQuery</option>
-                    <option>BS4</option>
-                    <option>Bootstrap</option>
-                    <option>WordPress</option>
-                    <option>FrontEnd</option>
+        <div class="stats-filter-grid">
+            <div class="section-std">
+                <div class="section-name-std"><span>Season</span></div>
+                <select id="season-select" class="stats-select">
+                    <option value="2026">2026</option>
+                    <option value="2025" selected>2025</option>
+                    <option value="2024">2024</option>
                 </select>
             </div>
+
+            <div class="section-std">
+                <div class="section-name-std"><span>Trend Metric</span></div>
+                <select id="metric-select" class="stats-select">
+                    <option value="cumulative_points" selected>Cumulative Points</option>
+                    <option value="points_per_gp">Points per GP</option>
+                    <option value="rank_per_gp">Rank per GP</option>
+                    <option value="gap_to_leader">Gap to Leader</option>
+                </select>
+            </div>
+
+            <div class="section-std">
+                <div class="section-name-std"><span>Preset</span></div>
+                <select id="preset-select" class="stats-select">
+                    <option value="all" selected>All Users</option>
+                    <option value="top3">Top 3</option>
+                    <option value="bottom3">Bottom 3</option>
+                    <option value="me_teammate">Me + Teammate</option>
+                    <option value="me_vs_user">Me vs Selected</option>
+                </select>
+            </div>
+
+            <div class="section-std">
+                <div class="section-name-std"><span>Users</span></div>
+                <select id="users-select" class="stats-select stats-select-multi" multiple></select>
+            </div>
+
+            <div class="section-std">
+                <div class="section-name-std"><span>GP Range</span></div>
+                <div class="stats-range">
+                    <input id="gp-from-input" class="stats-input" type="number" min="1" placeholder="From">
+                    <input id="gp-to-input" class="stats-input" type="number" min="1" placeholder="To">
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-filter-actions">
+            <button id="apply-filters-btn" class="stats-btn">Apply Filters</button>
+            <button id="reset-filters-btn" class="stats-btn stats-btn-secondary">Reset</button>
         </div>
     </div>
 
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <div class="user-standings stats-chart-panel">
+        <h1 class="stats-title">User Trends</h1>
+        <hr class="gray-line">
+        <p id="stats-feedback" class="stats-feedback"></p>
+        <div id="stats-empty-state" class="stats-empty-state" hidden></div>
+        <div id="trends-chart" class="trends-chart"></div>
+    </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <div class="user-standings stats-matrix-panel">
+        <h1 class="stats-title">Users Matrix</h1>
+        <hr class="gray-line">
+        <div class="stats-table-wrapper">
+            <table class="standings-table statistics-table">
+                <thead>
+                    <tr>
+                        <th class="rank sortable" data-sort-key="rank">Rank</th>
+                        <th class="user-name sortable" data-sort-key="username">Name</th>
+                        <th class="team-name sortable" data-sort-key="team_name">Team</th>
+                        <th class="points sortable" data-sort-key="total_points">Points</th>
+                        <th class="points sortable" data-sort-key="avg_points_gp">Avg/GP</th>
+                        <th class="wins sortable" data-sort-key="wins_gp">Wins</th>
+                        <th class="podiums sortable" data-sort-key="podiums_gp">Podiums</th>
+                        <th class="last-2 sortable" data-sort-key="bottom3_gp">Bottom 3</th>
+                        <th class="points sortable" data-sort-key="volatility">Volatility</th>
+                        <th class="points sortable" data-sort-key="consistency">Consistency</th>
+                        <th class="points sortable" data-sort-key="gps_played">GPs</th>
+                        <th class="points sortable" data-sort-key="teammate_h2h_wins">H2H W</th>
+                        <th class="points sortable" data-sort-key="teammate_h2h_losses">H2H L</th>
+                    </tr>
+                </thead>
+                <tbody id="statistics-matrix-body">
+                    <tr>
+                        <td colspan="13">Loading statistics...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-    <!-- Chosen JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.jquery.min.js"></script>
-
-    <!-- Custom JS -->
-    <script src="/static/js/statistics.js"></script>
-
-    <script>
-        // Initialize the chosen-select after the DOM is fully loaded
-        $(document).ready(function() {
-            $(".chosen-select").chosen({
-                width: "100%" // Optional: Set the width of the select box
-            });
-        });
-    </script>
-</body>
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="{% static 'js/statistics.js' %}"></script>
 {% endblock %}

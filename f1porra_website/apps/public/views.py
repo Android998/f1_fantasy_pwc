@@ -10,6 +10,7 @@ import json
 from datetime import date
 from .models import Season, Driver, Team, DriverPoints, TeamPoints, GrandPrix, Porra, RaceResults
 from f1porra_website.apps.accounts.models import UserProfile, UsersTeam
+from f1porra_website.apps.public.services import build_matrix_payload, build_trends_payload
 from django.contrib.auth.models import User
 import logging
 from django.core.exceptions import ObjectDoesNotExist
@@ -88,7 +89,11 @@ def statistics(request):
     selected_drivers = request.GET.getlist('drivers', [])
 
     # Fetch filtered data
-    driver_points = DriverPoints.objects.filter(season=current_season).select_related('driver', 'gp').filter(points__isnull=False)
+    driver_points = (
+        DriverPoints.objects.filter(season=current_season)
+        .select_related('driver', 'gp')
+        .filter(points__isnull=False, driver__isnull=False, gp__isnull=False)
+    )
 
     if selected_grand_prix:
         driver_points = driver_points.filter(gp__country__in=selected_grand_prix)
@@ -97,7 +102,7 @@ def statistics(request):
         driver_points = driver_points.filter(driver__name__in=selected_drivers)
 
     # Count occurrences of each driver
-    driver_counts = Counter(dp.driver.name for dp in driver_points)
+    driver_counts = Counter(dp.driver.name for dp in driver_points if dp.driver)
 
     # Get the maximum occurrence of any driver
     max_driver_repeats = max(driver_counts.values(), default=0)  # default=0 if no drivers
@@ -107,6 +112,8 @@ def statistics(request):
     datasets = {}
     
     for dp in driver_points:
+        if not dp.driver or not dp.gp:
+            continue
         if dp.gp.country not in labels:
             labels.append(dp.gp.country) 
         
@@ -147,6 +154,74 @@ def statistics(request):
     }
     
     return render(request, 'statistics.html', context)
+
+
+def statistics_matrix_api(request):
+    season = _parse_int(request.GET.get("season"))
+    gp_from = _parse_int(request.GET.get("gp_from"))
+    gp_to = _parse_int(request.GET.get("gp_to"))
+    sort_by = request.GET.get("sort_by", "total_points")
+    sort_dir = request.GET.get("sort_dir", "desc")
+
+    payload = build_matrix_payload(
+        season_year=season,
+        gp_from=gp_from,
+        gp_to=gp_to,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+    return JsonResponse(payload)
+
+
+def statistics_trends_api(request):
+    season = _parse_int(request.GET.get("season"))
+    gp_from = _parse_int(request.GET.get("gp_from"))
+    gp_to = _parse_int(request.GET.get("gp_to"))
+    metric = request.GET.get("metric", "cumulative_points")
+    preset = request.GET.get("preset")
+    users = _parse_int_list(request.GET.getlist("users"))
+    users_csv = _parse_int_list([request.GET.get("users", "")])
+
+    selected_users = users if users else users_csv
+    current_user_id = request.user.id if request.user.is_authenticated else None
+
+    payload = build_trends_payload(
+        season_year=season,
+        metric=metric,
+        gp_from=gp_from,
+        gp_to=gp_to,
+        preset=preset,
+        current_user_id=current_user_id,
+        selected_user_ids=selected_users or None,
+    )
+    return JsonResponse(payload)
+
+
+def _parse_int(value):
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_int_list(values):
+    parsed = []
+    for value in values:
+        if value in (None, ""):
+            continue
+        chunks = str(value).split(",")
+        for chunk in chunks:
+            item = chunk.strip()
+            if not item:
+                continue
+            try:
+                parsed.append(int(item))
+            except ValueError:
+                continue
+    # Preserve order, deduplicate
+    return list(dict.fromkeys(parsed))
 
 
 def standings(request):

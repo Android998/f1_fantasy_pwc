@@ -2,100 +2,174 @@
     font-family: 'Formula1Black';
     src: local('Formula1Black'),
          url('../fonts/Formula1-Black.ttf') format("truetype");
-  }
-  
-  @font-face {
+}
+
+@font-face {
     font-family: 'Formula1Wide';
     src: local('Formula1Wide'),
          url('../fonts/Formula1-Wide.ttf') format("truetype");
-  }
-  
-  @font-face {
+}
+
+@font-face {
     font-family: 'Formula1Bold';
     src: local('Formula1Bold'),
          url('../fonts/Formula1-Bold.ttf') format("truetype");
-  }
-  
-  @font-face {
+}
+
+@font-face {
     font-family: 'Formula1Regular';
     src: local('Formula1Regular'),
          url('../fonts/Formula1-Regular.ttf') format("truetype");
-  }
+}
 
-.global-header{
-    height: 12rem;
+.statistics-page {
+    min-height: 100vh;
+}
+
+.stats-title {
+    font-family: Formula1Bold;
+    font-size: 2rem;
+    text-transform: uppercase;
+    margin-bottom: 2%;
+}
+
+.stats-top-filters {
+    margin-bottom: 1%;
+}
+
+.stats-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(150px, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+
+.stats-select,
+.stats-input {
     width: 100%;
-}
-
-.button-login{
-    height: 25%;
-    width: 100%;
-    background-color: #38383f;
-}
-
-.button-login ul{
-    height: 100%;
-    padding: 0 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 0 3% 0 3%;
-    list-style: none;
-    list-style-type: none;
-}
-
-.button-login ul li{
-    font-family: "Formula1Bold";
-    font-size: 0.9rem;
-    margin: 2%;
-    display: inline;
-}
-
-
-.button-login ul li a{
-    cursor: pointer;
-    padding: 5px;
-    border-bottom: 3px solid transparent;
+    border-radius: 10px;
+    background-color: gray;
     color: white;
-    text-decoration: none;
+    border: 3px solid #E10600;
+    padding: 0.45rem 0.5rem;
+    font-family: Formula1Bold;
+    text-transform: uppercase;
+    font-size: 0.75rem;
 }
 
-.button-login ul li a:hover, .button-login ul li a:focus{
-    border-bottom: white;
-    color: lightgray;
+.stats-select option {
+    color: black;
 }
 
-.fantasy-statistics {
-    width: 80%;
-    margin: auto;
-    padding: 20px;
+.stats-select-multi {
+    min-height: 6.25rem;
 }
 
-#pointsChart {
-    max-width: 100%;
-    height: 400px; /* Adjust as needed */
+.stats-range {
+    display: flex;
+    gap: 0.5rem;
 }
 
-/* Style the container holding the Chosen elements */
-.chosen-container {
-    font-family: 'Roboto', sans-serif;
+.stats-input::placeholder {
+    color: #e6e6e6;
 }
 
-/* Custom styling for the chosen-drop */
-.chosen-container .chosen-drop {
-    background-color: #f8f9fa; /* Light background */
-    border: 1px solid #ced4da; /* Grey border */
+.stats-filter-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
 }
 
-/* Custom styling for chosen results */
-.chosen-container .chosen-results li {
-    color: #495057; /* Text color */
-    padding: 5px 10px;
+.stats-btn {
+    border: none;
+    border-radius: 8px;
+    background-color: #E10600;
+    color: white;
+    font-family: Formula1Bold;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    padding: 0.55rem 0.85rem;
+    cursor: pointer;
 }
 
-/* Styling selected items */
-.chosen-container .chosen-choices .search-choice {
-    background-color: #007bff; /* Selected item background */
-    color: white; /* Selected item text */
-    border-radius: 3px;
+.stats-btn:hover {
+    background-color: #b90400;
+}
+
+.stats-btn-secondary {
+    background-color: hsl(240, 5%, 28%);
+}
+
+.stats-btn-secondary:hover {
+    background-color: hsl(240, 5%, 20%);
+}
+
+.stats-feedback {
+    margin: 0 0 0.75rem 0;
+    font-family: Formula1Regular;
+    font-size: 0.9rem;
+}
+
+.stats-empty-state {
+    margin: 0.5rem 0 1rem 0;
+    padding: 0.75rem;
+    background-color: #fff4f4;
+    border: 1px solid #E10600;
+    border-radius: 8px;
+    color: #6e0000;
+    font-family: Formula1Bold;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+.trends-chart {
+    width: 100%;
+    min-height: 24rem;
+    background: white;
+    border-radius: 12px;
+    border: 2px solid #4CAF50;
+    overflow: hidden;
+}
+
+.stats-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.statistics-table {
+    width: 100%;
+    min-width: 1080px;
+}
+
+.statistics-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.statistics-table th.sortable:hover {
+    background-color: #b90400;
+}
+
+@media (max-width: 1100px) {
+    .stats-filter-grid {
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+    }
+
+    .stats-title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 700px) {
+    .stats-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-filter-actions {
+        flex-direction: column;
+    }
+
+    .stats-btn {
+        width: 100%;
+    }
 }
