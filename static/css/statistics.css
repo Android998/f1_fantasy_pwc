@@ -473,3 +473,284 @@
         width: 100%;
     }
 }
+
+/* -------------------------------------
+   Optimal Team Page
+------------------------------------- */
+.optimal-team-page .stats-top-filters,
+.optimal-team-page .stats-chart-panel {
+    background-color: hsl(240, 2%, 64%);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem 1.1rem;
+}
+
+.optimal-team-page .stats-top-filters {
+    margin-bottom: 0.9rem;
+}
+
+.optimal-team-page .stats-title {
+    margin-bottom: 0.35rem;
+}
+
+.optimal-team-page .stats-feedback {
+    margin: 0.3rem 0 0.75rem;
+}
+
+.optimal-team-wrapper {
+    background: #f1f1f1;
+    border: 2px solid #E10600;
+    border-radius: 14px;
+    padding: 0.8rem;
+    overflow: visible;
+}
+
+.optimal-bonus-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-bottom: 0.75rem;
+    align-items: start;
+}
+
+.optimal-bonus-col {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.optimal-bonus-label {
+    font-family: Formula1Regular;
+    font-size: 0.8rem;
+    margin: 0 0 0.15rem 0.2rem;
+}
+
+.optimal-bonus-card {
+    border: 2px solid #999;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #ffffff;
+    display: flex;
+    height: 74px;
+    min-height: 74px;
+    max-height: 74px;
+}
+
+.optimal-bonus-photo {
+    width: 56px;
+    flex: 0 0 56px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.optimal-bonus-photo img {
+    width: 100%;
+    max-width: 54px;
+    max-height: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.optimal-bonus-data {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.optimal-bonus-name {
+    font-family: Formula1Bold;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    padding: 0.22rem 0.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.optimal-bonus-points {
+    margin-top: auto;
+    border-top: 1px solid #c9c9c9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.22rem 0.4rem;
+    font-family: Formula1Bold;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+}
+
+.optimal-bonus-points strong {
+    font-size: 1.8em;
+    line-height: 1;
+}
+
+.optimal-assets-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.62rem;
+    align-items: start;
+}
+
+.optimal-asset-card {
+    background: #ffffff;
+    border: 1px solid #d4d4d4;
+    border-radius: 7px;
+    overflow: hidden;
+    position: relative;
+}
+
+.optimal-asset-card.captain {
+    border: 2px solid #E10600;
+}
+
+.optimal-asset-card.captain::before {
+    content: "x2";
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    border-radius: 999px;
+    background: #1f2534;
+    color: #ffffff;
+    font-family: Formula1Bold;
+    font-size: 0.62rem;
+    line-height: 1;
+    padding: 0.2rem 0.38rem;
+}
+
+.optimal-asset-photo {
+    height: 92px;
+    min-height: 92px;
+    max-height: 92px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    overflow: hidden;
+}
+
+.optimal-asset-photo img {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.optimal-asset-data {
+    padding: 0.34rem 0.4rem 0.45rem;
+    background: #ffffff;
+}
+
+.optimal-asset-name {
+    font-family: Formula1Bold;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    line-height: 1.1;
+    min-height: 1.9em;
+}
+
+.optimal-asset-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: Formula1Bold;
+    text-transform: uppercase;
+    line-height: 1.15;
+}
+
+.optimal-asset-row span {
+    font-size: 0.74rem;
+}
+
+.optimal-asset-row strong {
+    font-size: 1.9rem;
+    line-height: 0.95;
+}
+
+.optimal-summary {
+    margin-top: 0.7rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.optimal-summary-chip {
+    border: 1px solid #d5d5d5;
+    border-radius: 7px;
+    background: #f6f6f6;
+    padding: 0.26rem 0.5rem;
+    font-family: Formula1Bold;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+}
+
+.optimal-summary-chip.total {
+    border-color: #E10600;
+    color: #7f0000;
+}
+
+.optimal-team-page .optimal-subcontainer-gp {
+    margin-bottom: 0.8rem;
+}
+
+.optimal-team-page .optimal-main-view-porra {
+    margin-bottom: 0;
+}
+
+.optimal-team-page .show-points {
+    justify-content: center;
+    gap: 3.2rem;
+    padding: 0.6rem 2% 1rem;
+}
+
+.optimal-team-page .cost-cap,
+.optimal-team-page .total-points {
+    padding: 0.2rem 0.7rem;
+    min-width: 230px;
+    align-items: center;
+    text-align: center;
+    border: 1px solid rgba(29, 38, 52, 0.15);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.optimal-team-page .show-points .cost-cap span,
+.optimal-team-page .show-points .total-points span {
+    align-self: center !important;
+}
+
+.optimal-team-page .show-points .cost-cap span:first-child,
+.optimal-team-page .show-points .total-points span:first-child {
+    font-size: 0.95rem !important;
+}
+
+.optimal-team-page .show-points .cost-cap span:last-child,
+.optimal-team-page .show-points .total-points span:last-child {
+    font-size: 2rem !important;
+    line-height: 1.05;
+}
+
+.optimal-footer-chips {
+    margin-top: 0.45rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.optimal-footer-chip {
+    border: 1px solid #d5d5d5;
+    border-radius: 7px;
+    background: #f6f6f6;
+    padding: 0.2rem 0.45rem;
+    font-family: Formula1Bold;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+}
+
+.optimal-footer-chip.total {
+    border-color: #E10600;
+    color: #7f0000;
+}

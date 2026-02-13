@@ -12,6 +12,7 @@ urlpatterns = [
     path('statistics/', views.statistics, name="statistics"),
     path('statistics/users/', views.statistics_users, name="statistics_users"),
     path('statistics/assets/', views.statistics_assets, name="statistics_assets"),
+    path('statistics/optimal-team/', views.statistics_optimal_team, name="statistics_optimal_team"),
     path('statistics/api/matrix/', views.statistics_matrix_api, name="statistics_matrix_api"),
     path('statistics/api/trends/', views.statistics_trends_api, name="statistics_trends_api"),
     path('statistics/api/assets/matrix/', views.statistics_assets_matrix_api, name="statistics_assets_matrix_api"),

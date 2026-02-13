@@ -1,13 +1,17 @@
 ﻿from __future__ import annotations
 
 from collections import defaultdict
+from itertools import combinations
+import re
+from pathlib import Path
 from statistics import pstdev
 from typing import Any
 
+from django.conf import settings
 from django.contrib.auth.models import User
 
 from f1porra_website.apps.accounts.models import UserProfile
-from f1porra_website.apps.public.models import DriverPoints, GrandPrix, Porra, Season, TeamPoints
+from f1porra_website.apps.public.models import DriverPoints, GrandPrix, Porra, RaceResults, Season, TeamPoints
 
 
 ALLOWED_SORT_FIELDS = {
@@ -56,6 +60,15 @@ ALLOWED_ASSET_METRICS = {
     "rolling_avg_points_3gp",
     "rolling_avg_points_per_million_3gp",
     "pick_rate_gp",
+}
+
+BONUS_POINTS = {
+    "poleman": 5,
+    "first_pos": 10,
+    "second_pos": 10,
+    "third_pos": 10,
+    "fast_lap": 3,
+    "team_winner": 5,
 }
 
 
@@ -1069,3 +1082,388 @@ def _competition_rank(value: float, values: Any) -> int:
         if value == ref:
             return idx
     return len(unique_desc) + 1
+
+
+def build_optimal_team_payload(
+    *,
+    season_year: int | None = None,
+    gp_round: int | None = None,
+    budget: int = 150,
+) -> dict[str, Any]:
+    season = _resolve_season(season_year)
+    season_options = list(
+        Season.objects.filter(porra__points__isnull=False)
+        .distinct()
+        .order_by("-year")
+        .values_list("year", flat=True)
+    )
+
+    if season is None:
+        return {
+            "empty_state": True,
+            "meta": {"reason": "season_not_found_or_no_scored_data"},
+            "season_options": season_options,
+            "gp_options": [],
+            "selected": {"season": season_year, "gp_round": gp_round, "budget": budget},
+            "optimal_team": None,
+        }
+
+    scored_gps = _get_scored_gps(season=season, gp_from=None, gp_to=None)
+    gp_options = [{"round": gp.nround, "name": gp.country} for gp in scored_gps]
+    if not scored_gps:
+        return {
+            "empty_state": True,
+            "meta": {"reason": "no_scored_gps_in_season"},
+            "season_options": season_options,
+            "gp_options": gp_options,
+            "selected": {"season": season.year, "gp_round": gp_round, "budget": budget},
+            "optimal_team": None,
+        }
+
+    gp_by_round = {gp.nround: gp for gp in scored_gps}
+    selected_gp = gp_by_round.get(gp_round) if gp_round is not None else scored_gps[-1]
+    if selected_gp is None:
+        selected_gp = scored_gps[-1]
+
+    driver_rows = list(
+        DriverPoints.objects.filter(
+            season=season,
+            gp=selected_gp,
+            driver__isnull=False,
+            points__isnull=False,
+            price__isnull=False,
+        ).select_related("driver", "driver__team")
+    )
+    constructor_rows = list(
+        TeamPoints.objects.filter(
+            season=season,
+            gp=selected_gp,
+            team__isnull=False,
+            points__isnull=False,
+            price__isnull=False,
+        ).select_related("team")
+    )
+
+    if len(driver_rows) < 5 or len(constructor_rows) < 2:
+        return {
+            "empty_state": True,
+            "meta": {"reason": "insufficient_assets_for_optimization"},
+            "season_options": season_options,
+            "gp_options": gp_options,
+            "selected": {"season": season.year, "gp_round": selected_gp.nround, "budget": budget},
+            "optimal_team": None,
+        }
+
+    best = _solve_optimal_lineup_single(
+        driver_rows=driver_rows,
+        constructor_rows=constructor_rows,
+        budget=budget,
+    )
+    if best is None:
+        return {
+            "empty_state": True,
+            "meta": {"reason": "no_valid_lineup_under_budget"},
+            "season_options": season_options,
+            "gp_options": gp_options,
+            "selected": {"season": season.year, "gp_round": selected_gp.nround, "budget": budget},
+            "optimal_team": None,
+        }
+
+    race_results = RaceResults.objects.filter(season=season, gp=selected_gp).select_related(
+        "poleman", "first_pos", "second_pos", "third_pos", "fast_lap", "team_winner"
+    ).first()
+    bonus_breakdown = {
+        "poleman": BONUS_POINTS["poleman"] if race_results and race_results.poleman else 0,
+        "first_pos": BONUS_POINTS["first_pos"] if race_results and race_results.first_pos else 0,
+        "second_pos": BONUS_POINTS["second_pos"] if race_results and race_results.second_pos else 0,
+        "third_pos": BONUS_POINTS["third_pos"] if race_results and race_results.third_pos else 0,
+        "fast_lap": BONUS_POINTS["fast_lap"] if race_results and race_results.fast_lap else 0,
+        "team_winner": BONUS_POINTS["team_winner"] if race_results and race_results.team_winner else 0,
+    }
+    bonus_total = sum(bonus_breakdown.values())
+
+    return {
+        "empty_state": False,
+        "meta": {"reason": None},
+        "season_options": season_options,
+        "gp_options": gp_options,
+        "selected": {"season": season.year, "gp_round": selected_gp.nround, "budget": budget},
+        "gp": {
+            "round": selected_gp.nround,
+            "country": selected_gp.country,
+            "name": selected_gp.name,
+            "photo_link": selected_gp.photo_link,
+            "country_link": selected_gp.country_link,
+            "gp_photo": selected_gp.gp_photo,
+        },
+        "optimal_team": {
+            "drivers": [
+                _serialize_driver_pick(row, season_year=season.year, is_captain=(index == 0))
+                for index, row in enumerate(best["drivers"])
+            ],
+            "constructors": [_serialize_constructor_pick(row, season_year=season.year) for row in best["constructors"]],
+            "drivers_points_base": round(best["drivers_points_base"], 2),
+            "captain_points_bonus": round(best["captain_points"], 2),
+            "assets_points": round(best["points"], 2),
+            "bonus_points": bonus_breakdown,
+            "bonus_total": bonus_total,
+            "total_points": round(best["points"] + bonus_total, 2),
+            "total_cost": round(best["cost"], 2),
+            "race_results": _serialize_race_results(race_results),
+            "bonus_selections": _serialize_bonus_selections(race_results, season_year=season.year),
+        },
+    }
+
+
+def _solve_optimal_lineup_single(
+    *,
+    driver_rows: list[DriverPoints],
+    constructor_rows: list[TeamPoints],
+    budget: int,
+) -> dict[str, Any] | None:
+    best: dict[str, Any] | None = None
+
+    for driver_combo in combinations(driver_rows, 5):
+        drivers_cost = sum(float(row.price or 0) for row in driver_combo)
+        if drivers_cost > budget:
+            continue
+        sorted_drivers = sorted(
+            driver_combo,
+            key=lambda row: (
+                float(row.points or 0),
+                float(row.price or 0),
+                row.driver.name.lower(),
+            ),
+            reverse=True,
+        )
+        captain = sorted_drivers[0]
+        drivers_points_base = sum(float(row.points or 0) for row in sorted_drivers)
+        captain_points = float(captain.points or 0)
+        drivers_points = drivers_points_base + captain_points  # x2 for first selected driver
+
+        for constructor_combo in combinations(constructor_rows, 2):
+            constructors_cost = sum(float(row.price or 0) for row in constructor_combo)
+            total_cost = drivers_cost + constructors_cost
+            if total_cost > budget:
+                continue
+
+            constructors_points = sum(float(row.points or 0) for row in constructor_combo)
+            total_points = drivers_points + constructors_points
+            tie_break_key = (
+                total_points,
+                -total_cost,
+                sorted(row.driver.name for row in sorted_drivers),
+                sorted(row.team.name for row in constructor_combo),
+            )
+
+            if best is None or tie_break_key > best["key"]:
+                best = {
+                    "key": tie_break_key,
+                    "drivers": list(sorted_drivers),
+                    "constructors": list(constructor_combo),
+                    "points": total_points,
+                    "drivers_points_base": drivers_points_base,
+                    "captain_points": captain_points,
+                    "cost": total_cost,
+                }
+
+    return best
+
+
+def _serialize_driver_pick(
+    row: DriverPoints,
+    *,
+    season_year: int | None = None,
+    is_captain: bool = False,
+) -> dict[str, Any]:
+    points = float(row.points or 0)
+    image_link = _resolve_driver_image_link(
+        season_year=season_year,
+        driver_name=row.driver.name,
+        selected_link=row.driver.selected_link,
+    )
+    return {
+        "name": row.driver.name,
+        "team_name": row.driver.team.name if row.driver.team else None,
+        "team_color": row.driver.team.color_rgb if row.driver.team else None,
+        "photo_link": image_link,
+        "price": float(row.price or 0),
+        "points": points,
+        "effective_points": points * (2 if is_captain else 1),
+        "is_captain": is_captain,
+    }
+
+
+def _serialize_constructor_pick(row: TeamPoints, *, season_year: int | None = None) -> dict[str, Any]:
+    image_link = _resolve_team_image_link(
+        season_year=season_year,
+        team_name=row.team.name,
+        selected_link=row.team.selected_link,
+        photo_link=row.team.photo_link,
+        prefer="cars",
+    )
+    return {
+        "name": row.team.name,
+        "color": row.team.color_rgb,
+        "photo_link": image_link,
+        "price": float(row.price or 0),
+        "points": float(row.points or 0),
+    }
+
+
+def _serialize_race_results(result: RaceResults | None) -> dict[str, Any] | None:
+    if result is None:
+        return None
+    return {
+        "poleman": result.poleman.name if result.poleman else None,
+        "first_pos": result.first_pos.name if result.first_pos else None,
+        "second_pos": result.second_pos.name if result.second_pos else None,
+        "third_pos": result.third_pos.name if result.third_pos else None,
+        "fast_lap": result.fast_lap.name if result.fast_lap else None,
+        "team_winner": result.team_winner.name if result.team_winner else None,
+    }
+
+
+def _serialize_bonus_selections(result: RaceResults | None, *, season_year: int | None = None) -> dict[str, Any]:
+    if result is None:
+        return {}
+    return {
+        "poleman": _serialize_driver_bonus_pick(result.poleman, season_year=season_year),
+        "first_pos": _serialize_driver_bonus_pick(result.first_pos, season_year=season_year),
+        "second_pos": _serialize_driver_bonus_pick(result.second_pos, season_year=season_year),
+        "third_pos": _serialize_driver_bonus_pick(result.third_pos, season_year=season_year),
+        "fast_lap": _serialize_driver_bonus_pick(result.fast_lap, season_year=season_year),
+        "team_winner": _serialize_team_bonus_pick(result.team_winner, season_year=season_year),
+    }
+
+
+def _serialize_driver_bonus_pick(driver, *, season_year: int | None = None) -> dict[str, Any] | None:
+    if driver is None:
+        return None
+    return {
+        "name": driver.name,
+        "photo_link": _resolve_driver_image_link(
+            season_year=season_year,
+            driver_name=driver.name,
+            selected_link=driver.selected_link,
+        ),
+        "team_color": driver.team.color_rgb if driver.team else None,
+    }
+
+
+def _serialize_team_bonus_pick(team, *, season_year: int | None = None) -> dict[str, Any] | None:
+    if team is None:
+        return None
+    image_link = _resolve_team_image_link(
+        season_year=season_year,
+        team_name=team.name,
+        selected_link=team.selected_link,
+        photo_link=team.photo_link,
+        prefer="logos",
+    )
+    return {
+        "name": team.name,
+        "photo_link": image_link,
+        "color": team.color_rgb,
+    }
+
+
+def _resolve_driver_image_link(
+    *,
+    season_year: int | None,
+    driver_name: str,
+    selected_link: str | None,
+) -> str | None:
+    candidates: list[str] = []
+    if selected_link:
+        candidates.append(selected_link)
+
+    if season_year:
+        season_folder = f"season{season_year}"
+        filename = _slug_last_token(driver_name)
+        candidates.extend(
+            [
+                f"{season_folder}/selected/{filename}.png",
+                f"{season_folder}/drivers/{filename}.png",
+                f"{season_folder}/driver/{filename}.png",
+            ]
+        )
+
+    return _first_existing_relative("drivers", candidates)
+
+
+def _resolve_team_image_link(
+    *,
+    season_year: int | None,
+    team_name: str,
+    selected_link: str | None,
+    photo_link: str | None,
+    prefer: str = "cars",
+) -> str | None:
+    candidates: list[str] = []
+    if prefer == "cars":
+        if selected_link:
+            candidates.append(selected_link)
+        if photo_link:
+            candidates.append(photo_link)
+    else:
+        if photo_link:
+            candidates.append(photo_link)
+        if selected_link:
+            candidates.append(selected_link)
+
+    if season_year:
+        season_folder = f"season{season_year}"
+        filename = _team_filename(team_name)
+        if prefer == "cars":
+            candidates.extend(
+                [
+                    f"{season_folder}/cars/{filename}.png",
+                    f"{season_folder}/teams/{filename}.png",
+                    f"{season_folder}/logos/{filename}.png",
+                ]
+            )
+        else:
+            candidates.extend(
+                [
+                    f"{season_folder}/logos/{filename}.png",
+                    f"{season_folder}/cars/{filename}.png",
+                    f"{season_folder}/teams/{filename}.png",
+                ]
+            )
+
+    return _first_existing_relative("teams", candidates)
+
+
+def _first_existing_relative(asset_folder: str, candidates: list[str]) -> str | None:
+    root = Path(settings.BASE_DIR) / "static" / "theme" / "assets" / asset_folder
+    seen: set[str] = set()
+    for candidate in candidates:
+        if not candidate:
+            continue
+        normalized = candidate.replace("\\", "/").strip().lstrip("/")
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        if (root / Path(*normalized.split("/"))).exists():
+            return normalized
+    return None
+
+
+def _slug_last_token(name: str) -> str:
+    tokens = re.findall(r"[a-z0-9]+", name.lower())
+    return tokens[-1] if tokens else "unknown"
+
+
+def _team_filename(name: str) -> str:
+    normalized = "".join(re.findall(r"[a-z0-9]+", name.lower()))
+    aliases = {
+        "redbullracing": "redbull",
+        "visarb": "visaRB",
+        "vcarb": "visaRB",
+        "kicksauber": "kicksauber",
+        "astonmartin": "astonmartin",
+        "alphatauri": "visaRB",
+        "racingbulls": "racingbulls",
+    }
+    return aliases.get(normalized, normalized)

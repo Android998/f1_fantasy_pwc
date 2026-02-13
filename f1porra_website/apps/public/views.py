@@ -14,6 +14,7 @@ from f1porra_website.apps.public.services import (
     build_assets_matrix_payload,
     build_assets_trends_payload,
     build_matrix_payload,
+    build_optimal_team_payload,
     build_trends_payload,
 )
 from django.contrib.auth.models import User
@@ -167,6 +168,32 @@ def statistics_users(request):
 
 def statistics_assets(request):
     return render(request, "statistics_assets.html")
+
+
+def statistics_optimal_team(request):
+    season = _parse_int(request.GET.get("season"))
+    gp_round = _parse_int(request.GET.get("gp"))
+    budget = _parse_int(request.GET.get("budget")) or 150
+    if budget not in {150, 160}:
+        budget = 150
+
+    payload = build_optimal_team_payload(
+        season_year=season,
+        gp_round=gp_round,
+        budget=budget,
+    )
+
+    context = {
+        "payload": payload,
+        "season_options": payload.get("season_options", []),
+        "gp_options": payload.get("gp_options", []),
+        "selected": payload.get("selected", {}),
+        "gp_info": payload.get("gp"),
+        "optimal_team": payload.get("optimal_team"),
+        "empty_state": payload.get("empty_state", True),
+        "reason": payload.get("meta", {}).get("reason"),
+    }
+    return render(request, "statistics_optimal_team.html", context)
 
 
 def statistics_matrix_api(request):
