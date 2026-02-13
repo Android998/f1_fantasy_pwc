@@ -1,9 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
     const seasonSelect = document.getElementById("season-select");
+    const assetTypeSelect = document.getElementById("asset-type-select");
     const metricSelect = document.getElementById("metric-select");
-    const presetSelect = document.getElementById("preset-select");
-    const usersDropdownBtn = document.getElementById("users-dropdown-btn");
-    const usersDropdownContent = document.getElementById("users-dropdown-content");
+    const assetsDropdownBtn = document.getElementById("assets-dropdown-btn");
+    const assetsDropdownContent = document.getElementById("assets-dropdown-content");
     const gpRangeBtn = document.getElementById("gp-range-btn");
     const gpRangeContent = document.getElementById("gp-range-content");
     const applyBtn = document.getElementById("apply-filters-btn");
@@ -12,19 +12,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const emptyStateEl = document.getElementById("stats-empty-state");
     const matrixBody = document.getElementById("statistics-matrix-body");
     const matrixHeaderRow = document.getElementById("statistics-matrix-header-row");
+    const assetGroupHeader = document.getElementById("asset-group-header");
 
     const state = {
         sortBy: "total_points",
         sortDir: "desc",
-        selectedUserIds: [],
+        selectedAssetIds: [],
         gpOptions: [],
         selectedGpRounds: [],
     };
 
     function init() {
         seasonSelect.value = "2025";
+        assetTypeSelect.value = "drivers";
         metricSelect.value = "cumulative_points";
-        presetSelect.value = "all";
 
         matrixHeaderRow.querySelectorAll("th.sortable").forEach((header) => {
             header.addEventListener("click", () => onSortHeaderClick(header));
@@ -32,66 +33,58 @@ document.addEventListener("DOMContentLoaded", () => {
 
         applyBtn.addEventListener("click", refreshData);
         resetBtn.addEventListener("click", resetFilters);
-        presetSelect.addEventListener("change", () => {
-            if (presetSelect.value === "me_teammate") {
-                state.selectedUserIds = [];
-            }
+        assetTypeSelect.addEventListener("change", () => {
+            state.selectedAssetIds = [];
+            syncMatrixLayout();
+            refreshData();
         });
 
-        usersDropdownBtn.addEventListener("click", (event) => {
+        assetsDropdownBtn.addEventListener("click", (event) => {
             event.stopPropagation();
-            usersDropdownContent.classList.toggle("show");
+            assetsDropdownContent.classList.toggle("show");
             gpRangeContent.classList.remove("show");
         });
         gpRangeBtn.addEventListener("click", (event) => {
             event.stopPropagation();
             gpRangeContent.classList.toggle("show");
-            usersDropdownContent.classList.remove("show");
+            assetsDropdownContent.classList.remove("show");
         });
         document.addEventListener("click", (event) => {
-            if (!usersDropdownContent.contains(event.target) && event.target !== usersDropdownBtn) {
-                usersDropdownContent.classList.remove("show");
+            if (!assetsDropdownContent.contains(event.target) && event.target !== assetsDropdownBtn) {
+                assetsDropdownContent.classList.remove("show");
             }
             if (!gpRangeContent.contains(event.target) && event.target !== gpRangeBtn) {
                 gpRangeContent.classList.remove("show");
             }
         });
 
+        syncMatrixLayout();
         refreshData();
     }
 
     function resetFilters() {
         seasonSelect.value = "2025";
+        assetTypeSelect.value = "drivers";
         metricSelect.value = "cumulative_points";
-        presetSelect.value = "all";
         state.sortBy = "total_points";
         state.sortDir = "desc";
-        state.selectedUserIds = [];
+        state.selectedAssetIds = [];
         state.selectedGpRounds = [];
-        usersDropdownContent.innerHTML = "";
+        assetsDropdownContent.innerHTML = "";
         gpRangeContent.innerHTML = "";
-        usersDropdownBtn.textContent = "All users";
+        assetsDropdownBtn.textContent = "All assets";
         gpRangeBtn.textContent = "All GPs";
+        syncMatrixLayout();
         refreshData();
     }
 
     async function refreshData() {
         setLoadingState();
         try {
-            const selectedBefore = getSelectedUserIds();
             const matrixPayload = await fetchMatrix();
-            const trendsPayload = await fetchTrends(selectedBefore);
+            const trendsPayload = await fetchTrends();
 
-            if (
-                presetSelect.value === "me_teammate" &&
-                selectedBefore.length === 0 &&
-                Array.isArray(trendsPayload.resolved_user_ids) &&
-                trendsPayload.resolved_user_ids.length > 0
-            ) {
-                state.selectedUserIds = trendsPayload.resolved_user_ids.slice(0, 2);
-            }
-
-            hydrateUsersFilter(matrixPayload.rows || []);
+            hydrateAssetsFilter(matrixPayload.rows || []);
             hydrateGpRange(trendsPayload.gp_options || []);
             renderMatrix(matrixPayload);
             renderChart(trendsPayload);
@@ -100,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
             feedbackEl.textContent = "Could not load statistics. Check backend logs and try again.";
             emptyStateEl.hidden = false;
             emptyStateEl.textContent = "Error loading statistics.";
-            matrixBody.innerHTML = "<tr><td colspan=\"12\">Error loading matrix data.</td></tr>";
+            matrixBody.innerHTML = `<tr><td colspan="${matrixColspan()}">Error loading matrix data.</td></tr>`;
             if (window.Highcharts) {
                 Highcharts.chart("trends-chart", { title: { text: "Statistics unavailable" }, series: [] });
             }
@@ -111,12 +104,13 @@ document.addEventListener("DOMContentLoaded", () => {
     function setLoadingState() {
         feedbackEl.textContent = "Loading statistics...";
         emptyStateEl.hidden = true;
-        matrixBody.innerHTML = "<tr><td colspan=\"12\">Loading matrix data...</td></tr>";
+        matrixBody.innerHTML = `<tr><td colspan="${matrixColspan()}">Loading matrix data...</td></tr>`;
     }
 
     async function fetchMatrix() {
         const params = new URLSearchParams();
         params.set("season", seasonSelect.value);
+        params.set("asset_type", assetTypeSelect.value);
         params.set("sort_by", state.sortBy);
         params.set("sort_dir", state.sortDir);
         const gpRange = getSelectedGpRange();
@@ -125,26 +119,26 @@ document.addEventListener("DOMContentLoaded", () => {
             params.set("gp_to", String(gpRange.to));
         }
 
-        const response = await fetch(`/statistics/api/matrix/?${params.toString()}`);
+        const response = await fetch(`/statistics/api/assets/matrix/?${params.toString()}`);
         if (!response.ok) {
             throw new Error(`Matrix endpoint failed: ${response.status}`);
         }
         return response.json();
     }
 
-    async function fetchTrends(selected) {
+    async function fetchTrends() {
         const params = new URLSearchParams();
         params.set("season", seasonSelect.value);
+        params.set("asset_type", assetTypeSelect.value);
         params.set("metric", metricSelect.value);
         const gpRange = getSelectedGpRange();
         if (gpRange) {
             params.set("gp_from", String(gpRange.from));
             params.set("gp_to", String(gpRange.to));
         }
-        params.set("preset", selected.length > 0 ? "all" : presetSelect.value);
-        selected.forEach((id) => params.append("users", String(id)));
+        state.selectedAssetIds.forEach((id) => params.append("assets", String(id)));
 
-        const response = await fetch(`/statistics/api/trends/?${params.toString()}`);
+        const response = await fetch(`/statistics/api/assets/trends/?${params.toString()}`);
         if (!response.ok) {
             throw new Error(`Trends endpoint failed: ${response.status}`);
         }
@@ -153,29 +147,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderMatrix(payload) {
         let rows = payload.rows || [];
-        if (state.selectedUserIds.length > 0) {
-            const selectedSet = new Set(state.selectedUserIds);
-            rows = rows.filter((row) => selectedSet.has(row.user_id));
+        if (state.selectedAssetIds.length > 0) {
+            const selectedSet = new Set(state.selectedAssetIds);
+            rows = rows.filter((row) => selectedSet.has(row.asset_id));
         }
         if (payload.empty_state || rows.length === 0) {
-            matrixBody.innerHTML = "<tr><td colspan=\"12\">No statistics available for selected filters.</td></tr>";
+            matrixBody.innerHTML = `<tr><td colspan="${matrixColspan()}">No statistics available for selected filters.</td></tr>`;
             return;
         }
 
+        const showTeamColumn = assetTypeSelect.value === "drivers";
         matrixBody.innerHTML = rows.map((row, index) => `
             <tr>
                 <td class="rank">${index + 1}</td>
-                <td class="user-name">${escapeHtml(row.username || "-")}</td>
-                <td class="team-name">${escapeHtml(row.team_name || "No Team")}</td>
+                <td class="user-name">${escapeHtml(row.name || "-")}</td>
+                ${showTeamColumn ? `<td class="team-name asset-group-cell">${escapeHtml(row.asset_group || "No Team")}</td>` : ""}
                 <td class="points">${formatNumber(row.total_points)}</td>
                 <td class="points">${formatNumber(row.avg_points_gp)}</td>
-                <td class="wins">${formatNumber(row.wins_gp)}</td>
-                <td class="podiums">${formatNumber(row.podiums_gp)}</td>
-                <td class="last-2">${formatNumber(row.bottom3_gp)}</td>
                 <td class="points">${formatNumber(row.volatility)}</td>
+                <td class="points">${formatNumber(row.form_3gp)}</td>
                 <td class="points">${formatNumber(row.gps_played)}</td>
-                <td class="points">${formatNumber(row.teammate_h2h_wins)}</td>
-                <td class="points">${formatNumber(row.teammate_h2h_losses)}</td>
+                <td class="points">${formatNumber(row.current_price)}</td>
+                <td class="points">${formatSigned(row.price_change)}</td>
+                <td class="points">${formatNumber(row.points_per_million)}</td>
+                <td class="points">${formatPercent(row.pick_rate)}</td>
+                <td class="points">${formatPercent(row.pick_rate_last_gp)}</td>
             </tr>
         `).join("");
     }
@@ -189,13 +185,20 @@ document.addEventListener("DOMContentLoaded", () => {
             points_per_gp: "Points per GP",
             rank_per_gp: "Rank per GP",
             gap_to_leader: "Gap to Leader",
+            price: "Price",
+            price_change_gp: "Price Change per GP",
+            points_per_million_gp: "Points per Million per GP",
+            cumulative_points_per_million: "Cumulative Points per Million",
+            rolling_avg_points_3gp: "Rolling Avg Points (3 GP)",
+            rolling_avg_points_per_million_3gp: "Rolling Avg Pts/M (3 GP)",
+            pick_rate_gp: "Pick % per GP",
         };
 
         if (payload.empty_state || !payload.series || payload.series.length === 0) {
             emptyStateEl.hidden = false;
             emptyStateEl.textContent = "No trend data available for selected filters.";
             Highcharts.chart("trends-chart", {
-                title: { text: "User Trends" },
+                title: { text: "Assets Trends" },
                 xAxis: { categories: [] },
                 yAxis: { title: { text: "" } },
                 series: [],
@@ -207,11 +210,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         emptyStateEl.hidden = true;
+        const driverMarkerSymbols = ["circle", "square", "diamond", "triangle", "triangle-down"];
         const chart = Highcharts.chart("trends-chart", {
-            chart: { type: "line", backgroundColor: "#ffffff" },
-            title: { text: titleByMetric[payload.metric] || "User Trends" },
+            chart: {
+                type: "line",
+                backgroundColor: "#ffffff",
+            },
+            title: { text: titleByMetric[payload.metric] || "Assets Trends" },
             subtitle: {
-                text: "Click on a line or legend item to highlight a user",
+                text: "Click on a line or legend item to highlight an asset",
                 align: "center",
                 style: { fontSize: "12px" },
             },
@@ -220,7 +227,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 title: { text: titleByMetric[payload.metric] || "" },
                 reversed: payload.metric === "rank_per_gp",
             },
-            legend: { enabled: false },
+            legend: {
+                enabled: false,
+            },
             tooltip: { shared: true },
             credits: { enabled: false },
             plotOptions: {
@@ -230,12 +239,29 @@ document.addEventListener("DOMContentLoaded", () => {
                         click: function () {
                             focusSeries(this.chart, this.name);
                         },
+                        legendItemClick: function (event) {
+                            if (event && typeof event.preventDefault === "function") {
+                                event.preventDefault();
+                            }
+                            focusSeries(this.chart, this.name);
+                            return false;
+                        },
                     },
                 },
             },
             series: payload.series.map((s) => ({
-                name: s.username || "User",
+                name: s.driver_name || s.team_name || s.name || "Asset",
                 data: s.data || [],
+                color: payload.asset_type === "drivers"
+                    ? normalizeSeriesColor(s.team_color)
+                    : normalizeSeriesColor(s.team_color),
+                marker: {
+                    enabled: true,
+                    radius: payload.asset_type === "drivers" ? 3 : 2.5,
+                    symbol: payload.asset_type === "drivers"
+                        ? driverMarkerSymbols[s.asset_id % driverMarkerSymbols.length]
+                        : "circle",
+                },
             })),
         });
         renderExternalLegend(chart);
@@ -283,10 +309,26 @@ document.addEventListener("DOMContentLoaded", () => {
         chart.setSubtitle({
             text: nextFocus
                 ? `Selected: ${nextFocus}`
-                : "Click on a line or legend item to highlight a user",
+                : "Click on a line or legend item to highlight an asset",
         });
         updateExternalLegendSelection(chart);
         chart.redraw();
+    }
+
+    function withAlpha(color, alpha) {
+        if (!window.Highcharts || !Highcharts.color) {
+            return color;
+        }
+        return Highcharts.color(color).setOpacity(alpha).get();
+    }
+
+    function normalizeSeriesColor(color) {
+        if (!color || !window.Highcharts || !Highcharts.color) {
+            return color || undefined;
+        }
+        const parsed = Highcharts.color(color);
+        // Team colors in DB are often too dark for this background; keep hue but brighten for readability.
+        return parsed.brighten(0.25).get();
     }
 
     function renderExternalLegend(chart) {
@@ -295,10 +337,10 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        let legendEl = document.getElementById("users-external-legend");
+        let legendEl = document.getElementById("assets-external-legend");
         if (!legendEl) {
             legendEl = document.createElement("div");
-            legendEl.id = "users-external-legend";
+            legendEl.id = "assets-external-legend";
             legendEl.className = "stats-external-legend";
             parent.appendChild(legendEl);
         }
@@ -336,7 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateExternalLegendSelection(chart) {
-        const legendEl = document.getElementById("users-external-legend");
+        const legendEl = document.getElementById("assets-external-legend");
         if (!legendEl) {
             return;
         }
@@ -345,13 +387,6 @@ document.addEventListener("DOMContentLoaded", () => {
             item.classList.toggle("active", Boolean(focused) && item.dataset.seriesName === focused);
             item.classList.toggle("dimmed", Boolean(focused) && item.dataset.seriesName !== focused);
         });
-    }
-
-    function withAlpha(color, alpha) {
-        if (!window.Highcharts || !Highcharts.color) {
-            return color;
-        }
-        return Highcharts.color(color).setOpacity(alpha).get();
     }
 
     function markerClassFromSymbol(symbol) {
@@ -364,7 +399,7 @@ document.addEventListener("DOMContentLoaded", () => {
             feedbackEl.textContent = "Season has no scored Grand Prix data for current filters.";
             return;
         }
-        feedbackEl.textContent = `Loaded ${matrixPayload.meta.total_users || matrixPayload.rows.length} users across ${matrixPayload.meta.scored_gps} scored GPs.`;
+        feedbackEl.textContent = `Loaded ${matrixPayload.meta.total_assets || matrixPayload.rows.length} assets across ${matrixPayload.meta.scored_gps} scored GPs.`;
     }
 
     function onSortHeaderClick(header) {
@@ -381,36 +416,47 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshData();
     }
 
-    function hydrateUsersFilter(rows) {
-        const previous = state.selectedUserIds.slice();
+    function syncMatrixLayout() {
+        const showTeamColumn = assetTypeSelect.value === "drivers";
+        if (!assetGroupHeader) return;
+        assetGroupHeader.style.display = showTeamColumn ? "" : "none";
+        assetGroupHeader.textContent = "Team";
+    }
+
+    function matrixColspan() {
+        return assetTypeSelect.value === "drivers" ? 13 : 12;
+    }
+
+    function hydrateAssetsFilter(rows) {
+        const previous = state.selectedAssetIds.slice();
         const options = rows
-            .map((row) => ({ id: row.user_id, label: row.username }))
+            .map((row) => ({ id: row.asset_id, label: row.name }))
             .filter((o) => Number.isFinite(Number(o.id)) && o.label)
             .sort((a, b) => a.label.localeCompare(b.label));
 
         const validSelected = previous.filter((id) => options.some((opt) => Number(opt.id) === Number(id)));
-        state.selectedUserIds = validSelected;
+        state.selectedAssetIds = validSelected;
 
-        usersDropdownContent.innerHTML = [
-            `<label class="users-option"><input type="checkbox" data-user-id="" ${validSelected.length === 0 ? "checked" : ""}>All users</label>`,
+        assetsDropdownContent.innerHTML = [
+            `<label class="users-option"><input type="checkbox" data-asset-id="" ${validSelected.length === 0 ? "checked" : ""}>All assets</label>`,
             ...options.map((option) => {
                 const checked = validSelected.includes(Number(option.id)) ? "checked" : "";
-                return `<label class="users-option"><input type="checkbox" data-user-id="${option.id}" ${checked}>${escapeHtml(option.label)}</label>`;
+                return `<label class="users-option"><input type="checkbox" data-asset-id="${option.id}" ${checked}>${escapeHtml(option.label)}</label>`;
             }),
         ].join("");
 
-        usersDropdownContent.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
-            checkbox.addEventListener("change", onUsersCheckboxChange);
+        assetsDropdownContent.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+            checkbox.addEventListener("change", onAssetsCheckboxChange);
         });
-        updateUsersButtonLabel();
+        updateAssetsButtonLabel();
     }
 
-    function onUsersCheckboxChange(event) {
+    function onAssetsCheckboxChange(event) {
         const input = event.target;
-        const isAll = input.dataset.userId === "";
-        const allCheckbox = usersDropdownContent.querySelector("input[data-user-id='']");
-        const itemCheckboxes = Array.from(usersDropdownContent.querySelectorAll("input[data-user-id]"))
-            .filter((cb) => cb.dataset.userId !== "");
+        const isAll = input.dataset.assetId === "";
+        const allCheckbox = assetsDropdownContent.querySelector("input[data-asset-id='']");
+        const itemCheckboxes = Array.from(assetsDropdownContent.querySelectorAll("input[data-asset-id]"))
+            .filter((cb) => cb.dataset.assetId !== "");
 
         if (isAll) {
             if (input.checked) {
@@ -426,32 +472,32 @@ document.addEventListener("DOMContentLoaded", () => {
                 allCheckbox.checked = true;
             }
         }
-        state.selectedUserIds = getSelectedUserIds();
-        updateUsersButtonLabel();
+        state.selectedAssetIds = getSelectedAssetIds();
+        updateAssetsButtonLabel();
     }
 
-    function getSelectedUserIds() {
-        if (!usersDropdownContent || !usersDropdownContent.children.length) {
-            return state.selectedUserIds.slice();
+    function getSelectedAssetIds() {
+        if (!assetsDropdownContent || !assetsDropdownContent.children.length) {
+            return state.selectedAssetIds.slice();
         }
-        return Array.from(usersDropdownContent.querySelectorAll("input[data-user-id]"))
-            .filter((input) => input.checked && input.dataset.userId !== "")
-            .map((input) => Number(input.dataset.userId))
+        return Array.from(assetsDropdownContent.querySelectorAll("input[data-asset-id]"))
+            .filter((input) => input.checked && input.dataset.assetId !== "")
+            .map((input) => Number(input.dataset.assetId))
             .filter((n) => Number.isFinite(n));
     }
 
-    function updateUsersButtonLabel() {
-        const selected = state.selectedUserIds;
+    function updateAssetsButtonLabel() {
+        const selected = state.selectedAssetIds;
         if (!selected.length) {
-            usersDropdownBtn.textContent = "All users";
+            assetsDropdownBtn.textContent = "All assets";
             return;
         }
         if (selected.length === 1) {
-            const label = usersDropdownContent.querySelector(`input[data-user-id='${selected[0]}']`)?.parentElement?.textContent?.trim();
-            usersDropdownBtn.textContent = label || "1 selected";
+            const label = assetsDropdownContent.querySelector(`input[data-asset-id='${selected[0]}']`)?.parentElement?.textContent?.trim();
+            assetsDropdownBtn.textContent = label || "1 selected";
             return;
         }
-        usersDropdownBtn.textContent = `${selected.length} selected`;
+        assetsDropdownBtn.textContent = `${selected.length} selected`;
     }
 
     function hydrateGpRange(gpOptions) {
@@ -531,6 +577,23 @@ document.addEventListener("DOMContentLoaded", () => {
             return Number.isInteger(value) ? value.toString() : value.toFixed(2);
         }
         return value ?? "-";
+    }
+
+    function formatSigned(value) {
+        if (typeof value !== "number") {
+            return value ?? "-";
+        }
+        if (value > 0) {
+            return `+${value.toFixed(2)}`;
+        }
+        return value.toFixed(2);
+    }
+
+    function formatPercent(value) {
+        if (typeof value !== "number") {
+            return value ?? "-";
+        }
+        return `${value.toFixed(1)}%`;
     }
 
     function escapeHtml(value) {

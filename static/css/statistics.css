@@ -363,6 +363,97 @@
     background-color: #b90400;
 }
 
+.stats-external-legend {
+    margin-top: 0.8rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.3rem 0.75rem;
+}
+
+.stats-external-legend-item {
+    border: none;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: Formula1Regular;
+    font-size: 0.74rem;
+    color: #1d2634;
+    padding: 0.1rem 0.15rem;
+    cursor: pointer;
+}
+
+.stats-external-legend-icon {
+    position: relative;
+    width: 14px;
+    height: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.stats-external-legend-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    transform: translateY(-50%);
+    border-radius: 2px;
+}
+
+.stats-external-legend-marker {
+    position: relative;
+    z-index: 1;
+    width: 7px;
+    height: 7px;
+    display: inline-block;
+    border-radius: 50%;
+}
+
+.stats-marker-circle {
+    border-radius: 50%;
+}
+
+.stats-marker-square {
+    border-radius: 1px;
+}
+
+.stats-marker-diamond {
+    transform: rotate(45deg);
+    border-radius: 1px;
+}
+
+.stats-marker-triangle,
+.stats-marker-triangle-down {
+    width: 0;
+    height: 0;
+    background: transparent !important;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+}
+
+.stats-marker-triangle {
+    border-bottom: 7px solid currentColor;
+    margin-top: -1px;
+}
+
+.stats-marker-triangle-down {
+    border-top: 7px solid currentColor;
+    margin-bottom: -1px;
+}
+
+.stats-external-legend-item.active {
+    font-family: Formula1Bold;
+}
+
+.stats-external-legend-item.dimmed {
+    opacity: 0.45;
+}
+
 @media (max-width: 1100px) {
     .stats-filter-grid {
         gap: 0.75rem;

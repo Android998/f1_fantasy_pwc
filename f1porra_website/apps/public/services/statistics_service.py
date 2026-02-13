@@ -7,7 +7,7 @@ from typing import Any
 from django.contrib.auth.models import User
 
 from f1porra_website.apps.accounts.models import UserProfile
-from f1porra_website.apps.public.models import GrandPrix, Porra, Season
+from f1porra_website.apps.public.models import DriverPoints, GrandPrix, Porra, Season, TeamPoints
 
 
 ALLOWED_SORT_FIELDS = {
@@ -41,6 +41,21 @@ ALLOWED_PRESETS = {
     "top3",
     "bottom3",
     "all",
+}
+
+ALLOWED_ASSET_TYPES = {"drivers", "constructors"}
+ALLOWED_ASSET_METRICS = {
+    "cumulative_points",
+    "points_per_gp",
+    "rank_per_gp",
+    "gap_to_leader",
+    "price",
+    "price_change_gp",
+    "points_per_million_gp",
+    "cumulative_points_per_million",
+    "rolling_avg_points_3gp",
+    "rolling_avg_points_per_million_3gp",
+    "pick_rate_gp",
 }
 
 
@@ -309,6 +324,263 @@ def build_trends_payload(
     }
 
 
+def build_assets_matrix_payload(
+    *,
+    season_year: int | None = None,
+    asset_type: str = "drivers",
+    gp_from: int | None = None,
+    gp_to: int | None = None,
+    sort_by: str = "total_points",
+    sort_dir: str = "desc",
+) -> dict[str, Any]:
+    season = _resolve_season(season_year)
+    normalized_type = _normalize_asset_type(asset_type)
+    normalized_sort_dir = _normalize_sort_dir(sort_dir)
+
+    if season is None:
+        return {
+            "season": season_year,
+            "asset_type": normalized_type,
+            "rows": [],
+            "sort_by": sort_by,
+            "sort_dir": normalized_sort_dir,
+            "empty_state": True,
+            "meta": {"reason": "season_not_found_or_no_scored_data", "scored_gps": 0},
+        }
+
+    gps = _get_scored_gps(season=season, gp_from=gp_from, gp_to=gp_to)
+    if not gps:
+        return {
+            "season": season.year,
+            "asset_type": normalized_type,
+            "rows": [],
+            "sort_by": sort_by,
+            "sort_dir": normalized_sort_dir,
+            "empty_state": True,
+            "meta": {"reason": "no_scored_gps_in_range", "scored_gps": 0},
+        }
+
+    gp_ids = [gp.id for gp in gps]
+    if normalized_type == "drivers":
+        rows = _build_driver_rows(season=season, gp_ids=gp_ids)
+    else:
+        rows = _build_constructor_rows(season=season, gp_ids=gp_ids)
+
+    rows = _sort_asset_rows(rows, sort_by=sort_by, sort_dir=normalized_sort_dir)
+    return {
+        "season": season.year,
+        "asset_type": normalized_type,
+        "rows": rows,
+        "sort_by": sort_by,
+        "sort_dir": normalized_sort_dir,
+        "empty_state": len(rows) == 0,
+        "meta": {"reason": None if rows else "no_asset_rows", "scored_gps": len(gp_ids), "total_assets": len(rows)},
+    }
+
+
+def build_assets_trends_payload(
+    *,
+    season_year: int | None = None,
+    asset_type: str = "drivers",
+    metric: str = "cumulative_points",
+    gp_from: int | None = None,
+    gp_to: int | None = None,
+    selected_asset_ids: list[int] | None = None,
+) -> dict[str, Any]:
+    season = _resolve_season(season_year)
+    normalized_type = _normalize_asset_type(asset_type)
+    normalized_metric = _normalize_asset_metric(metric)
+
+    if season is None:
+        return {
+            "season": season_year,
+            "asset_type": normalized_type,
+            "metric": normalized_metric,
+            "labels": [],
+            "gp_options": [],
+            "series": [],
+            "empty_state": True,
+            "meta": {"reason": "season_not_found_or_no_scored_data", "scored_gps": 0},
+        }
+
+    gps = _get_scored_gps(season=season, gp_from=gp_from, gp_to=gp_to)
+    if not gps:
+        return {
+            "season": season.year,
+            "asset_type": normalized_type,
+            "metric": normalized_metric,
+            "labels": [],
+            "gp_options": [],
+            "series": [],
+            "empty_state": True,
+            "meta": {"reason": "no_scored_gps_in_range", "scored_gps": 0},
+        }
+
+    gp_ids = [gp.id for gp in gps]
+    labels = [gp.country for gp in gps]
+    gp_options = [{"round": gp.nround, "name": gp.country} for gp in gps]
+
+    if normalized_type == "drivers":
+        points_qs = DriverPoints.objects.filter(
+            season=season, gp_id__in=gp_ids, driver__isnull=False
+        ).select_related("driver", "driver__team", "gp")
+        key_field = "driver_id"
+        name_getter = lambda row: row.driver.name
+        group_name = "driver_name"
+        slots_per_entry = 5
+    else:
+        points_qs = TeamPoints.objects.filter(
+            season=season, gp_id__in=gp_ids, team__isnull=False
+        ).select_related("team", "gp")
+        key_field = "team_id"
+        name_getter = lambda row: row.team.name
+        group_name = "team_name"
+        slots_per_entry = 2
+
+    scores_by_asset: dict[int, dict[int, float]] = defaultdict(dict)
+    prices_by_asset: dict[int, dict[int, float]] = defaultdict(dict)
+    names_by_asset: dict[int, str] = {}
+    team_names_by_asset: dict[int, str | None] = {}
+    team_colors_by_asset: dict[int, str | None] = {}
+    for row in points_qs:
+        asset_id = getattr(row, key_field)
+        names_by_asset[asset_id] = name_getter(row)
+        if normalized_type == "drivers":
+            team_names_by_asset[asset_id] = row.driver.team.name if row.driver and row.driver.team else None
+            team_colors_by_asset[asset_id] = (
+                row.driver.team.color_rgb if row.driver and row.driver.team and row.driver.team.color_rgb else None
+            )
+        else:
+            team_names_by_asset[asset_id] = row.team.name if row.team else None
+            team_colors_by_asset[asset_id] = row.team.color_rgb if row.team and row.team.color_rgb else None
+        if row.points is not None:
+            scores_by_asset[asset_id][row.gp_id] = float(row.points)
+        if row.price is not None:
+            prices_by_asset[asset_id][row.gp_id] = float(row.price)
+
+    pick_counts_by_gp_asset: dict[int, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+    gp_entries_count: dict[int, int] = defaultdict(int)
+    if normalized_type == "drivers":
+        picks_rows = Porra.objects.filter(season=season, gp_id__in=gp_ids).values_list(
+            "gp_id", "driver1_id", "driver2_id", "driver3_id", "driver4_id", "driver5_id"
+        )
+    else:
+        picks_rows = Porra.objects.filter(season=season, gp_id__in=gp_ids).values_list(
+            "gp_id", "team1_id", "team2_id"
+        )
+    for row in picks_rows:
+        gp_id = row[0]
+        gp_entries_count[gp_id] += 1
+        for asset_id in row[1:]:
+            if asset_id is None:
+                continue
+            pick_counts_by_gp_asset[gp_id][asset_id] += 1
+
+    if not names_by_asset:
+        return {
+            "season": season.year,
+            "asset_type": normalized_type,
+            "metric": normalized_metric,
+            "labels": labels,
+            "gp_options": gp_options,
+            "series": [],
+            "empty_state": True,
+            "meta": {"reason": "no_asset_points", "scored_gps": len(gps)},
+        }
+
+    selected = [aid for aid in (selected_asset_ids or []) if aid in names_by_asset]
+    asset_ids = selected if selected else sorted(names_by_asset.keys(), key=lambda aid: names_by_asset[aid].lower())
+
+    all_cumulative_by_gp: dict[int, dict[int, float]] = {}
+    running_all = {aid: 0.0 for aid in names_by_asset}
+    for gp in gps:
+        for aid in names_by_asset:
+            running_all[aid] += scores_by_asset.get(aid, {}).get(gp.id, 0.0)
+        all_cumulative_by_gp[gp.id] = dict(running_all)
+
+    series = []
+    for aid in asset_ids:
+        running = 0.0
+        running_ppm = 0.0
+        prev_price: float | None = None
+        points_window: list[float] = []
+        ppm_window: list[float | None] = []
+        data = []
+        for gp in gps:
+            points = scores_by_asset.get(aid, {}).get(gp.id, 0.0)
+            price = prices_by_asset.get(aid, {}).get(gp.id)
+            running += points
+            ppm_gp = (points / price) if price not in (None, 0) else None
+            if ppm_gp is not None:
+                running_ppm += ppm_gp
+
+            points_window.append(points)
+            if len(points_window) > 3:
+                points_window.pop(0)
+
+            ppm_window.append(ppm_gp)
+            if len(ppm_window) > 3:
+                ppm_window.pop(0)
+
+            if normalized_metric == "points_per_gp":
+                data.append(round(points, 2))
+            elif normalized_metric == "gap_to_leader":
+                leader = max(all_cumulative_by_gp[gp.id].values()) if all_cumulative_by_gp[gp.id] else 0.0
+                data.append(round(leader - running, 2))
+            elif normalized_metric == "rank_per_gp":
+                data.append(float(_competition_rank(running, all_cumulative_by_gp[gp.id].values())))
+            elif normalized_metric == "price":
+                data.append(round(price, 2) if price is not None else None)
+            elif normalized_metric == "price_change_gp":
+                if price is None or prev_price is None:
+                    data.append(None)
+                else:
+                    data.append(round(price - prev_price, 2))
+            elif normalized_metric == "points_per_million_gp":
+                data.append(round(ppm_gp, 4) if ppm_gp is not None else None)
+            elif normalized_metric == "cumulative_points_per_million":
+                data.append(round(running_ppm, 4))
+            elif normalized_metric == "rolling_avg_points_3gp":
+                data.append(round(sum(points_window) / len(points_window), 2) if points_window else None)
+            elif normalized_metric == "rolling_avg_points_per_million_3gp":
+                valid_ppm = [value for value in ppm_window if value is not None]
+                data.append(round(sum(valid_ppm) / len(valid_ppm), 4) if valid_ppm else None)
+            elif normalized_metric == "pick_rate_gp":
+                gp_entries = gp_entries_count.get(gp.id, 0)
+                denominator = gp_entries * slots_per_entry
+                if denominator:
+                    picks = pick_counts_by_gp_asset.get(gp.id, {}).get(aid, 0)
+                    data.append(round((picks / denominator) * 100.0, 2))
+                else:
+                    data.append(None)
+            else:
+                data.append(round(running, 2))
+
+            if price is not None:
+                prev_price = price
+
+        series.append(
+            {
+                "asset_id": aid,
+                group_name: names_by_asset[aid],
+                "team_name": team_names_by_asset.get(aid),
+                "team_color": team_colors_by_asset.get(aid),
+                "data": data,
+            }
+        )
+
+    return {
+        "season": season.year,
+        "asset_type": normalized_type,
+        "metric": normalized_metric,
+        "labels": labels,
+        "gp_options": gp_options,
+        "series": series,
+        "empty_state": False,
+        "meta": {"reason": None, "scored_gps": len(gps), "total_series": len(series)},
+    }
+
+
 def _resolve_season(season_year: int | None) -> Season | None:
     if season_year is not None:
         return Season.objects.filter(year=season_year).first()
@@ -470,6 +742,228 @@ def _normalize_preset(preset: str | None) -> str:
     if preset in ALLOWED_PRESETS:
         return preset
     return "all"
+
+
+def _normalize_asset_type(asset_type: str | None) -> str:
+    if asset_type in ALLOWED_ASSET_TYPES:
+        return asset_type
+    return "drivers"
+
+
+def _normalize_asset_metric(metric: str | None) -> str:
+    if metric in ALLOWED_ASSET_METRICS:
+        return metric
+    return "cumulative_points"
+
+
+def _build_driver_rows(*, season: Season, gp_ids: list[int]) -> list[dict[str, Any]]:
+    gps_in_range = GrandPrix.objects.filter(id__in=gp_ids).order_by("nround")
+    gp_sequence = list(gps_in_range.values_list("id", flat=True))
+    latest_gp_id = gp_sequence[-1] if gp_sequence else None
+    prev_gp_id = gp_sequence[-2] if len(gp_sequence) > 1 else None
+
+    pick_counts, latest_pick_counts, total_entries, latest_entries, slots_per_entry = _build_pick_rate_maps(
+        season=season,
+        gp_ids=gp_ids,
+        asset_type="drivers",
+    )
+
+    rows = []
+    for driver_id, driver_name, team_name in (
+        DriverPoints.objects.filter(season=season, gp_id__in=gp_ids, driver__isnull=False)
+        .values_list("driver_id", "driver__name", "driver__team__name")
+        .distinct()
+    ):
+        points_rows = DriverPoints.objects.filter(
+            season=season, gp_id__in=gp_ids, driver_id=driver_id, points__isnull=False
+        )
+        points = [float(v) for v in points_rows.values_list("points", flat=True)]
+        if not points:
+            continue
+        total_points = sum(points)
+        gps_played = len(points)
+        avg_points = total_points / gps_played if gps_played else 0.0
+        volatility = pstdev(points) if gps_played > 1 else 0.0
+        form_3gp = (sum(points[-3:]) / min(3, gps_played)) if gps_played else 0.0
+
+        current_price = (
+            DriverPoints.objects.filter(season=season, gp_id=latest_gp_id, driver_id=driver_id)
+            .values_list("price", flat=True)
+            .first()
+            if latest_gp_id
+            else None
+        ) or 0
+        prev_price = (
+            DriverPoints.objects.filter(season=season, gp_id=prev_gp_id, driver_id=driver_id)
+            .values_list("price", flat=True)
+            .first()
+            if prev_gp_id
+            else None
+        ) or 0
+        price_change = current_price - prev_price
+        ppm = (total_points / current_price) if current_price else 0.0
+        total_denominator = total_entries * slots_per_entry
+        latest_denominator = latest_entries * slots_per_entry
+        pick_rate = (
+            (pick_counts.get(driver_id, 0) / total_denominator) * 100.0
+            if total_denominator
+            else 0.0
+        )
+        pick_rate_last_gp = (
+            (latest_pick_counts.get(driver_id, 0) / latest_denominator) * 100.0
+            if latest_denominator
+            else 0.0
+        )
+
+        rows.append(
+            {
+                "asset_id": driver_id,
+                "name": driver_name,
+                "asset_group": team_name or "No Team",
+                "total_points": round(total_points, 2),
+                "avg_points_gp": round(avg_points, 2),
+                "volatility": round(volatility, 4),
+                "form_3gp": round(form_3gp, 2),
+                "gps_played": gps_played,
+                "current_price": round(float(current_price), 2),
+                "price_change": round(float(price_change), 2),
+                "points_per_million": round(ppm, 3),
+                "pick_rate": round(pick_rate, 2),
+                "pick_rate_last_gp": round(pick_rate_last_gp, 2),
+            }
+        )
+    return rows
+
+
+def _build_constructor_rows(*, season: Season, gp_ids: list[int]) -> list[dict[str, Any]]:
+    gps_in_range = GrandPrix.objects.filter(id__in=gp_ids).order_by("nround")
+    gp_sequence = list(gps_in_range.values_list("id", flat=True))
+    latest_gp_id = gp_sequence[-1] if gp_sequence else None
+    prev_gp_id = gp_sequence[-2] if len(gp_sequence) > 1 else None
+
+    pick_counts, latest_pick_counts, total_entries, latest_entries, slots_per_entry = _build_pick_rate_maps(
+        season=season,
+        gp_ids=gp_ids,
+        asset_type="constructors",
+    )
+
+    rows = []
+    for team_id, team_name in (
+        TeamPoints.objects.filter(season=season, gp_id__in=gp_ids, team__isnull=False)
+        .values_list("team_id", "team__name")
+        .distinct()
+    ):
+        points_rows = TeamPoints.objects.filter(
+            season=season, gp_id__in=gp_ids, team_id=team_id, points__isnull=False
+        )
+        points = [float(v) for v in points_rows.values_list("points", flat=True)]
+        if not points:
+            continue
+        total_points = sum(points)
+        gps_played = len(points)
+        avg_points = total_points / gps_played if gps_played else 0.0
+        volatility = pstdev(points) if gps_played > 1 else 0.0
+        form_3gp = (sum(points[-3:]) / min(3, gps_played)) if gps_played else 0.0
+
+        current_price = (
+            TeamPoints.objects.filter(season=season, gp_id=latest_gp_id, team_id=team_id)
+            .values_list("price", flat=True)
+            .first()
+            if latest_gp_id
+            else None
+        ) or 0
+        prev_price = (
+            TeamPoints.objects.filter(season=season, gp_id=prev_gp_id, team_id=team_id)
+            .values_list("price", flat=True)
+            .first()
+            if prev_gp_id
+            else None
+        ) or 0
+        price_change = current_price - prev_price
+        ppm = (total_points / current_price) if current_price else 0.0
+        total_denominator = total_entries * slots_per_entry
+        latest_denominator = latest_entries * slots_per_entry
+        pick_rate = (
+            (pick_counts.get(team_id, 0) / total_denominator) * 100.0
+            if total_denominator
+            else 0.0
+        )
+        pick_rate_last_gp = (
+            (latest_pick_counts.get(team_id, 0) / latest_denominator) * 100.0
+            if latest_denominator
+            else 0.0
+        )
+
+        rows.append(
+            {
+                "asset_id": team_id,
+                "name": team_name,
+                "asset_group": None,
+                "total_points": round(total_points, 2),
+                "avg_points_gp": round(avg_points, 2),
+                "volatility": round(volatility, 4),
+                "form_3gp": round(form_3gp, 2),
+                "gps_played": gps_played,
+                "current_price": round(float(current_price), 2),
+                "price_change": round(float(price_change), 2),
+                "points_per_million": round(ppm, 3),
+                "pick_rate": round(pick_rate, 2),
+                "pick_rate_last_gp": round(pick_rate_last_gp, 2),
+            }
+        )
+    return rows
+
+
+def _sort_asset_rows(rows: list[dict[str, Any]], *, sort_by: str, sort_dir: str) -> list[dict[str, Any]]:
+    reverse = sort_dir == "desc"
+    key = sort_by if sort_by in {
+        "name", "asset_group", "total_points", "avg_points_gp", "volatility", "form_3gp", "gps_played",
+        "current_price", "price_change", "points_per_million", "pick_rate", "pick_rate_last_gp"
+    } else "total_points"
+    return sorted(rows, key=lambda row: (row.get(key), row.get("name", "")), reverse=reverse)
+
+
+def _build_pick_rate_maps(
+    *,
+    season: Season,
+    gp_ids: list[int],
+    asset_type: str,
+) -> tuple[dict[int, int], dict[int, int], int, int, int]:
+    if not gp_ids:
+        return {}, {}, 0, 0, 0
+
+    latest_gp_id = gp_ids[-1]
+    count_map: dict[int, int] = defaultdict(int)
+    latest_count_map: dict[int, int] = defaultdict(int)
+
+    if asset_type == "drivers":
+        slots_per_entry = 5
+        porra_rows = Porra.objects.filter(season=season, gp_id__in=gp_ids).values_list(
+            "gp_id", "driver1_id", "driver2_id", "driver3_id", "driver4_id", "driver5_id"
+        )
+    else:
+        slots_per_entry = 2
+        porra_rows = Porra.objects.filter(season=season, gp_id__in=gp_ids).values_list(
+            "gp_id", "team1_id", "team2_id"
+        )
+
+    total_entries = 0
+    latest_entries = 0
+    for row in porra_rows:
+        gp_id = row[0]
+        asset_ids = row[1:]
+        total_entries += 1
+        if gp_id == latest_gp_id:
+            latest_entries += 1
+
+        for asset_id in asset_ids:
+            if asset_id is None:
+                continue
+            count_map[asset_id] += 1
+            if gp_id == latest_gp_id:
+                latest_count_map[asset_id] += 1
+
+    return dict(count_map), dict(latest_count_map), total_entries, latest_entries, slots_per_entry
 
 
 def _resolve_trend_users(

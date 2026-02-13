@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import redirect, render, get_object_or_404
 from django.db.models import Sum, Max, F, Q, Count, Value
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
@@ -10,7 +10,12 @@ import json
 from datetime import date
 from .models import Season, Driver, Team, DriverPoints, TeamPoints, GrandPrix, Porra, RaceResults
 from f1porra_website.apps.accounts.models import UserProfile, UsersTeam
-from f1porra_website.apps.public.services import build_matrix_payload, build_trends_payload
+from f1porra_website.apps.public.services import (
+    build_assets_matrix_payload,
+    build_assets_trends_payload,
+    build_matrix_payload,
+    build_trends_payload,
+)
 from django.contrib.auth.models import User
 import logging
 from django.core.exceptions import ObjectDoesNotExist
@@ -80,6 +85,10 @@ def rules(request):
     return render(request, 'rules.html')
 
 def statistics(request):
+    return redirect("public:statistics_users")
+
+
+def statistics_users(request):
     # Fetch all Grand Prix and Drivers
     grand_prix_list = GrandPrix.objects.filter(season=current_season).order_by('nround')
     driver_list = Driver.objects.filter(season=current_season).order_by('team__name')
@@ -156,6 +165,10 @@ def statistics(request):
     return render(request, 'statistics.html', context)
 
 
+def statistics_assets(request):
+    return render(request, "statistics_assets.html")
+
+
 def statistics_matrix_api(request):
     season = _parse_int(request.GET.get("season"))
     gp_from = _parse_int(request.GET.get("gp_from"))
@@ -193,6 +206,46 @@ def statistics_trends_api(request):
         preset=preset,
         current_user_id=current_user_id,
         selected_user_ids=selected_users or None,
+    )
+    return JsonResponse(payload)
+
+
+def statistics_assets_matrix_api(request):
+    season = _parse_int(request.GET.get("season"))
+    gp_from = _parse_int(request.GET.get("gp_from"))
+    gp_to = _parse_int(request.GET.get("gp_to"))
+    asset_type = request.GET.get("asset_type", "drivers")
+    sort_by = request.GET.get("sort_by", "total_points")
+    sort_dir = request.GET.get("sort_dir", "desc")
+
+    payload = build_assets_matrix_payload(
+        season_year=season,
+        asset_type=asset_type,
+        gp_from=gp_from,
+        gp_to=gp_to,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+    return JsonResponse(payload)
+
+
+def statistics_assets_trends_api(request):
+    season = _parse_int(request.GET.get("season"))
+    gp_from = _parse_int(request.GET.get("gp_from"))
+    gp_to = _parse_int(request.GET.get("gp_to"))
+    asset_type = request.GET.get("asset_type", "drivers")
+    metric = request.GET.get("metric", "cumulative_points")
+    assets = _parse_int_list(request.GET.getlist("assets"))
+    assets_csv = _parse_int_list([request.GET.get("assets", "")])
+
+    selected_assets = assets if assets else assets_csv
+    payload = build_assets_trends_payload(
+        season_year=season,
+        asset_type=asset_type,
+        metric=metric,
+        gp_from=gp_from,
+        gp_to=gp_to,
+        selected_asset_ids=selected_assets or None,
     )
     return JsonResponse(payload)
 

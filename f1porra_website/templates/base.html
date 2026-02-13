@@ -64,7 +64,15 @@
                         {%url 'public:rules' as rules_url %}
                         <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == rules_url %} activate {%endif%}" href="{{rules_url}}">Rules</a></li>
                         {%url 'public:statistics' as statistics_url%}
-                        <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == statistics_url %} activate {%endif%}" href="{{statistics_url}}">Statistics</a></li>
+                        {%url 'public:statistics_users' as statistics_users_url%}
+                        {%url 'public:statistics_assets' as statistics_assets_url%}
+                        <li class="nav-item mx-0 mx-lg-1 statistics-nav-dropdown">
+                            <a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == statistics_url or request.path == statistics_users_url or request.path == statistics_assets_url %} activate {%endif%}" href="{{statistics_users_url}}">Statistics</a>
+                            <div class="statistics-nav-menu">
+                                <a class="statistics-nav-option {% if request.path == statistics_users_url %}active{% endif %}" href="{{statistics_users_url}}">Users</a>
+                                <a class="statistics-nav-option {% if request.path == statistics_assets_url %}active{% endif %}" href="{{statistics_assets_url}}">Assets</a>
+                            </div>
+                        </li>
                         {%url 'public:team' as team_url%}
                         <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == team_url %} activate {%endif%}" href="{{team_url}}">My Team</a></li>
                     </ul>
