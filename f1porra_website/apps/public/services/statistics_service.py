@@ -203,6 +203,7 @@ def build_trends_payload(
             "metric": normalized_metric,
             "preset": normalized_preset,
             "labels": [],
+            "gp_options": [],
             "series": [],
             "resolved_user_ids": [],
             "empty_state": True,
@@ -216,6 +217,7 @@ def build_trends_payload(
             "metric": normalized_metric,
             "preset": normalized_preset,
             "labels": [],
+            "gp_options": [],
             "series": [],
             "resolved_user_ids": [],
             "empty_state": True,
@@ -223,7 +225,8 @@ def build_trends_payload(
         }
 
     gp_ids = [gp.id for gp in gps]
-    labels = [f"R{gp.nround} {gp.country}" for gp in gps]
+    labels = [gp.country for gp in gps]
+    gp_options = [{"round": gp.nround, "name": gp.country} for gp in gps]
     porras = list(
         Porra.objects.filter(season=season, gp_id__in=gp_ids, points__isnull=False)
         .select_related("user")
@@ -235,6 +238,7 @@ def build_trends_payload(
             "metric": normalized_metric,
             "preset": normalized_preset,
             "labels": labels,
+            "gp_options": gp_options,
             "series": [],
             "resolved_user_ids": [],
             "empty_state": True,
@@ -291,6 +295,7 @@ def build_trends_payload(
         "metric": normalized_metric,
         "preset": normalized_preset,
         "labels": labels,
+        "gp_options": gp_options,
         "series": series,
         "resolved_user_ids": resolved_user_ids,
         "empty_state": False,
@@ -477,11 +482,7 @@ def _resolve_trend_users(
     current_user_id: int | None,
 ) -> list[int]:
     all_user_ids = list(users_by_id.keys())
-
-    if selected_user_ids:
-        selected = [uid for uid in selected_user_ids if uid in users_by_id]
-        if selected:
-            return sorted(selected, key=lambda uid: users_by_id[uid].username.lower())
+    selected = [uid for uid in (selected_user_ids or []) if uid in users_by_id]
 
     totals = {
         uid: sum(scores_by_user.get(uid, {}).values())
@@ -498,13 +499,21 @@ def _resolve_trend_users(
 
     if preset == "me_vs_user":
         if current_user_id in users_by_id:
+            opponent = next((uid for uid in selected if uid != current_user_id), None)
+            if opponent is not None:
+                return [current_user_id, opponent]
             return [current_user_id]
+        if selected:
+            return sorted(set(selected), key=lambda uid: users_by_id[uid].username.lower())
 
     if preset == "top3":
         return _top_n_user_ids(users_by_id=users_by_id, totals=totals, n=3, reverse=True)
 
     if preset == "bottom3":
         return _top_n_user_ids(users_by_id=users_by_id, totals=totals, n=3, reverse=False)
+
+    if selected:
+        return sorted(set(selected), key=lambda uid: users_by_id[uid].username.lower())
 
     return sorted(all_user_ids, key=lambda uid: users_by_id[uid].username.lower())
 
