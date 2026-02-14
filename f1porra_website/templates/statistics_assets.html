@@ -5,7 +5,7 @@
 <link href="{% static 'css/statistics.css' %}" rel="stylesheet">
 <div class="main-standings statistics-page">
     <div class="top-filters stats-top-filters">
-        <h1 class="stats-title">User Statistics</h1>
+        <h1 class="stats-title">Assets Statistics</h1>
         <hr class="gray-line-top">
 
         <div class="stats-filter-grid">
@@ -21,6 +21,16 @@
             </div>
 
             <div class="section-std">
+                <div class="section-name-std"><span>Asset Type</span></div>
+                <div class="dropdown-std">
+                    <select id="asset-type-select" class="dropbtn-std stats-select">
+                        <option value="drivers" selected>Drivers</option>
+                        <option value="constructors">Constructors</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-std">
                 <div class="section-name-std"><span>Trend Metric</span></div>
                 <div class="dropdown-std">
                     <select id="metric-select" class="dropbtn-std stats-select">
@@ -28,27 +38,22 @@
                         <option value="points_per_gp">Points per GP</option>
                         <option value="rank_per_gp">Rank per GP</option>
                         <option value="gap_to_leader">Gap to Leader</option>
+                        <option value="price">Price</option>
+                        <option value="price_change_gp">Price Change per GP</option>
+                        <option value="points_per_million_gp">Points per Million per GP</option>
+                        <option value="cumulative_points_per_million">Cumulative Points per Million</option>
+                        <option value="rolling_avg_points_3gp">Rolling Avg Points (3 GP)</option>
+                        <option value="rolling_avg_points_per_million_3gp">Rolling Avg Pts/M (3 GP)</option>
+                        <option value="pick_rate_gp">Pick % per GP</option>
                     </select>
                 </div>
             </div>
 
-            <div id="preset-section" class="section-std">
-                <div class="section-name-std"><span>Preset</span></div>
-                <div class="dropdown-std">
-                    <select id="preset-select" class="dropbtn-std stats-select">
-                        <option value="all" selected>All Users</option>
-                        <option value="top3">Top 3</option>
-                        <option value="bottom3">Bottom 3</option>
-                        <option value="me_teammate">Me + Teammate</option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="entities-section" class="section-std">
-                <div class="section-name-std"><span>Users</span></div>
+            <div class="section-std">
+                <div class="section-name-std"><span>Assets</span></div>
                 <div class="dropdown-std users-dropdown">
-                    <button id="users-dropdown-btn" class="dropbtn-std stats-select users-dropbtn" type="button">All users</button>
-                    <div id="users-dropdown-content" class="dropdown-content-std users-dropdown-content"></div>
+                    <button id="assets-dropdown-btn" class="dropbtn-std stats-select users-dropbtn" type="button">All assets</button>
+                    <div id="assets-dropdown-content" class="dropdown-content-std users-dropdown-content"></div>
                 </div>
             </div>
 
@@ -71,7 +76,7 @@
     </div>
 
     <div class="user-standings stats-chart-panel">
-        <h1 class="stats-title">User Trends</h1>
+        <h1 class="stats-title">Assets Trends</h1>
         <hr class="gray-line">
         <p id="stats-feedback" class="stats-feedback"></p>
         <div id="stats-empty-state" class="stats-empty-state" hidden></div>
@@ -79,39 +84,43 @@
     </div>
 
     <div class="user-standings stats-matrix-panel">
-        <h1 class="stats-title">Users Matrix</h1>
+        <h1 class="stats-title">Assets Matrix</h1>
         <hr class="gray-line">
         <div class="stats-table-wrapper">
             <table class="standings-table statistics-table">
                 <thead>
                     <tr id="statistics-matrix-header-row">
                         <th class="rank sortable" data-sort-key="rank">Rank</th>
-                        <th class="user-name sortable" data-sort-key="username">Name</th>
-                        <th class="team-name sortable" data-sort-key="team_name">Team</th>
+                        <th class="user-name sortable" data-sort-key="name">Name</th>
+                        <th id="asset-group-header" class="team-name sortable" data-sort-key="asset_group">Team</th>
                         <th class="points sortable" data-sort-key="total_points">Points</th>
                         <th class="points sortable" data-sort-key="avg_points_gp">Avg/GP</th>
-                        <th class="wins sortable" data-sort-key="wins_gp">Wins</th>
-                        <th class="podiums sortable" data-sort-key="podiums_gp">Podiums</th>
-                        <th class="last-2 sortable" data-sort-key="bottom3_gp">Bottom 3</th>
                         <th class="points sortable" data-sort-key="volatility">Volatility</th>
+                        <th class="points sortable" data-sort-key="form_3gp">Form 3GP</th>
                         <th class="points sortable" data-sort-key="gps_played">GPs</th>
-                        <th class="points sortable" data-sort-key="teammate_h2h_wins">H2H W</th>
-                        <th class="points sortable" data-sort-key="teammate_h2h_losses">H2H L</th>
+                        <th class="points sortable" data-sort-key="current_price">Price</th>
+                        <th class="points sortable" data-sort-key="price_change">Delta Price</th>
+                        <th class="points sortable" data-sort-key="points_per_million">Pts/M</th>
+                        <th class="points sortable" data-sort-key="pick_rate">Pick %</th>
+                        <th class="points sortable" data-sort-key="pick_rate_last_gp">Pick Last GP %</th>
                     </tr>
                 </thead>
                 <tbody id="statistics-matrix-body">
                     <tr>
-                        <td colspan="12">Loading statistics...</td>
+                        <td colspan="13">Loading statistics...</td>
                     </tr>
                 </tbody>
             </table>
         </div>
         <div class="stats-matrix-legend">
-            <p><strong>Volatility</strong>: desviacion de los puntos por GP. Cuanto mas alto, mas irregular es el rendimiento.</p>
+            <p><strong>Pts/M</strong>: puntos totales divididos entre precio actual para ver eficiencia por presupuesto.</p>
+            <p><strong>Form 3GP</strong>: media de puntos de las ultimas 3 carreras del rango seleccionado.</p>
+            <p><strong>Pick %</strong>: apariciones del asset sobre todas las plazas seleccionables del rango.</p>
+            <p><strong>Pick Last GP %</strong>: mismo calculo, pero solo en el ultimo GP del rango.</p>
         </div>
     </div>
 </div>
 
 <script src="https://code.highcharts.com/highcharts.js"></script>
-<script src="{% static 'js/statistics.js' %}"></script>
+<script src="{% static 'js/statistics_assets.js' %}"></script>
 {% endblock %}

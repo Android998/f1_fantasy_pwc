@@ -1,0 +1,317 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link href="{% static 'css/statistics.css' %}" rel="stylesheet">
+<div class="main-standings statistics-page optimal-team-page">
+    <div class="top-filters stats-top-filters">
+        <h1 class="stats-title">Optimal Team</h1>
+        <hr class="gray-line-top">
+
+        <form method="get" action="{% url 'public:statistics_optimal_team' %}" class="stats-filter-grid" id="optimal-team-filters-form">
+            <div class="section-std">
+                <div class="section-name-std"><span>Season</span></div>
+                <div class="dropdown-std">
+                    <select name="season" class="dropbtn-std stats-select" id="optimal-season-select">
+                        {% for year in season_options %}
+                        <option value="{{ year }}" {% if selected.season == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-std">
+                <div class="section-name-std"><span>GP</span></div>
+                <div class="dropdown-std">
+                    <select name="gp" class="dropbtn-std stats-select" id="optimal-gp-select">
+                        {% for gp in gp_options %}
+                        <option value="{{ gp.round }}" {% if selected.gp_round == gp.round %}selected{% endif %}>R{{ gp.round }} {{ gp.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-std">
+                <div class="section-name-std"><span>Budget</span></div>
+                <div class="dropdown-std">
+                    <select name="budget" class="dropbtn-std stats-select">
+                        <option value="150" {% if selected.budget == 150 %}selected{% endif %}>150</option>
+                        <option value="160" {% if selected.budget == 160 %}selected{% endif %}>160</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-std stats-actions-cell">
+                <div class="section-name-std"><span>Actions</span></div>
+                <div class="stats-filter-actions">
+                    <button type="submit" class="stats-btn">Apply</button>
+                    <a href="{% url 'public:statistics_optimal_team' %}" class="stats-btn stats-btn-secondary" style="display:flex;justify-content:center;align-items:center;text-decoration:none;">Reset</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="view-team-gp optimal-selection-panel">
+        <h1 class="stats-title">Optimal Selection</h1>
+        <hr class="gray-line">
+
+        {% if empty_state %}
+            <div class="stats-empty-state" style="display:block;">
+                No optimal lineup available for these filters. ({{ reason }})
+            </div>
+        {% else %}
+            <div class="subcontainer-gp optimal-subcontainer-gp">
+                <div class="left-gp">
+                    {% if gp_info.photo_link %}
+                    <img src="{% static 'theme/assets/gps/' %}{{ gp_info.photo_link }}" alt="GP" class="image-gp-left">
+                    {% endif %}
+                </div>
+                <div class="center-gp">
+                    <h1 class="round-gp"><span>Round {{ gp_info.round }}</span></h1>
+                    <h1 class="title-gp">
+                        {% if gp_info.country_link %}
+                        <img src="{% static 'theme/assets/gps/' %}{{ gp_info.country_link }}" alt="Country" class="image-gp-flag">
+                        {% endif %}
+                        <span>{{ gp_info.country }}</span>
+                    </h1>
+                    <div class="subtitle-gp">{{ gp_info.name }}</div>
+                </div>
+                <div class="right-gp">
+                    {% if gp_info.gp_photo %}
+                    <section style="display:flex; justify-content: flex-end;">
+                        <img src="{% static 'theme/assets/gps/' %}{{ gp_info.gp_photo }}" alt="Track" class="image-gp-right">
+                    </section>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="main-view-porra optimal-main-view-porra">
+                <div class="left-view-porra">
+                    <div class="section-team">
+                        <div class="pole-position-team">
+                            <div class="section-name-team"><span>Poleman</span></div>
+                            {% with p=optimal_team.bonus_selections.poleman %}
+                            <div class="view-selection-basic" style="border: 3px solid {{ p.team_color|default:'#999' }};border-radius: 5px;">
+                                <div style="align-self: auto; background-color: {{ p.team_color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                                </div>
+                                <div class="driver-selected-data-team">
+                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                        <span>{{ p.name|default:"-" }}</span>
+                                    </div>
+                                    <hr class="gray-line-driver">
+                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.poleman }}</span></div>
+                                </div>
+                            </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <div class="section-team">
+                        <div class="first-place-team">
+                            <div class="section-name-team"><span>1st Position</span></div>
+                            {% with p=optimal_team.bonus_selections.first_pos %}
+                            <div class="view-selection-basic" style="border: 3px solid {{ p.team_color|default:'#999' }};border-radius: 5px;">
+                                <div style="align-self: auto; background-color: {{ p.team_color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                                </div>
+                                <div class="driver-selected-data-team">
+                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                        <span>{{ p.name|default:"-" }}</span>
+                                    </div>
+                                    <hr class="gray-line-driver">
+                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.first_pos }}</span></div>
+                                </div>
+                            </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <div class="section-team">
+                        <div class="second-place-team">
+                            <div class="section-name-team"><span>2nd Position</span></div>
+                            {% with p=optimal_team.bonus_selections.second_pos %}
+                            <div class="view-selection-basic" style="border: 3px solid {{ p.team_color|default:'#999' }};border-radius: 5px;">
+                                <div style="align-self: auto; background-color: {{ p.team_color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                                </div>
+                                <div class="driver-selected-data-team">
+                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                        <span>{{ p.name|default:"-" }}</span>
+                                    </div>
+                                    <hr class="gray-line-driver">
+                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.second_pos }}</span></div>
+                                </div>
+                            </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <div class="section-team">
+                        <div class="third-place-team">
+                            <div class="section-name-team"><span>3rd Position</span></div>
+                            {% with p=optimal_team.bonus_selections.third_pos %}
+                            <div class="view-selection-basic" style="border: 3px solid {{ p.team_color|default:'#999' }};border-radius: 5px;">
+                                <div style="align-self: auto; background-color: {{ p.team_color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                                </div>
+                                <div class="driver-selected-data-team">
+                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                        <span>{{ p.name|default:"-" }}</span>
+                                    </div>
+                                    <hr class="gray-line-driver">
+                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.third_pos }}</span></div>
+                                </div>
+                            </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <div class="section-team">
+                        <div class="fastest-lap-team">
+                            <div class="section-name-team"><span>Fast Lap</span></div>
+                            {% with p=optimal_team.bonus_selections.fast_lap %}
+                            <div class="view-selection-basic" style="border: 3px solid {{ p.team_color|default:'#999' }};border-radius: 5px;">
+                                <div style="align-self: auto; background-color: {{ p.team_color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                                </div>
+                                <div class="driver-selected-data-team">
+                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                        <span>{{ p.name|default:"-" }}</span>
+                                    </div>
+                                    <hr class="gray-line-driver">
+                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.fast_lap }}</span></div>
+                                </div>
+                            </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <div class="section-team">
+                        <div class="best-team-team">
+                            <div class="section-name-team"><span>Best Team</span></div>
+                            {% with t=optimal_team.bonus_selections.team_winner %}
+                            <div class="view-selection-basic" style="border: 3px solid {{ t.color|default:'#999' }};border-radius: 5px;">
+                                <div style="align-self: auto; background-color: {{ t.color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
+                                    {% if t and t.photo_link %}<img src="{% static 'theme/assets/teams/' %}{{ t.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                                </div>
+                                <div class="driver-selected-data-team">
+                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                        <span>{{ t.name|default:"-" }}</span>
+                                    </div>
+                                    <hr class="gray-line-driver">
+                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.team_winner }}</span></div>
+                                </div>
+                            </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="right-view-porra">
+                    <div class="show-points">
+                        <div class="cost-cap">
+                            <span style="font-family: 'Formula1Regular';text-transform: uppercase;font-size:0.8em;">Cost Cap:</span>
+                            <span style="font-family: 'Formula1Bold';">{{ optimal_team.total_cost }}</span>
+                        </div>
+                        <div class="total-points">
+                            <span style="font-family: 'Formula1Regular';font-size:0.8em;">Total Points:</span>
+                            <span style="font-family: 'Formula1Bold'; align-self: flex-end;">{{ optimal_team.total_points }} pts</span>
+                        </div>
+                    </div>
+
+                    <div class="driver-selected-li">
+                        {% for d in optimal_team.drivers %}
+                            {% if forloop.counter <= 2 %}
+                            <li>
+                                <div {% if d.is_captain %}id="selection1"{% endif %} class="selected-div">
+                                    <div style="background-color:{{ d.team_color|default:'#999' }};" class="driver-selected-photo">
+                                        <div>
+                                            {% if d.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ d.photo_link }}" style="width: 100%; max-width: 12em; height: auto;">{% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="driver-selected-data-team">
+                                        <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                            <span>{{ d.name }}{% if d.is_captain %} (x2){% endif %}</span>
+                                        </div>
+                                        <hr class="gray-line-driver">
+                                        <div class="driver-selected-price"><span>Price</span><span>{{ d.price }}</span></div>
+                                        <div class="driver-selected-price"><span>Points</span><span>{{ d.effective_points }}</span></div>
+                                    </div>
+                                </div>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="driver-selected-li">
+                        {% for d in optimal_team.drivers %}
+                            {% if forloop.counter > 2 %}
+                            <li>
+                                <div {% if d.is_captain %}id="selection1"{% endif %} class="selected-div">
+                                    <div style="background-color:{{ d.team_color|default:'#999' }};" class="driver-selected-photo">
+                                        <div>
+                                            {% if d.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ d.photo_link }}" style="width: 100%; max-width: 12em; height: auto;">{% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="driver-selected-data-team">
+                                        <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                            <span>{{ d.name }}{% if d.is_captain %} (x2){% endif %}</span>
+                                        </div>
+                                        <hr class="gray-line-driver">
+                                        <div class="driver-selected-price"><span>Price</span><span>{{ d.price }}</span></div>
+                                        <div class="driver-selected-price"><span>Points</span><span>{{ d.effective_points }}</span></div>
+                                    </div>
+                                </div>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <hr class="gray-line" style="margin:2% 0 0 0;">
+                    <div class="driver-selected-li">
+                        {% for c in optimal_team.constructors %}
+                        <div class="team-selected-li">
+                            <li>
+                                <div class="selected-div">
+                                    <div style="background-color: {{ c.color|default:'#999' }}" class="driver-selected-photo">
+                                        <div>
+                                            {% if c.photo_link %}<img src="{% static 'theme/assets/teams/' %}{{ c.photo_link }}" style="width: 100%; max-width: 100%; height: auto;">{% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="driver-selected-data-team">
+                                        <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
+                                            <span>{{ c.name }}</span>
+                                        </div>
+                                        <hr class="gray-line-driver">
+                                        <div class="driver-selected-price"><span>Price</span><span>{{ c.price }}</span></div>
+                                        <div class="driver-selected-price"><span>Points</span><span>{{ c.points }}</span></div>
+                                    </div>
+                                </div>
+                            </li>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("optimal-team-filters-form");
+    const seasonSelect = document.getElementById("optimal-season-select");
+    const gpSelect = document.getElementById("optimal-gp-select");
+
+    if (!form || !seasonSelect) return;
+
+    seasonSelect.addEventListener("change", function () {
+        if (gpSelect) {
+            gpSelect.selectedIndex = 0;
+        }
+        form.submit();
+    });
+});
+</script>
+{% endblock %}
