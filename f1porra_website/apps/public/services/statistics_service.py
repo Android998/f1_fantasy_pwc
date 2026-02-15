@@ -45,6 +45,14 @@ ALLOWED_PRESETS = {
     "top3",
     "bottom3",
     "all",
+    "my_team",
+}
+
+ALLOWED_TEAM_PRESETS = {
+    "my_team",
+    "top3",
+    "bottom3",
+    "all",
 }
 
 ALLOWED_ASSET_TYPES = {"drivers", "constructors"}
@@ -88,6 +96,7 @@ def build_matrix_payload(
 
     if season is None:
         return {
+            "entity_type": "users",
             "season": season_year,
             "rows": [],
             "sort_by": _normalize_sort_by(sort_by),
@@ -103,6 +112,7 @@ def build_matrix_payload(
     gps = _get_scored_gps(season=season, gp_from=gp_from, gp_to=gp_to)
     if not gps:
         return {
+            "entity_type": "users",
             "season": season.year,
             "rows": [],
             "sort_by": _normalize_sort_by(sort_by),
@@ -125,6 +135,7 @@ def build_matrix_payload(
 
     if not porras:
         return {
+            "entity_type": "users",
             "season": season.year,
             "rows": [],
             "sort_by": _normalize_sort_by(sort_by),
@@ -196,6 +207,7 @@ def build_matrix_payload(
     rows = _sort_rows(rows, sort_by=normalized_sort_by, sort_dir=normalized_sort_dir)
 
     return {
+        "entity_type": "users",
         "season": season.year,
         "rows": rows,
         "sort_by": normalized_sort_by,
@@ -227,6 +239,7 @@ def build_trends_payload(
 
     if season is None:
         return {
+            "entity_type": "users",
             "season": season_year,
             "metric": normalized_metric,
             "preset": normalized_preset,
@@ -241,6 +254,7 @@ def build_trends_payload(
     gps = _get_scored_gps(season=season, gp_from=gp_from, gp_to=gp_to)
     if not gps:
         return {
+            "entity_type": "users",
             "season": season.year,
             "metric": normalized_metric,
             "preset": normalized_preset,
@@ -262,6 +276,7 @@ def build_trends_payload(
     )
     if not porras:
         return {
+            "entity_type": "users",
             "season": season.year,
             "metric": normalized_metric,
             "preset": normalized_preset,
@@ -319,6 +334,7 @@ def build_trends_payload(
         )
 
     return {
+        "entity_type": "users",
         "season": season.year,
         "metric": normalized_metric,
         "preset": normalized_preset,
@@ -326,6 +342,290 @@ def build_trends_payload(
         "gp_options": gp_options,
         "series": series,
         "resolved_user_ids": resolved_user_ids,
+        "empty_state": False,
+        "meta": {
+            "reason": None,
+            "scored_gps": len(gps),
+            "total_series": len(series),
+            "gp_from": gp_from,
+            "gp_to": gp_to,
+        },
+    }
+
+
+def build_teams_matrix_payload(
+    *,
+    season_year: int | None = None,
+    gp_from: int | None = None,
+    gp_to: int | None = None,
+    sort_by: str = "total_points",
+    sort_dir: str = "desc",
+) -> dict[str, Any]:
+    season = _resolve_season(season_year)
+
+    if season is None:
+        return {
+            "entity_type": "teams",
+            "season": season_year,
+            "rows": [],
+            "sort_by": _normalize_sort_by(sort_by),
+            "sort_dir": _normalize_sort_dir(sort_dir),
+            "empty_state": True,
+            "meta": {
+                "reason": "season_not_found_or_no_scored_data",
+                "scored_gps": 0,
+                "total_teams": 0,
+            },
+        }
+
+    gps = _get_scored_gps(season=season, gp_from=gp_from, gp_to=gp_to)
+    if not gps:
+        return {
+            "entity_type": "teams",
+            "season": season.year,
+            "rows": [],
+            "sort_by": _normalize_sort_by(sort_by),
+            "sort_dir": _normalize_sort_dir(sort_dir),
+            "empty_state": True,
+            "meta": {
+                "reason": "no_scored_gps_in_range",
+                "scored_gps": 0,
+                "total_teams": 0,
+            },
+        }
+
+    gp_ids = [gp.id for gp in gps]
+    porras = list(
+        Porra.objects.filter(season=season, gp_id__in=gp_ids, points__isnull=False)
+        .select_related("user", "gp", "user__userprofile__users_team")
+        .order_by("gp__nround", "user__username")
+    )
+
+    if not porras:
+        return {
+            "entity_type": "teams",
+            "season": season.year,
+            "rows": [],
+            "sort_by": _normalize_sort_by(sort_by),
+            "sort_dir": _normalize_sort_dir(sort_dir),
+            "empty_state": True,
+            "meta": {
+                "reason": "no_scored_entries",
+                "scored_gps": len(gp_ids),
+                "total_teams": 0,
+            },
+        }
+
+    team_by_user_id, team_names_by_id, members_by_team_id = _build_users_team_maps(season=season)
+    if not team_names_by_id:
+        return {
+            "entity_type": "teams",
+            "season": season.year,
+            "rows": [],
+            "sort_by": _normalize_sort_by(sort_by),
+            "sort_dir": _normalize_sort_dir(sort_dir),
+            "empty_state": True,
+            "meta": {
+                "reason": "no_teams_found",
+                "scored_gps": len(gp_ids),
+                "total_teams": 0,
+            },
+        }
+
+    scores_by_team: dict[int, dict[int, float]] = defaultdict(dict)
+    gp_scores: dict[int, list[tuple[int, float]]] = defaultdict(list)
+
+    for porra in porras:
+        team_id = team_by_user_id.get(porra.user_id)
+        if team_id is None:
+            continue
+        points = float(porra.points or 0.0)
+        scores_by_team[team_id][porra.gp_id] = scores_by_team[team_id].get(porra.gp_id, 0.0) + points
+
+    for team_id, scores in scores_by_team.items():
+        for gp_id, points in scores.items():
+            gp_scores[gp_id].append((team_id, points))
+
+    wins, podiums, bottom3 = _compute_gp_position_counts(gp_scores)
+
+    rows: list[dict[str, Any]] = []
+    for team_id, team_name in team_names_by_id.items():
+        scores = list(scores_by_team.get(team_id, {}).values())
+        if not scores:
+            continue
+        gps_played = len(scores)
+        total_points = sum(scores)
+        avg_points_gp = (total_points / gps_played) if gps_played else 0.0
+        volatility = pstdev(scores) if gps_played > 1 else 0.0
+        members = sorted(members_by_team_id.get(team_id, []), key=str.lower)
+
+        rows.append(
+            {
+                "team_id": team_id,
+                "team_name": team_name,
+                "members": members,
+                "total_points": round(total_points, 2),
+                "avg_points_gp": round(avg_points_gp, 2),
+                "wins_gp": wins.get(team_id, 0),
+                "podiums_gp": podiums.get(team_id, 0),
+                "bottom3_gp": bottom3.get(team_id, 0),
+                "volatility": round(volatility, 4),
+                "gps_played": gps_played,
+            }
+        )
+
+    normalized_sort_by = _normalize_sort_by(sort_by)
+    normalized_sort_dir = _normalize_sort_dir(sort_dir)
+    rows = _sort_rows(rows, sort_by=normalized_sort_by, sort_dir=normalized_sort_dir)
+
+    return {
+        "entity_type": "teams",
+        "season": season.year,
+        "rows": rows,
+        "sort_by": normalized_sort_by,
+        "sort_dir": normalized_sort_dir,
+        "empty_state": len(rows) == 0,
+        "meta": {
+            "reason": None if rows else "no_team_rows",
+            "scored_gps": len(gp_ids),
+            "total_teams": len(rows),
+        },
+    }
+
+
+def build_teams_trends_payload(
+    *,
+    season_year: int | None = None,
+    metric: str = "cumulative_points",
+    gp_from: int | None = None,
+    gp_to: int | None = None,
+    preset: str | None = None,
+    current_user_id: int | None = None,
+    selected_team_ids: list[int] | None = None,
+) -> dict[str, Any]:
+    season = _resolve_season(season_year)
+    normalized_metric = _normalize_trend_metric(metric)
+    normalized_preset = _normalize_team_preset(preset)
+
+    if season is None:
+        return {
+            "entity_type": "teams",
+            "season": season_year,
+            "metric": normalized_metric,
+            "preset": normalized_preset,
+            "labels": [],
+            "gp_options": [],
+            "series": [],
+            "resolved_team_ids": [],
+            "empty_state": True,
+            "meta": {"reason": "season_not_found_or_no_scored_data", "scored_gps": 0},
+        }
+
+    gps = _get_scored_gps(season=season, gp_from=gp_from, gp_to=gp_to)
+    if not gps:
+        return {
+            "entity_type": "teams",
+            "season": season.year,
+            "metric": normalized_metric,
+            "preset": normalized_preset,
+            "labels": [],
+            "gp_options": [],
+            "series": [],
+            "resolved_team_ids": [],
+            "empty_state": True,
+            "meta": {"reason": "no_scored_gps_in_range", "scored_gps": 0},
+        }
+
+    gp_ids = [gp.id for gp in gps]
+    labels = [gp.country for gp in gps]
+    gp_options = [{"round": gp.nround, "name": gp.country} for gp in gps]
+
+    porras = list(
+        Porra.objects.filter(season=season, gp_id__in=gp_ids, points__isnull=False)
+        .select_related("user", "gp", "user__userprofile__users_team")
+        .order_by("gp__nround", "user__username")
+    )
+
+    if not porras:
+        return {
+            "entity_type": "teams",
+            "season": season.year,
+            "metric": normalized_metric,
+            "preset": normalized_preset,
+            "labels": labels,
+            "gp_options": gp_options,
+            "series": [],
+            "resolved_team_ids": [],
+            "empty_state": True,
+            "meta": {"reason": "no_scored_entries", "scored_gps": len(gps)},
+        }
+
+    team_by_user_id, team_names_by_id, members_by_team_id = _build_users_team_maps(season=season)
+    if not team_names_by_id:
+        return {
+            "entity_type": "teams",
+            "season": season.year,
+            "metric": normalized_metric,
+            "preset": normalized_preset,
+            "labels": labels,
+            "gp_options": gp_options,
+            "series": [],
+            "resolved_team_ids": [],
+            "empty_state": True,
+            "meta": {"reason": "no_teams_found", "scored_gps": len(gps)},
+        }
+
+    scores_by_team: dict[int, dict[int, float]] = defaultdict(dict)
+    for porra in porras:
+        team_id = team_by_user_id.get(porra.user_id)
+        if team_id is None:
+            continue
+        points = float(porra.points or 0.0)
+        scores_by_team[team_id][porra.gp_id] = scores_by_team[team_id].get(porra.gp_id, 0.0) + points
+
+    resolved_team_ids = _resolve_trend_teams(
+        team_names_by_id=team_names_by_id,
+        scores_by_team=scores_by_team,
+        selected_team_ids=selected_team_ids,
+        preset=normalized_preset,
+        current_user_id=current_user_id,
+        team_by_user_id=team_by_user_id,
+    )
+
+    all_cumulative_by_gp: dict[int, dict[int, float]] = {}
+    running_all = {tid: 0.0 for tid in team_names_by_id}
+    for gp in gps:
+        for tid in team_names_by_id:
+            running_all[tid] += scores_by_team.get(tid, {}).get(gp.id, 0.0)
+        all_cumulative_by_gp[gp.id] = dict(running_all)
+
+    series: list[dict[str, Any]] = []
+    for team_id in resolved_team_ids:
+        data = _build_series_data_for_user(
+            metric=normalized_metric,
+            user_id=team_id,
+            gps=gps,
+            scores_by_user=scores_by_team,
+            all_cumulative_by_gp=all_cumulative_by_gp,
+        )
+        series.append(
+            {
+                "team_id": team_id,
+                "team_name": team_names_by_id.get(team_id),
+                "members": sorted(members_by_team_id.get(team_id, []), key=str.lower),
+                "data": data,
+            }
+        )
+
+    return {
+        "entity_type": "teams",
+        "season": season.year,
+        "metric": normalized_metric,
+        "preset": normalized_preset,
+        "labels": labels,
+        "gp_options": gp_options,
+        "series": series,
+        "resolved_team_ids": resolved_team_ids,
         "empty_state": False,
         "meta": {
             "reason": None,
@@ -440,7 +740,7 @@ def build_assets_trends_payload(
         key_field = "driver_id"
         name_getter = lambda row: row.driver.name
         group_name = "driver_name"
-        slots_per_entry = 5
+        _slots_per_entry = 5
     else:
         points_qs = TeamPoints.objects.filter(
             season=season, gp_id__in=gp_ids, team__isnull=False
@@ -448,7 +748,7 @@ def build_assets_trends_payload(
         key_field = "team_id"
         name_getter = lambda row: row.team.name
         group_name = "team_name"
-        slots_per_entry = 2
+        _slots_per_entry = 2
 
     scores_by_asset: dict[int, dict[int, float]] = defaultdict(dict)
     prices_by_asset: dict[int, dict[int, float]] = defaultdict(dict)
@@ -560,7 +860,7 @@ def build_assets_trends_payload(
                 data.append(round(sum(valid_ppm) / len(valid_ppm), 4) if valid_ppm else None)
             elif normalized_metric == "pick_rate_gp":
                 gp_entries = gp_entries_count.get(gp.id, 0)
-                denominator = gp_entries * slots_per_entry
+                denominator = gp_entries
                 if denominator:
                     picks = pick_counts_by_gp_asset.get(gp.id, {}).get(aid, 0)
                     data.append(round((picks / denominator) * 100.0, 2))
@@ -691,6 +991,31 @@ def _build_team_maps(*, season: Season) -> tuple[dict[int, str | None], dict[int
     return team_by_user_id, teammate_by_user_id
 
 
+def _build_users_team_maps(
+    *,
+    season: Season,
+) -> tuple[dict[int, int], dict[int, str], dict[int, list[str]]]:
+    profiles = list(
+        UserProfile.objects.filter(season=season, users_team__isnull=False)
+        .select_related("users_team", "user")
+        .order_by("users_team_id", "user_id")
+    )
+
+    team_by_user_id: dict[int, int] = {}
+    team_names_by_id: dict[int, str] = {}
+    members_by_team_id: dict[int, list[str]] = defaultdict(list)
+
+    for profile in profiles:
+        if profile.users_team_id is None:
+            continue
+        team_by_user_id[profile.user_id] = profile.users_team_id
+        if profile.users_team:
+            team_names_by_id[profile.users_team_id] = profile.users_team.name
+        members_by_team_id[profile.users_team_id].append(profile.user.username)
+
+    return team_by_user_id, team_names_by_id, members_by_team_id
+
+
 def _compute_teammate_h2h(
     *,
     user_id: int,
@@ -736,7 +1061,7 @@ def _sort_rows(rows: list[dict[str, Any]], *, sort_by: str, sort_dir: str) -> li
 
     def sort_key(row: dict[str, Any]) -> tuple[Any, str]:
         value = row.get(sort_by)
-        fallback = row.get("username", "")
+        fallback = row.get("username") or row.get("team_name") or row.get("name", "")
 
         # Keep None values stable at the end for both directions.
         none_rank = 1 if value is None else 0
@@ -753,6 +1078,12 @@ def _normalize_trend_metric(metric: str) -> str:
 
 def _normalize_preset(preset: str | None) -> str:
     if preset in ALLOWED_PRESETS:
+        return preset
+    return "all"
+
+
+def _normalize_team_preset(preset: str | None) -> str:
+    if preset in ALLOWED_TEAM_PRESETS:
         return preset
     return "all"
 
@@ -775,7 +1106,7 @@ def _build_driver_rows(*, season: Season, gp_ids: list[int]) -> list[dict[str, A
     latest_gp_id = gp_sequence[-1] if gp_sequence else None
     prev_gp_id = gp_sequence[-2] if len(gp_sequence) > 1 else None
 
-    pick_counts, latest_pick_counts, total_entries, latest_entries, slots_per_entry = _build_pick_rate_maps(
+    pick_counts, latest_pick_counts, total_entries, latest_entries, _slots_per_entry = _build_pick_rate_maps(
         season=season,
         gp_ids=gp_ids,
         asset_type="drivers",
@@ -815,8 +1146,8 @@ def _build_driver_rows(*, season: Season, gp_ids: list[int]) -> list[dict[str, A
         ) or 0
         price_change = current_price - prev_price
         ppm = (total_points / current_price) if current_price else 0.0
-        total_denominator = total_entries * slots_per_entry
-        latest_denominator = latest_entries * slots_per_entry
+        total_denominator = total_entries
+        latest_denominator = latest_entries
         pick_rate = (
             (pick_counts.get(driver_id, 0) / total_denominator) * 100.0
             if total_denominator
@@ -854,7 +1185,7 @@ def _build_constructor_rows(*, season: Season, gp_ids: list[int]) -> list[dict[s
     latest_gp_id = gp_sequence[-1] if gp_sequence else None
     prev_gp_id = gp_sequence[-2] if len(gp_sequence) > 1 else None
 
-    pick_counts, latest_pick_counts, total_entries, latest_entries, slots_per_entry = _build_pick_rate_maps(
+    pick_counts, latest_pick_counts, total_entries, latest_entries, _slots_per_entry = _build_pick_rate_maps(
         season=season,
         gp_ids=gp_ids,
         asset_type="constructors",
@@ -894,8 +1225,8 @@ def _build_constructor_rows(*, season: Season, gp_ids: list[int]) -> list[dict[s
         ) or 0
         price_change = current_price - prev_price
         ppm = (total_points / current_price) if current_price else 0.0
-        total_denominator = total_entries * slots_per_entry
-        latest_denominator = latest_entries * slots_per_entry
+        total_denominator = total_entries
+        latest_denominator = latest_entries
         pick_rate = (
             (pick_counts.get(team_id, 0) / total_denominator) * 100.0
             if total_denominator
@@ -1025,6 +1356,41 @@ def _resolve_trend_users(
     return sorted(all_user_ids, key=lambda uid: users_by_id[uid].username.lower())
 
 
+def _resolve_trend_teams(
+    *,
+    team_names_by_id: dict[int, str],
+    scores_by_team: dict[int, dict[int, float]],
+    selected_team_ids: list[int] | None,
+    preset: str,
+    current_user_id: int | None,
+    team_by_user_id: dict[int, int],
+) -> list[int]:
+    all_team_ids = list(team_names_by_id.keys())
+    selected = [tid for tid in (selected_team_ids or []) if tid in team_names_by_id]
+
+    totals = {
+        tid: sum(scores_by_team.get(tid, {}).values())
+        for tid in all_team_ids
+    }
+
+    if preset == "my_team":
+        if current_user_id is not None:
+            team_id = team_by_user_id.get(current_user_id)
+            if team_id in team_names_by_id:
+                return [team_id]
+
+    if preset == "top3":
+        return _top_n_entity_ids(names_by_id=team_names_by_id, totals=totals, n=3, reverse=True)
+
+    if preset == "bottom3":
+        return _top_n_entity_ids(names_by_id=team_names_by_id, totals=totals, n=3, reverse=False)
+
+    if selected:
+        return sorted(set(selected), key=lambda tid: team_names_by_id[tid].lower())
+
+    return sorted(all_team_ids, key=lambda tid: team_names_by_id[tid].lower())
+
+
 def _top_n_user_ids(
     *,
     users_by_id: dict[int, User],
@@ -1038,6 +1404,21 @@ def _top_n_user_ids(
         reverse=reverse,
     )
     return [uid for uid, _ in ranked[:n]]
+
+
+def _top_n_entity_ids(
+    *,
+    names_by_id: dict[int, str],
+    totals: dict[int, float],
+    n: int,
+    reverse: bool,
+) -> list[int]:
+    ranked = sorted(
+        totals.items(),
+        key=lambda item: (item[1], names_by_id.get(item[0], "").lower()),
+        reverse=reverse,
+    )
+    return [entity_id for entity_id, _ in ranked[:n]]
 
 
 def _build_series_data_for_user(

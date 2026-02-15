@@ -1,7 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
     const seasonSelect = document.getElementById("season-select");
+    const entitySelect = document.getElementById("entity-select");
     const metricSelect = document.getElementById("metric-select");
     const presetSelect = document.getElementById("preset-select");
+    const entitiesLabel = document.getElementById("entities-label");
     const usersDropdownBtn = document.getElementById("users-dropdown-btn");
     const usersDropdownContent = document.getElementById("users-dropdown-content");
     const gpRangeBtn = document.getElementById("gp-range-btn");
@@ -12,29 +14,98 @@ document.addEventListener("DOMContentLoaded", () => {
     const emptyStateEl = document.getElementById("stats-empty-state");
     const matrixBody = document.getElementById("statistics-matrix-body");
     const matrixHeaderRow = document.getElementById("statistics-matrix-header-row");
+    const pageTitle = document.getElementById("stats-page-title");
+    const trendsTitle = document.getElementById("trends-title");
+    const matrixTitle = document.getElementById("matrix-title");
 
     const state = {
+        entityType: "users",
         sortBy: "total_points",
         sortDir: "desc",
-        selectedUserIds: [],
+        selectedEntityIds: [],
         gpOptions: [],
         selectedGpRounds: [],
     };
 
+    const ENTITY_CONFIG = {
+        users: {
+            label: "Users",
+            allLabel: "All users",
+            singleLabel: "user",
+            idKey: "user_id",
+            nameKey: "username",
+            presetOptions: [
+                { value: "all", label: "All Users" },
+                { value: "top3", label: "Top 3" },
+                { value: "bottom3", label: "Bottom 3" },
+                { value: "me_teammate", label: "Me + Teammate" },
+            ],
+            matrixHeaders: `
+                <th class="rank sortable" data-sort-key="rank">Rank</th>
+                <th class="user-name sortable" data-sort-key="username">Name</th>
+                <th class="team-name sortable" data-sort-key="team_name">Team</th>
+                <th class="points sortable" data-sort-key="total_points">Points</th>
+                <th class="points sortable" data-sort-key="avg_points_gp">Avg/GP</th>
+                <th class="wins sortable" data-sort-key="wins_gp">Wins</th>
+                <th class="podiums sortable" data-sort-key="podiums_gp">Podiums</th>
+                <th class="last-2 sortable" data-sort-key="bottom3_gp">Bottom 3</th>
+                <th class="points sortable" data-sort-key="volatility">Volatility</th>
+                <th class="points sortable" data-sort-key="gps_played">GPs</th>
+                <th class="points sortable" data-sort-key="teammate_h2h_wins">H2H W</th>
+                <th class="points sortable" data-sort-key="teammate_h2h_losses">H2H L</th>
+            `,
+            emptyColspan: 12,
+        },
+        teams: {
+            label: "Teams",
+            allLabel: "All teams",
+            singleLabel: "team",
+            idKey: "team_id",
+            nameKey: "team_name",
+            presetOptions: [
+                { value: "all", label: "All Teams" },
+                { value: "top3", label: "Top 3" },
+                { value: "bottom3", label: "Bottom 3" },
+                { value: "my_team", label: "My Team" },
+            ],
+            matrixHeaders: `
+                <th class="rank sortable" data-sort-key="rank">Rank</th>
+                <th class="team-name sortable" data-sort-key="team_name">Team</th>
+                <th class="user-name">Members</th>
+                <th class="points sortable" data-sort-key="total_points">Points</th>
+                <th class="points sortable" data-sort-key="avg_points_gp">Avg/GP</th>
+                <th class="wins sortable" data-sort-key="wins_gp">Wins</th>
+                <th class="podiums sortable" data-sort-key="podiums_gp">Podiums</th>
+                <th class="last-2 sortable" data-sort-key="bottom3_gp">Bottom 3</th>
+                <th class="points sortable" data-sort-key="volatility">Volatility</th>
+                <th class="points sortable" data-sort-key="gps_played">GPs</th>
+            `,
+            emptyColspan: 10,
+        },
+    };
+
     function init() {
         seasonSelect.value = "2025";
+        entitySelect.value = "users";
+        state.entityType = entitySelect.value;
         metricSelect.value = "cumulative_points";
         presetSelect.value = "all";
 
-        matrixHeaderRow.querySelectorAll("th.sortable").forEach((header) => {
-            header.addEventListener("click", () => onSortHeaderClick(header));
-        });
+        applyEntityConfig();
 
         applyBtn.addEventListener("click", refreshData);
         resetBtn.addEventListener("click", resetFilters);
+        entitySelect.addEventListener("change", () => {
+            state.entityType = entitySelect.value;
+            state.sortBy = "total_points";
+            state.sortDir = "desc";
+            state.selectedEntityIds = [];
+            applyEntityConfig();
+            refreshData();
+        });
         presetSelect.addEventListener("change", () => {
-            if (presetSelect.value === "me_teammate") {
-                state.selectedUserIds = [];
+            if (presetSelect.value === "me_teammate" || presetSelect.value === "my_team") {
+                state.selectedEntityIds = [];
             }
         });
 
@@ -60,17 +131,45 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshData();
     }
 
+    function applyEntityConfig() {
+        const config = ENTITY_CONFIG[state.entityType] || ENTITY_CONFIG.users;
+        if (entitiesLabel) {
+            entitiesLabel.textContent = config.label;
+        }
+        if (pageTitle) {
+            pageTitle.textContent = `${config.label} Statistics`;
+        }
+        if (trendsTitle) {
+            trendsTitle.textContent = `${config.label} Trends`;
+        }
+        if (matrixTitle) {
+            matrixTitle.textContent = `${config.label} Matrix`;
+        }
+
+        presetSelect.innerHTML = config.presetOptions
+            .map((option) => `<option value="${option.value}">${option.label}</option>`)
+            .join("");
+        presetSelect.value = "all";
+
+        matrixHeaderRow.innerHTML = config.matrixHeaders;
+        matrixHeaderRow.querySelectorAll("th.sortable").forEach((header) => {
+            header.addEventListener("click", () => onSortHeaderClick(header));
+        });
+
+        usersDropdownContent.innerHTML = "";
+        usersDropdownBtn.textContent = config.allLabel;
+    }
+
     function resetFilters() {
         seasonSelect.value = "2025";
         metricSelect.value = "cumulative_points";
-        presetSelect.value = "all";
         state.sortBy = "total_points";
         state.sortDir = "desc";
-        state.selectedUserIds = [];
+        state.selectedEntityIds = [];
         state.selectedGpRounds = [];
         usersDropdownContent.innerHTML = "";
         gpRangeContent.innerHTML = "";
-        usersDropdownBtn.textContent = "All users";
+        applyEntityConfig();
         gpRangeBtn.textContent = "All GPs";
         refreshData();
     }
@@ -78,20 +177,21 @@ document.addEventListener("DOMContentLoaded", () => {
     async function refreshData() {
         setLoadingState();
         try {
-            const selectedBefore = getSelectedUserIds();
+            const selectedBefore = getSelectedEntityIds();
             const matrixPayload = await fetchMatrix();
             const trendsPayload = await fetchTrends(selectedBefore);
 
             if (
-                presetSelect.value === "me_teammate" &&
+                (presetSelect.value === "me_teammate" || presetSelect.value === "my_team") &&
                 selectedBefore.length === 0 &&
-                Array.isArray(trendsPayload.resolved_user_ids) &&
-                trendsPayload.resolved_user_ids.length > 0
+                Array.isArray(resolvePresetIds(trendsPayload)) &&
+                resolvePresetIds(trendsPayload).length > 0
             ) {
-                state.selectedUserIds = trendsPayload.resolved_user_ids.slice(0, 2);
+                const resolved = resolvePresetIds(trendsPayload);
+                state.selectedEntityIds = resolved.slice(0, presetSelect.value === "me_teammate" ? 2 : 1);
             }
 
-            hydrateUsersFilter(matrixPayload.rows || []);
+            hydrateEntitiesFilter(matrixPayload.rows || []);
             hydrateGpRange(trendsPayload.gp_options || []);
             renderMatrix(matrixPayload);
             renderChart(trendsPayload);
@@ -117,6 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function fetchMatrix() {
         const params = new URLSearchParams();
         params.set("season", seasonSelect.value);
+        params.set("entity", state.entityType);
         params.set("sort_by", state.sortBy);
         params.set("sort_dir", state.sortDir);
         const gpRange = getSelectedGpRange();
@@ -135,6 +236,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function fetchTrends(selected) {
         const params = new URLSearchParams();
         params.set("season", seasonSelect.value);
+        params.set("entity", state.entityType);
         params.set("metric", metricSelect.value);
         const gpRange = getSelectedGpRange();
         if (gpRange) {
@@ -142,7 +244,8 @@ document.addEventListener("DOMContentLoaded", () => {
             params.set("gp_to", String(gpRange.to));
         }
         params.set("preset", selected.length > 0 ? "all" : presetSelect.value);
-        selected.forEach((id) => params.append("users", String(id)));
+        const paramKey = state.entityType === "teams" ? "teams" : "users";
+        selected.forEach((id) => params.append(paramKey, String(id)));
 
         const response = await fetch(`/statistics/api/trends/?${params.toString()}`);
         if (!response.ok) {
@@ -153,12 +256,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderMatrix(payload) {
         let rows = payload.rows || [];
-        if (state.selectedUserIds.length > 0) {
-            const selectedSet = new Set(state.selectedUserIds);
-            rows = rows.filter((row) => selectedSet.has(row.user_id));
+        const config = ENTITY_CONFIG[state.entityType] || ENTITY_CONFIG.users;
+        if (state.selectedEntityIds.length > 0) {
+            const selectedSet = new Set(state.selectedEntityIds);
+            rows = rows.filter((row) => selectedSet.has(Number(row[config.idKey])));
         }
         if (payload.empty_state || rows.length === 0) {
-            matrixBody.innerHTML = "<tr><td colspan=\"12\">No statistics available for selected filters.</td></tr>";
+            matrixBody.innerHTML = `<tr><td colspan="${config.emptyColspan}">No statistics available for selected filters.</td></tr>`;
+            return;
+        }
+
+        if (state.entityType === "teams") {
+            matrixBody.innerHTML = rows.map((row, index) => `
+                <tr>
+                    <td class="rank">${index + 1}</td>
+                    <td class="team-name">${escapeHtml(row.team_name || "-")}</td>
+                    <td class="user-name">${escapeHtml(formatMembers(row.members))}</td>
+                    <td class="points">${formatNumber(row.total_points)}</td>
+                    <td class="points">${formatNumber(row.avg_points_gp)}</td>
+                    <td class="wins">${formatNumber(row.wins_gp)}</td>
+                    <td class="podiums">${formatNumber(row.podiums_gp)}</td>
+                    <td class="last-2">${formatNumber(row.bottom3_gp)}</td>
+                    <td class="points">${formatNumber(row.volatility)}</td>
+                    <td class="points">${formatNumber(row.gps_played)}</td>
+                </tr>
+            `).join("");
             return;
         }
 
@@ -190,12 +312,14 @@ document.addEventListener("DOMContentLoaded", () => {
             rank_per_gp: "Rank per GP",
             gap_to_leader: "Gap to Leader",
         };
+        const config = ENTITY_CONFIG[state.entityType] || ENTITY_CONFIG.users;
+        const seriesNameKey = state.entityType === "teams" ? "team_name" : "username";
 
         if (payload.empty_state || !payload.series || payload.series.length === 0) {
             emptyStateEl.hidden = false;
             emptyStateEl.textContent = "No trend data available for selected filters.";
             Highcharts.chart("trends-chart", {
-                title: { text: "User Trends" },
+                title: { text: `${config.label} Trends` },
                 xAxis: { categories: [] },
                 yAxis: { title: { text: "" } },
                 series: [],
@@ -209,9 +333,9 @@ document.addEventListener("DOMContentLoaded", () => {
         emptyStateEl.hidden = true;
         const chart = Highcharts.chart("trends-chart", {
             chart: { type: "line", backgroundColor: "#ffffff" },
-            title: { text: titleByMetric[payload.metric] || "User Trends" },
+            title: { text: titleByMetric[payload.metric] || `${config.label} Trends` },
             subtitle: {
-                text: "Click on a line or legend item to highlight a user",
+                text: `Click on a line or legend item to highlight a ${config.singleLabel}`,
                 align: "center",
                 style: { fontSize: "12px" },
             },
@@ -234,7 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 },
             },
             series: payload.series.map((s) => ({
-                name: s.username || "User",
+                name: s[seriesNameKey] || (state.entityType === "teams" ? "Team" : "User"),
                 data: s.data || [],
             })),
         });
@@ -242,6 +366,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function focusSeries(chart, seriesName) {
+        const config = ENTITY_CONFIG[state.entityType] || ENTITY_CONFIG.users;
         const current = chart.userOptions.custom?.focusedSeriesName || null;
         const nextFocus = current === seriesName ? null : seriesName;
 
@@ -283,7 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
         chart.setSubtitle({
             text: nextFocus
                 ? `Selected: ${nextFocus}`
-                : "Click on a line or legend item to highlight a user",
+                : `Click on a line or legend item to highlight a ${config.singleLabel}`,
         });
         updateExternalLegendSelection(chart);
         chart.redraw();
@@ -360,11 +485,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function renderFeedback(matrixPayload, trendsPayload) {
+        const config = ENTITY_CONFIG[state.entityType] || ENTITY_CONFIG.users;
         if (matrixPayload.empty_state || trendsPayload.empty_state) {
             feedbackEl.textContent = "Season has no scored Grand Prix data for current filters.";
             return;
         }
-        feedbackEl.textContent = `Loaded ${matrixPayload.meta.total_users || matrixPayload.rows.length} users across ${matrixPayload.meta.scored_gps} scored GPs.`;
+        const totalCount = matrixPayload.meta.total_users || matrixPayload.meta.total_teams || matrixPayload.rows.length;
+        feedbackEl.textContent = `Loaded ${totalCount} ${config.label.toLowerCase()} across ${matrixPayload.meta.scored_gps} scored GPs.`;
     }
 
     function onSortHeaderClick(header) {
@@ -381,36 +508,37 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshData();
     }
 
-    function hydrateUsersFilter(rows) {
-        const previous = state.selectedUserIds.slice();
+    function hydrateEntitiesFilter(rows) {
+        const config = ENTITY_CONFIG[state.entityType] || ENTITY_CONFIG.users;
+        const previous = state.selectedEntityIds.slice();
         const options = rows
-            .map((row) => ({ id: row.user_id, label: row.username }))
+            .map((row) => ({ id: row[config.idKey], label: row[config.nameKey] }))
             .filter((o) => Number.isFinite(Number(o.id)) && o.label)
             .sort((a, b) => a.label.localeCompare(b.label));
 
         const validSelected = previous.filter((id) => options.some((opt) => Number(opt.id) === Number(id)));
-        state.selectedUserIds = validSelected;
+        state.selectedEntityIds = validSelected;
 
         usersDropdownContent.innerHTML = [
-            `<label class="users-option"><input type="checkbox" data-user-id="" ${validSelected.length === 0 ? "checked" : ""}>All users</label>`,
+            `<label class="users-option"><input type="checkbox" data-entity-id="" ${validSelected.length === 0 ? "checked" : ""}>${config.allLabel}</label>`,
             ...options.map((option) => {
                 const checked = validSelected.includes(Number(option.id)) ? "checked" : "";
-                return `<label class="users-option"><input type="checkbox" data-user-id="${option.id}" ${checked}>${escapeHtml(option.label)}</label>`;
+                return `<label class="users-option"><input type="checkbox" data-entity-id="${option.id}" ${checked}>${escapeHtml(option.label)}</label>`;
             }),
         ].join("");
 
         usersDropdownContent.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
-            checkbox.addEventListener("change", onUsersCheckboxChange);
+            checkbox.addEventListener("change", onEntitiesCheckboxChange);
         });
-        updateUsersButtonLabel();
+        updateEntitiesButtonLabel();
     }
 
-    function onUsersCheckboxChange(event) {
+    function onEntitiesCheckboxChange(event) {
         const input = event.target;
-        const isAll = input.dataset.userId === "";
-        const allCheckbox = usersDropdownContent.querySelector("input[data-user-id='']");
-        const itemCheckboxes = Array.from(usersDropdownContent.querySelectorAll("input[data-user-id]"))
-            .filter((cb) => cb.dataset.userId !== "");
+        const isAll = input.dataset.entityId === "";
+        const allCheckbox = usersDropdownContent.querySelector("input[data-entity-id='']");
+        const itemCheckboxes = Array.from(usersDropdownContent.querySelectorAll("input[data-entity-id]"))
+            .filter((cb) => cb.dataset.entityId !== "");
 
         if (isAll) {
             if (input.checked) {
@@ -426,32 +554,40 @@ document.addEventListener("DOMContentLoaded", () => {
                 allCheckbox.checked = true;
             }
         }
-        state.selectedUserIds = getSelectedUserIds();
-        updateUsersButtonLabel();
+        state.selectedEntityIds = getSelectedEntityIds();
+        updateEntitiesButtonLabel();
     }
 
-    function getSelectedUserIds() {
+    function getSelectedEntityIds() {
         if (!usersDropdownContent || !usersDropdownContent.children.length) {
-            return state.selectedUserIds.slice();
+            return state.selectedEntityIds.slice();
         }
-        return Array.from(usersDropdownContent.querySelectorAll("input[data-user-id]"))
-            .filter((input) => input.checked && input.dataset.userId !== "")
-            .map((input) => Number(input.dataset.userId))
+        return Array.from(usersDropdownContent.querySelectorAll("input[data-entity-id]"))
+            .filter((input) => input.checked && input.dataset.entityId !== "")
+            .map((input) => Number(input.dataset.entityId))
             .filter((n) => Number.isFinite(n));
     }
 
-    function updateUsersButtonLabel() {
-        const selected = state.selectedUserIds;
+    function updateEntitiesButtonLabel() {
+        const config = ENTITY_CONFIG[state.entityType] || ENTITY_CONFIG.users;
+        const selected = state.selectedEntityIds;
         if (!selected.length) {
-            usersDropdownBtn.textContent = "All users";
+            usersDropdownBtn.textContent = config.allLabel;
             return;
         }
         if (selected.length === 1) {
-            const label = usersDropdownContent.querySelector(`input[data-user-id='${selected[0]}']`)?.parentElement?.textContent?.trim();
+            const label = usersDropdownContent.querySelector(`input[data-entity-id='${selected[0]}']`)?.parentElement?.textContent?.trim();
             usersDropdownBtn.textContent = label || "1 selected";
             return;
         }
         usersDropdownBtn.textContent = `${selected.length} selected`;
+    }
+
+    function resolvePresetIds(payload) {
+        if (state.entityType === "teams") {
+            return payload.resolved_team_ids || [];
+        }
+        return payload.resolved_user_ids || [];
     }
 
     function hydrateGpRange(gpOptions) {
@@ -531,6 +667,13 @@ document.addEventListener("DOMContentLoaded", () => {
             return Number.isInteger(value) ? value.toString() : value.toFixed(2);
         }
         return value ?? "-";
+    }
+
+    function formatMembers(value) {
+        if (Array.isArray(value)) {
+            return value.length ? value.join(", ") : "-";
+        }
+        return value || "-";
     }
 
     function escapeHtml(value) {

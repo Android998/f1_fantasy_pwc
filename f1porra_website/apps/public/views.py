@@ -15,6 +15,8 @@ from f1porra_website.apps.public.services import (
     build_assets_trends_payload,
     build_matrix_payload,
     build_optimal_team_payload,
+    build_teams_matrix_payload,
+    build_teams_trends_payload,
     build_trends_payload,
 )
 from django.contrib.auth.models import User
@@ -202,14 +204,24 @@ def statistics_matrix_api(request):
     gp_to = _parse_int(request.GET.get("gp_to"))
     sort_by = request.GET.get("sort_by", "total_points")
     sort_dir = request.GET.get("sort_dir", "desc")
+    entity = request.GET.get("entity", "users")
 
-    payload = build_matrix_payload(
-        season_year=season,
-        gp_from=gp_from,
-        gp_to=gp_to,
-        sort_by=sort_by,
-        sort_dir=sort_dir,
-    )
+    if entity == "teams":
+        payload = build_teams_matrix_payload(
+            season_year=season,
+            gp_from=gp_from,
+            gp_to=gp_to,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
+    else:
+        payload = build_matrix_payload(
+            season_year=season,
+            gp_from=gp_from,
+            gp_to=gp_to,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
     return JsonResponse(payload)
 
 
@@ -219,21 +231,35 @@ def statistics_trends_api(request):
     gp_to = _parse_int(request.GET.get("gp_to"))
     metric = request.GET.get("metric", "cumulative_points")
     preset = request.GET.get("preset")
-    users = _parse_int_list(request.GET.getlist("users"))
-    users_csv = _parse_int_list([request.GET.get("users", "")])
-
-    selected_users = users if users else users_csv
     current_user_id = request.user.id if request.user.is_authenticated else None
+    entity = request.GET.get("entity", "users")
 
-    payload = build_trends_payload(
-        season_year=season,
-        metric=metric,
-        gp_from=gp_from,
-        gp_to=gp_to,
-        preset=preset,
-        current_user_id=current_user_id,
-        selected_user_ids=selected_users or None,
-    )
+    if entity == "teams":
+        teams = _parse_int_list(request.GET.getlist("teams"))
+        teams_csv = _parse_int_list([request.GET.get("teams", "")])
+        selected_teams = teams if teams else teams_csv
+        payload = build_teams_trends_payload(
+            season_year=season,
+            metric=metric,
+            gp_from=gp_from,
+            gp_to=gp_to,
+            preset=preset,
+            current_user_id=current_user_id,
+            selected_team_ids=selected_teams or None,
+        )
+    else:
+        users = _parse_int_list(request.GET.getlist("users"))
+        users_csv = _parse_int_list([request.GET.get("users", "")])
+        selected_users = users if users else users_csv
+        payload = build_trends_payload(
+            season_year=season,
+            metric=metric,
+            gp_from=gp_from,
+            gp_to=gp_to,
+            preset=preset,
+            current_user_id=current_user_id,
+            selected_user_ids=selected_users or None,
+        )
     return JsonResponse(payload)
 
 
