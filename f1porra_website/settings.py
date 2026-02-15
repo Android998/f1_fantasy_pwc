@@ -36,7 +36,7 @@ SECRET_KEY = env('SECRET_KEY', default=os.getenv('SECRET_KEY'))
 DEBUG = env.bool('DEBUG', default=os.getenv('DEBUG'))
 
 # Allowed hosts
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=os.getenv('ALLOWED_HOSTS').split(','))
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
 
 PORT=8000
@@ -158,16 +158,22 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 
 # Static and media files
-if DEBUG=="True":
+if DEBUG:
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 else:
     MEDIA_URL = '/media/'
     MEDIA_ROOT = '/home/site/wwwroot/media'
 
+csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+if csrf_env:
+    CSRF_TRUSTED_ORIGINS = [x.strip() for x in csrf_env.split(",") if x.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = []
 
-CSRF_TRUSTED_ORIGINS = [
-    'https://f1-fantasy-pwc-hrddbufxayece3hj.francecentral-01.azurewebsites.net',
+CSRF_TRUSTED_ORIGINS = CSRF_TRUSTED_ORIGINS or [
+    "https://f1-fantasy-webapp-dev-gxazcsbngxb0bagv.francecentral-01.azurewebsites.net",
+    "https://f1-fantasy-webapp-prod-cqaahnfxg5hkbxhd.francecentral-01.azurewebsites.net",
     'http://127.0.0.1',
     'https://f1fantasypwcofficial.com'
 ]
