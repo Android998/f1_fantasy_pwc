@@ -1,0 +1,41 @@
+name: Refresh DEV DB from PROD
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 0"  # Domingo 03:00 UTC
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Dump PROD (schema + data)
+        env:
+          PGPASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+        run: |
+          pg_dump \
+            -h "${{ secrets.PROD_DB_HOST }}" \
+            -p "${{ secrets.PROD_DB_PORT }}" \
+            -U "${{ secrets.PROD_DB_USER }}" \
+            -d "${{ secrets.PROD_DB_NAME }}" \
+            -Fc \
+            --no-owner --no-privileges \
+            -f prod.dump
+
+      - name: Restore into DEV (overwrite)
+        env:
+          PGPASSWORD: ${{ secrets.DEV_DB_PASSWORD }}
+        run: |
+          pg_restore \
+            -h "${{ secrets.DEV_DB_HOST }}" \
+            -p "${{ secrets.DEV_DB_PORT }}" \
+            -U "${{ secrets.DEV_DB_USER }}" \
+            -d "${{ secrets.DEV_DB_NAME }}" \
+            --clean --if-exists \
+            --no-owner --no-privileges \
+            prod.dump

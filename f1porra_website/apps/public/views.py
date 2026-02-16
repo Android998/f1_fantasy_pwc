@@ -547,31 +547,55 @@ def team(request):
 
     # Get the latest Grand Prix round number
     latest_gp = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
-    second_latest_gp = latest_gp - 1
 
-    # Get the latest Grand Prix details
-    latest_grand_prix = GrandPrix.objects.filter(season=current_season).get(nround=latest_gp)
-    sec_latest_grand_prix = GrandPrix.objects.filter(season=current_season).get(nround=second_latest_gp)
+    # Default placeholders
+    latest_grand_prix = None
+    sec_latest_grand_prix = None
 
-    # Calculate time remaining
-    time_remaining = latest_grand_prix.last_edit_date - now # Calculate time remaining
-    due_date = latest_grand_prix.last_edit_date <= now
-    days = max(time_remaining.days, 0)
-    hours = time_remaining.seconds//3600 if not due_date else 0
-    minutes = (time_remaining.seconds//60)%60 if not due_date else 0
+    # Determine second latest only when there's more than one round
+    second_latest_gp = None
+    if latest_gp and latest_gp > 1:
+        second_latest_gp = latest_gp - 1
 
-    data = {
-        'round': latest_grand_prix.nround,
-        'name': latest_grand_prix.country,
-        'official_name': latest_grand_prix.name,
-        'photo_link': latest_grand_prix.photo_link,  
-        'country_link': latest_grand_prix.country_link, 
-        'gp_photo': latest_grand_prix.gp_photo, 
-        'hours': hours,
-        'minutes': minutes,
-        'days': days,
-        'due_date': due_date
-    }
+    # Use .first() to avoid DoesNotExist exceptions
+    if latest_gp:
+        latest_grand_prix = GrandPrix.objects.filter(season=current_season, nround=latest_gp).first()
+    if second_latest_gp:
+        sec_latest_grand_prix = GrandPrix.objects.filter(season=current_season, nround=second_latest_gp).first()
+
+    # Calculate time remaining only when latest GP and its date exist
+    if latest_grand_prix and latest_grand_prix.last_edit_date:
+        time_remaining = latest_grand_prix.last_edit_date - now
+        due_date = latest_grand_prix.last_edit_date <= now
+        days = max(time_remaining.days, 0)
+        hours = time_remaining.seconds // 3600 if not due_date else 0
+        minutes = (time_remaining.seconds // 60) % 60 if not due_date else 0
+
+        data = {
+            'round': latest_grand_prix.nround,
+            'name': latest_grand_prix.country,
+            'official_name': latest_grand_prix.name,
+            'photo_link': latest_grand_prix.photo_link,
+            'country_link': latest_grand_prix.country_link,
+            'gp_photo': latest_grand_prix.gp_photo,
+            'hours': hours,
+            'minutes': minutes,
+            'days': days,
+            'due_date': due_date
+        }
+    else:
+        data = {
+            'round': latest_gp,
+            'name': '',
+            'official_name': '',
+            'photo_link': '',
+            'country_link': '',
+            'gp_photo': '',
+            'hours': 0,
+            'minutes': 0,
+            'days': 0,
+            'due_date': True
+        }
 
     # Calculate the number of porras
     total_porras = Porra.objects.filter(season=current_season).count()
@@ -609,47 +633,77 @@ def team(request):
 
 
     # Drivers
-    drivers = Driver.objects.filter(season=current_season).annotate(
-        total_points=Coalesce(Sum('driverpoints__points'), Value(0)),
-        current_price=Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=latest_grand_prix.id)), Value(0)),
-        previous_price=Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=sec_latest_grand_prix.id)), Value(0))
-    ).order_by('-total_points')
+    # Annotate prices only when GP info available; otherwise only total points
+    if latest_grand_prix and sec_latest_grand_prix:
+        drivers = Driver.objects.filter(season=current_season).annotate(
+            total_points=Coalesce(Sum('driverpoints__points'), Value(0)),
+            current_price=Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=latest_grand_prix.id)), Value(0)),
+            previous_price=Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=sec_latest_grand_prix.id)), Value(0))
+        ).order_by('-total_points')
+    else:
+        drivers = Driver.objects.filter(season=current_season).annotate(
+            total_points=Coalesce(Sum('driverpoints__points'), Value(0))
+        ).order_by('-total_points')
 
     for driver in drivers:
-        driver.price_change = driver.current_price - driver.previous_price if driver.previous_price else 0
-        driver.pick_rate = round(driver_pick_rates.get(driver.id, 0) * 100.0 / total_porras, 1)
+        # Ensure price fields exist
+        current_price = getattr(driver, 'current_price', 0) or 0
+        previous_price = getattr(driver, 'previous_price', 0) or 0
+        driver.price_change = current_price - previous_price if previous_price else 0
+        # Avoid division by zero when there are no porras
+        if total_porras and total_porras > 0:
+            driver.pick_rate = round(driver_pick_rates.get(driver.id, 0) * 100.0 / total_porras, 1)
+        else:
+            driver.pick_rate = 0
 
 
     # Teams
-    teams = Team.objects.filter(season=current_season).annotate(
-        total_points=Coalesce(Sum('teampoints__points'), Value(0)),
-        current_price=Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=latest_grand_prix.id)), Value(0)),
-        previous_price=Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=sec_latest_grand_prix.id)), Value(0))
-    ).order_by('-total_points')
+    if latest_grand_prix and sec_latest_grand_prix:
+        teams = Team.objects.filter(season=current_season).annotate(
+            total_points=Coalesce(Sum('teampoints__points'), Value(0)),
+            current_price=Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=latest_grand_prix.id)), Value(0)),
+            previous_price=Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=sec_latest_grand_prix.id)), Value(0))
+        ).order_by('-total_points')
+    else:
+        teams = Team.objects.filter(season=current_season).annotate(
+            total_points=Coalesce(Sum('teampoints__points'), Value(0))
+        ).order_by('-total_points')
 
     for team in teams:
-        team.price_change = team.current_price - team.previous_price if team.previous_price else 0
-        team.pick_rate = round(team_pick_rates.get(team.id, 0) * 100.0 / total_porras, 1)
+        current_price = getattr(team, 'current_price', 0) or 0
+        previous_price = getattr(team, 'previous_price', 0) or 0
+        team.price_change = current_price - previous_price if previous_price else 0
+        if total_porras and total_porras > 0:
+            team.pick_rate = round(team_pick_rates.get(team.id, 0) * 100.0 / total_porras, 1)
+        else:
+            team.pick_rate = 0
 
 
     # Get the user's Porra for the latest Grand Prix
     user = request.user
     user_profile = UserProfile.objects.get(user=user)
     user_team = user_profile.users_team
-    gp = GrandPrix.objects.filter(season=current_season, nround=latest_gp).first()
-    last_gp =GrandPrix.objects.filter(season=current_season, nround=second_latest_gp).first()
-    try:
-        print(user, gp, current_season)
-        user_porra = Porra.objects.get(user=user, gp=gp, season=current_season)
-    except Porra.DoesNotExist:
-        print("NO PORRA FOR CURRENT GP")
+    gp = GrandPrix.objects.filter(season=current_season, nround=latest_gp).first() if latest_gp else None
+    last_gp = GrandPrix.objects.filter(season=current_season, nround=second_latest_gp).first() if second_latest_gp else None
+
+    # Get user's porra only if there's a latest GP
+    if gp:
+        try:
+            user_porra = Porra.objects.get(user=user, gp=gp, season=current_season)
+        except Porra.DoesNotExist:
+            user_porra = {}
+    else:
         user_porra = {}
-    
-    try:
-        latest_first_pos = Porra.objects.filter(season=current_season).get(user=user, gp=last_gp).first_pos.name or None
-    except Porra.DoesNotExist:
-        latest_first_pos =""
-        print("NO LAST FIRST POS FOUND")
+
+    # Get latest first_pos from the previous GP when available
+    if last_gp:
+        try:
+            latest_first_pos_obj = Porra.objects.filter(season=current_season).get(user=user, gp=last_gp)
+            latest_first_pos = latest_first_pos_obj.first_pos.name if latest_first_pos_obj.first_pos else ""
+        except Porra.DoesNotExist:
+            latest_first_pos = ""
+    else:
+        latest_first_pos = ""
 
     # Initialize total price and price change dictionaries
     total_price = 0
@@ -664,9 +718,15 @@ def team(request):
         for driver in drivers_in_porra:
             if driver:
                 porra_list_names.append(driver.name)
-                driver.current_price = DriverPoints.objects.filter(driver=driver, gp=latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
-                previous_price = DriverPoints.objects.filter(driver=driver, gp=sec_latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
-                driver.price_change = driver.current_price- previous_price
+                if latest_grand_prix:
+                    driver.current_price = DriverPoints.objects.filter(driver=driver, gp=latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
+                else:
+                    driver.current_price = 0
+                if sec_latest_grand_prix:
+                    previous_price = DriverPoints.objects.filter(driver=driver, gp=sec_latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
+                else:
+                    previous_price = 0
+                driver.price_change = driver.current_price - previous_price
                 total_price += driver.current_price
             else:
                 porra_list_names.append("")
@@ -674,9 +734,15 @@ def team(request):
         for team in teams_in_porra:
             if team:
                 porra_list_names.append(team.name)
-                team.current_price = TeamPoints.objects.filter(team=team, gp=latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
-                previous_price = TeamPoints.objects.filter(team=team, gp=sec_latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
-                team.price_change = team.current_price- previous_price
+                if latest_grand_prix:
+                    team.current_price = TeamPoints.objects.filter(team=team, gp=latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
+                else:
+                    team.current_price = 0
+                if sec_latest_grand_prix:
+                    previous_price = TeamPoints.objects.filter(team=team, gp=sec_latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
+                else:
+                    previous_price = 0
+                team.price_change = team.current_price - previous_price
                 total_price += team.current_price
             else:
                 porra_list_names.append("")
