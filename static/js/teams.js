@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const constructorsTab = document.getElementById('constructors-tab');
     const driversTable = document.getElementById('drivers-table');
     const constructorsTable = document.getElementById('constructors-table');
+    const sortSelect = document.getElementById('myteam-sort-select');
 
     // Mostrar la tabla de pilotos por defecto
     driversTable.style.display = 'block';
@@ -30,6 +31,60 @@ document.addEventListener('DOMContentLoaded', function() {
         constructorsTab.classList.add('active');
         driversTab.classList.remove('active');
     });
+
+    function parsePointsFromRow(row) {
+        const pointsText = row.querySelector('.driver-stats ul li:first-child span')?.innerText || '0';
+        const match = pointsText.match(/-?\d+(\.\d+)?/);
+        return match ? parseFloat(match[0]) : 0;
+    }
+
+    function parsePriceFromRow(row) {
+        const priceText = row.querySelector('.driver-price span:first-child')?.innerText || '0';
+        const numeric = priceText.replace(/[^\d.-]/g, '');
+        const value = parseFloat(numeric);
+        return Number.isFinite(value) ? value : 0;
+    }
+
+    function rowSortValue(row, sortKey) {
+        const points = parsePointsFromRow(row);
+        const price = parsePriceFromRow(row);
+
+        if (sortKey === 'price') return price;
+        if (sortKey === 'ppm') return price > 0 ? points / price : 0;
+        return points;
+    }
+
+    function sortRowsInTable(tableEl, sortKey) {
+        if (!tableEl) return;
+        const listContainer = tableEl.querySelector('ul');
+        if (!listContainer) return;
+
+        const items = Array.from(listContainer.querySelectorAll(':scope > li'));
+        items.sort((a, b) => {
+            const rowA = a.querySelector('.fila-piloto, .fila-equipo');
+            const rowB = b.querySelector('.fila-piloto, .fila-equipo');
+            const valueA = rowA ? rowSortValue(rowA, sortKey) : 0;
+            const valueB = rowB ? rowSortValue(rowB, sortKey) : 0;
+            if (valueA !== valueB) return valueB - valueA;
+
+            const nameA = rowA?.querySelector('.driver-name span')?.innerText?.toLowerCase() || '';
+            const nameB = rowB?.querySelector('.driver-name span')?.innerText?.toLowerCase() || '';
+            return nameA.localeCompare(nameB);
+        });
+
+        items.forEach(item => listContainer.appendChild(item));
+    }
+
+    function applyListSorting() {
+        const sortKey = sortSelect ? sortSelect.value : 'points';
+        sortRowsInTable(driversTable, sortKey);
+        sortRowsInTable(constructorsTable, sortKey);
+    }
+
+    if (sortSelect) {
+        sortSelect.addEventListener('change', applyListSorting);
+    }
+    applyListSorting();
 
     // Función para manejar la selección de pilotos o equipos
     function handleSelection(button, type) {

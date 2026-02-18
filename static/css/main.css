@@ -603,6 +603,34 @@
   
 }
 
+.myteam-sort-bar{
+  width: 95%;
+  margin: 0 2% 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  font-family: "Formula1Bold";
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.myteam-sort-select{
+  border: none;
+  border-radius: 8px;
+  background-color: gray;
+  color: white;
+  padding: 0.32rem 0.5rem;
+  font-family: "Formula1Bold";
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.myteam-sort-select:focus{
+  outline: 2px solid #E10600;
+  outline-offset: 1px;
+}
+
 .team-driver-selectable{  
   height: 5.2rem;
   width:95%;
