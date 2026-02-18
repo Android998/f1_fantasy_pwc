@@ -446,9 +446,19 @@
                             {% else %}
                             <div id="selection6" class="selected-div" style="display: none;">
                             {% endif %}
-                                <div style="background-color: {{user_porra.team1.color_rgb}}" class="driver-selected-photo">
-                                    <div>
-                                        <img id="equipo-photo-1" src="{% static 'theme/assets/teams/' %}{{user_porra.team1.selected_link}}" width="220rem" height="auto"></img>
+                                <div class="driver-selected-photo team-photo-stack"
+                                        style="background-color: {{user_porra.team1.color_rgb|default:''}}; --logo-size: 52px; --logo-pad: 7px;">
+
+                                    <img id="equipo-photo-1"
+                                        class="team-car"
+                                        src="{% if user_porra.team1 and user_porra.team1.selected_link %}{% static 'theme/assets/teams/' %}{{ user_porra.team1.selected_link }}{% endif %}"
+                                        alt="team car">
+
+                                    <div class="team-logo-ring">
+                                        <img id="equipo-logo-1"
+                                            class="team-logo"
+                                            src="{% if user_porra.team1 and user_porra.team1.photo_link %}{% static 'theme/assets/teams/' %}{{ user_porra.team1.photo_link }}{% endif %}"
+                                            alt="team logo">
                                     </div>
                                 </div>
                                 <div class="driver-selected-data">
@@ -488,9 +498,19 @@
                             {% else %}
                             <div id="selection7" class="selected-div" style="display: none;">
                             {% endif %}
-                                <div style="background-color: {{user_porra.team2.color_rgb}}" class="driver-selected-photo">
-                                    <div>
-                                        <img id="equipo-photo-2" src="{% static 'theme/assets/teams/' %}{{user_porra.team2.selected_link}}" width="220rem" height="auto"></img>
+                                <div class="driver-selected-photo team-photo-stack"
+                                        style="background-color: {{user_porra.team2.color_rgb|default:''}}; --logo-size: 52px; --logo-pad: 7px;">
+
+                                    <img id="equipo-photo-2"
+                                        class="team-car"
+                                        src="{% if user_porra.team2 and user_porra.team2.selected_link %}{% static 'theme/assets/teams/' %}{{ user_porra.team2.selected_link }}{% endif %}"
+                                        alt="team car">
+
+                                    <div class="team-logo-ring">
+                                        <img id="equipo-logo-2"
+                                            class="team-logo"
+                                            src="{% if user_porra.team2 and user_porra.team2.photo_link %}{% static 'theme/assets/teams/' %}{{ user_porra.team2.photo_link }}{% endif %}"
+                                            alt="team logo">
                                     </div>
                                 </div>
                                 <div class="driver-selected-data">
@@ -630,7 +650,7 @@
                                 {% else %}
                                 <div class="selectable-piloto">
                                 {% endif %}
-                                    <button id="add-selection" class="btn add-piloto">
+                                    <button type="button" id="add-selection" class="btn add-piloto">
                                         <span style="height: 100%; width: 100%;">+</span>
                                     </button>
                                 </div>
@@ -639,7 +659,7 @@
                                 {% else %}
                                 <div style="display:none;" class="no-selectable-piloto">
                                 {% endif %}
-                                    <button id="remove-selection" class="remove-driver-table">
+                                    <button type="button" id="remove-selection" class="remove-driver-table">
                                         <span style="height: 100%; width: 100%;">&#x2715;</span>
                                     </button>
                                 </div>
@@ -654,11 +674,19 @@
                     <ul>
                         {% for equipo in equipos %}
                         <li>
-                            <div class="fila-equipo" data-selected-container="{% if equipo.name in porra_list_names %}{{ piloto_positions|dict_lookup:equipo.name }}{% else %}null{% endif %}">
-                                <div class="foto-piloto" style="background-color: {{equipo.color_rgb|safe}};">
-                                    <div class="foto-piloto-inside" style="position: absolute; left: 0; bottom: 0; " >
-                                        <img src="{% static 'theme/assets/teams/' %}{{ equipo.photo_link }}" width="auto" height="90rem"> 
-                                    </div>
+                            <div class="fila-equipo" 
+                                data-selected-container="{% if equipo.name in porra_list_names %}{{ piloto_positions|dict_lookup:equipo.name }}{% else %}null{% endif %}" 
+                                data-car-src="{% if equipo.selected_link %}{% static 'theme/assets/teams/' %}{{ equipo.selected_link }}{% endif %}"
+                                data-logo-src="{% if equipo.photo_link %}{% static 'theme/assets/teams/' %}{{ equipo.photo_link }}{% endif %}">
+                                <div class="foto-piloto team-photo-stack" style="background-color: {{equipo.color_rgb|safe}};">
+                                    {% if equipo.selected_link %}
+                                        <img class="team-car" src="{% static 'theme/assets/teams/' %}{{ equipo.selected_link }}" alt="{{equipo.name}} car">
+                                    {% endif %}
+                                    {% if equipo.photo_link %}
+                                        <div class="team-logo-ring">
+                                            <img class="team-logo" src="{% static 'theme/assets/teams/' %}{{ equipo.photo_link }}" alt="{{equipo.name}} logo">
+                                        </div>
+                                    {% endif %}
                                 </div>
                                 <div class="data-piloto">
                                     <div class="piloto-equipo">
@@ -694,7 +722,7 @@
                                 {% else %}
                                 <div class="selectable-piloto">
                                 {% endif %}
-                                    <button id="add-selection" class="btn add-equipo">
+                                    <button type="button" id="add-selection" class="btn add-equipo">
                                         <span style="height: 100%; width: 100%;">+</span>
                                     </button>
                                 </div>
@@ -703,7 +731,7 @@
                                 {% else %}
                                 <div style="display:none;" class="no-selectable-piloto">
                                 {% endif %}
-                                    <button id="remove-selection" class="remove-team-table">
+                                    <button type="button" id="remove-selection" class="remove-team-table">
                                         <span style="height: 100%; width: 100%;">&#x2715;</span>
                                     </button>
                                 </div>

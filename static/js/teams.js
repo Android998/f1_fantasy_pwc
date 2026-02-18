@@ -34,15 +34,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Función para manejar la selección de pilotos o equipos
     function handleSelection(button, type) {
         const row = button.closest(`.fila-${type}`);
+        if (!row) {
+            console.error('Row not found for type:', type);
+            return;
+        }
         const name = row.querySelector(`.driver-name span`).innerText;
         const price = row.querySelector(`.driver-price span:first-child`).innerText;
         const priceChange = row.querySelector('.price-up') ? row.querySelector('.price-up').innerText : row.querySelector('.price-down').innerText;
         const priceChangeClass = row.querySelector('.price-up') ? 'price-up' : 'price-down';
-        const photoSrc = row.querySelector('.foto-piloto-inside img').getAttribute('src');
         const bgColor = row.querySelector('.foto-piloto').style.backgroundColor;
 
-        // Modificar la ruta de la imagen del piloto si es piloto
-        const selectedPhotoSrc = photoSrc.replace('/drivers/drivers/', '/drivers/selected/');
+        let selectedPhotoSrc = '';
+        let selectedLogoSrc = '';
+
+        if (type === 'piloto') {
+            const photoImg = row.querySelector('.foto-piloto-inside img');
+            const photoSrc = photoImg ? photoImg.getAttribute('src') : '';
+            selectedPhotoSrc = photoSrc.replace('/drivers/drivers/', '/drivers/selected/');
+        } else {
+            // Constructors
+            selectedPhotoSrc = row.dataset.carSrc || (row.querySelector('img.team-car')?.getAttribute('src') || '');
+            selectedLogoSrc = row.dataset.logoSrc || (row.querySelector('img.team-logo')?.getAttribute('src') || '');
+        }
 
         // Obtener presupuesto disponible actual
         const BudgetEle = document.getElementById('available-budget').querySelector('span:last-child')
@@ -77,6 +90,11 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById(`${type}-price-change-${selectedContainer}`).innerText = priceChange;
             document.getElementById(`${type}-price-change-${selectedContainer}`).className = priceChangeClass;
             document.getElementById(`${type}-photo-${selectedContainer}`).setAttribute('src', selectedPhotoSrc);
+
+            if (type === 'equipo' && selectedLogoSrc) {
+                const logoEl = document.getElementById(`equipo-logo-${selectedContainer}`);
+                if (logoEl) logoEl.setAttribute('src', selectedLogoSrc);
+            }
 
             // Cambiar el color de fondo del contenedor seleccionado
             selectionContainer.querySelector('.driver-selected-photo').style.backgroundColor = bgColor;
