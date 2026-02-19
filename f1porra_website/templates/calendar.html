@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link href="{% static 'css/calendar.css' %}" rel="stylesheet">
+
+<div class="main-standings calendar-page">
+    <div class="user-standings calendar-cards-panel">
+        <h1 class="calendar-title">Race Calendar {{ selected_season }}</h1>
+        <hr class="gray-line">
+
+        {% if gp_cards %}
+        <div class="calendar-cards-grid">
+            {% for gp in gp_cards %}
+            <article class="calendar-card {{ gp.state }} {% if gp.is_selected %}selected{% endif %}">
+                <div class="calendar-card-head">
+                    <span class="calendar-round">Round {{ gp.round }}</span>
+                </div>
+
+                <h2 class="calendar-country">
+                    {% if gp.country_link %}
+                    <img src="{% static 'theme/assets/gps/' %}{{ gp.country_link }}" alt="{{ gp.country }} flag" class="calendar-country-flag">
+                    {% endif %}
+                    <span>{{ gp.country }}</span>
+                </h2>
+                <p class="calendar-name">{{ gp.name }}</p>
+                <p class="calendar-date">{{ gp.date_label }}</p>
+
+                {% if gp.gp_photo %}
+                <img src="{% static 'theme/assets/gps/' %}{{ gp.gp_photo }}" alt="{{ gp.country }} track layout" class="calendar-track-map">
+                {% endif %}
+
+                {% if gp.actions %}
+                <div class="calendar-actions">
+                    {% for action in gp.actions %}
+                    <a
+                        href="{{ action.url }}"
+                        class="calendar-action-btn"
+                        {% if action.external %}target="_blank" rel="noopener noreferrer"{% endif %}
+                    >
+                        {{ action.label }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="calendar-actions">
+                    <span class="calendar-action-muted">
+                        {% if gp.state == "locked" %}
+                        Closed
+                        {% elif gp.state == "future" %}
+                        Coming Soon
+                        {% else %}
+                        -
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="calendar-empty">No races found for this season.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
