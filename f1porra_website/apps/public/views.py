@@ -8,7 +8,7 @@ import datetime as dt
 import pytz
 import json
 from datetime import date
-from .models import Season, Driver, Team, DriverPoints, TeamPoints, GrandPrix, Porra, RaceResults
+from .models import Season, Driver, Team, DriverPoints, TeamPoints, GrandPrix, Porra, RaceResults, BlockChip
 from f1porra_website.apps.accounts.models import UserProfile, UsersTeam
 from f1porra_website.apps.public.services import (
     build_assets_matrix_payload,
@@ -50,6 +50,40 @@ def adjust_color(hex_color, amount):
 
 def normalize_name(name):
     return ' '.join(word.capitalize() if word != "RB" else "RB" for word in name.split())
+
+def _chip_window(nround):
+    if not nround:
+        return None
+    return (nround - 1) // 12
+
+
+def _triple_chip_available(user, gp):
+    if not gp or not gp.nround:
+        return False
+    return not Porra.objects.filter(
+        season=current_season,
+        user=user,
+        gp__nround__gt=_chip_window(gp.nround) * 12,
+        gp__nround__lte=(_chip_window(gp.nround) + 1) * 12,
+        triple_points_chip=True,
+    ).exists()
+
+
+def _block_chip_available(user, gp):
+    if not gp or not gp.nround:
+        return False
+    return not BlockChip.objects.filter(
+        season=current_season,
+        blocker=user,
+        gp__nround__gt=_chip_window(gp.nround) * 12,
+        gp__nround__lte=(_chip_window(gp.nround) + 1) * 12,
+    ).exists()
+
+
+def _block_chip_deadline_passed(gp, now):
+    if not gp or not gp.last_edit_date:
+        return True
+    return now >= (gp.last_edit_date - dt.timedelta(days=1))
 
 
 # Create your views here.
@@ -329,6 +363,67 @@ def _parse_int_list(values):
     # Preserve order, deduplicate
     return list(dict.fromkeys(parsed))
 
+@login_required
+def use_block_chip(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+    now = datetime.now(pytz.UTC)
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    gp_id = payload.get('gp_id')
+    target_user_id = payload.get('target_user_id')
+    asset_type = payload.get('asset_type')
+    blocked_asset_id = payload.get('blocked_asset_id')
+
+    gp = GrandPrix.objects.filter(season=current_season, country=gp_id).first()
+    if not gp:
+        return JsonResponse({'success': False, 'error': 'GP no válido'}, status=400)
+
+    if _block_chip_deadline_passed(gp, now):
+        return JsonResponse({'success': False, 'error': 'El bloqueo debe usarse al menos 24h antes del cierre.'}, status=400)
+
+    if not _block_chip_available(request.user, gp):
+        return JsonResponse({'success': False, 'error': 'Ya has usado el chip de bloqueo en este bloque de 12 GPs.'}, status=400)
+
+    target = User.objects.filter(id=target_user_id, is_active=True).exclude(id=request.user.id).first()
+    if not target:
+        return JsonResponse({'success': False, 'error': 'Usuario objetivo no válido.'}, status=400)
+
+    if BlockChip.objects.filter(season=current_season, gp=gp, target=target).exists():
+        return JsonResponse({'success': False, 'error': 'Ese usuario ya ha sido bloqueado en este GP.'}, status=400)
+
+    if gp.nround and gp.nround > 1:
+        if BlockChip.objects.filter(season=current_season, gp__nround=gp.nround - 1, target=target).exists():
+            return JsonResponse({'success': False, 'error': 'Ese usuario está protegido porque ya fue bloqueado en el GP anterior.'}, status=400)
+
+    blocked_driver = None
+    blocked_team = None
+    if asset_type == BlockChip.AssetType.DRIVER:
+        blocked_driver = Driver.objects.filter(season=current_season, id=blocked_asset_id).first()
+        if not blocked_driver:
+            return JsonResponse({'success': False, 'error': 'Piloto bloqueado no válido.'}, status=400)
+    elif asset_type == BlockChip.AssetType.TEAM:
+        blocked_team = Team.objects.filter(season=current_season, id=blocked_asset_id).first()
+        if not blocked_team:
+            return JsonResponse({'success': False, 'error': 'Constructor bloqueado no válido.'}, status=400)
+    else:
+        return JsonResponse({'success': False, 'error': 'Tipo de activo no válido.'}, status=400)
+
+    BlockChip.objects.create(
+        season=current_season,
+        gp=gp,
+        blocker=request.user,
+        target=target,
+        asset_type=asset_type,
+        blocked_driver=blocked_driver,
+        blocked_team=blocked_team,
+    )
+
+    return JsonResponse({'success': True})
 
 def standings(request):
     selected_gp = request.GET.get('gp', 'overall')
@@ -505,11 +600,14 @@ def team(request):
             driver5_name = normalize_name(data.get('driver5'))
             team1_name = normalize_name(data.get('team1'))
             team2_name = normalize_name(data.get('team2'))
+            use_triple_points_chip = bool(data.get('triple_points_chip', False))
             
-
             # Get or create the GP
             user = request.user
             gp = GrandPrix.objects.get(season=current_season, country=gp_id)
+
+            if use_triple_points_chip and not _triple_chip_available(user, gp):
+                return JsonResponse({'success': False, 'error': 'Ya has usado el chip de triples puntos en este bloque de 12 GPs.'}, status=400)
 
             # Obtener o crear la porra para el usuario y el GP
             porra, created = Porra.objects.update_or_create(
@@ -531,6 +629,7 @@ def team(request):
                     'driver5': Driver.objects.filter(season=current_season, name=driver5_name).first() if driver5_name else None,
                     'team1': Team.objects.filter(season=current_season, name=team1_name).first() if team1_name else None,
                     'team2': Team.objects.filter(season=current_season, name=team2_name).first() if team2_name else None,
+                    'triple_points_chip': use_triple_points_chip,
                 }
             )
           
@@ -764,4 +863,37 @@ def team(request):
     # Crear un diccionario para mapear nombres a posiciones
     piloto_positions = {name: index + 1 if index<6 else index-4 for index, name in enumerate(porra_list_names) if name != ""}
 
-    return render(request, 'team.html', {'data': data, "pilotos": drivers, "equipos": teams, 'user_porra': user_porra, 'remain_price': remain_price, 'bar_length': bar_length, 'porra_list_names': porra_list_names, 'piloto_positions': piloto_positions, 'latest_first_pos':latest_first_pos})
+    triple_chip_available = _triple_chip_available(user, gp) if gp else False
+    block_chip_available = _block_chip_available(user, gp) if gp else False
+    block_chip_deadline_passed = _block_chip_deadline_passed(gp, now) if gp else True
+    current_block = BlockChip.objects.filter(season=current_season, blocker=user, gp=gp).select_related('target', 'blocked_driver', 'blocked_team').first() if gp else None
+    blocked_users_ids = list(BlockChip.objects.filter(season=current_season, gp=gp).values_list('target_id', flat=True)) if gp else []
+    block_targets = User.objects.exclude(id=user.id).filter(is_active=True).order_by('username') if gp else User.objects.none()
+
+    block_chip_reset_message = "Si activas este chip, no podrás volver a usarlo en este bloque de 12 GPs."
+    if gp and gp.nround:
+        season_last_round = GrandPrix.objects.filter(season=current_season).aggregate(max_nround=Max('nround'))['max_nround'] or gp.nround
+        next_window_round = ((_chip_window(gp.nround) + 1) * 12) + 1
+        if next_window_round > season_last_round:
+            block_chip_reset_message = "Si activas este chip, no podrás volver a usarlo hasta el final de temporada."
+        else:
+            block_chip_reset_message = f"Si activas este chip, no podrás volver a usarlo hasta la round {next_window_round}."
+
+    return render(request, 'team.html', {
+        'data': data,
+        "pilotos": drivers,
+        "equipos": teams,
+        'user_porra': user_porra,
+        'remain_price': remain_price,
+        'bar_length': bar_length,
+        'porra_list_names': porra_list_names,
+        'piloto_positions': piloto_positions,
+        'latest_first_pos': latest_first_pos,
+        'triple_chip_available': triple_chip_available,
+        'block_chip_available': block_chip_available,
+        'block_chip_deadline_passed': block_chip_deadline_passed,
+        'block_targets': block_targets,
+        'blocked_users_ids': blocked_users_ids,
+        'current_block': current_block,
+        'block_chip_reset_message': block_chip_reset_message,
+    })

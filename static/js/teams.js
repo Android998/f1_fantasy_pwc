@@ -490,6 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const csrfToken = getCSRFToken();
         const gpId = document.querySelector('meta[name="gp-id"]').getAttribute('content');
+        const triplePointsChip = document.getElementById('triple-points-chip')?.checked || false;
 
         // Disable the button to prevent multiple submissions
         const saveButton = document.getElementById("save-team-button");
@@ -516,7 +517,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 driver4: driver4,
                 driver5: driver5,
                 team1: team1,
-                team2: team2
+                team2: team2,
+                triple_points_chip: triplePointsChip
             })
         })
         .then(response => response.json())
@@ -540,8 +542,139 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Event listener for the Reset Team button
-    document.querySelector('.button-save-team').addEventListener('click', saveTeamSelection);
+    function toggleBlockAssetSelect() {
+        const assetTypeEl = document.getElementById('block-asset-type');
+        const driverSelect = document.getElementById('block-driver-id');
+        const teamSelect = document.getElementById('block-team-id');
+        if (!assetTypeEl || !driverSelect || !teamSelect) return;
+
+        if (assetTypeEl.value === 'team') {
+            driverSelect.style.display = 'none';
+            teamSelect.style.display = 'inline-block';
+        } else {
+            driverSelect.style.display = 'inline-block';
+            teamSelect.style.display = 'none';
+        }
+    }
+
+    function toggleDrsChip() {
+        const drsButton = document.getElementById('drs-chip-button');
+        const tripleInput = document.getElementById('triple-points-chip');
+        if (!drsButton || !tripleInput || tripleInput.disabled) return;
+
+        tripleInput.checked = !tripleInput.checked;
+        drsButton.classList.toggle('active', tripleInput.checked);
+    }
+
+    function openBlockChipModal() {
+        const modal = document.getElementById('block-chip-modal');
+        const trigger = document.getElementById('pitstop-chip-button');
+        if (!modal || !trigger || trigger.disabled) return;
+        modal.style.display = 'flex';
+    }
+
+    function closeBlockChipModal() {
+        const modal = document.getElementById('block-chip-modal');
+        if (!modal) return;
+        modal.style.display = 'none';
+    }
+
+    function useBlockChip() {
+        const btn = document.getElementById('use-block-chip-button');
+        const targetUserEl = document.getElementById('block-target-user');
+        const assetTypeEl = document.getElementById('block-asset-type');
+        const driverSelect = document.getElementById('block-driver-id');
+        const teamSelect = document.getElementById('block-team-id');
+        const disclaimer = document.querySelector('#block-chip-modal .chip-disclaimer');
+        const gpId = document.querySelector('meta[name="gp-id"]').getAttribute('content');
+
+        if (!btn || !targetUserEl || !assetTypeEl || !driverSelect || !teamSelect) return;
+
+        const assetType = assetTypeEl.value;
+        const blockedAssetId = assetType === 'team' ? teamSelect.value : driverSelect.value;
+        const targetUserId = targetUserEl.value;
+
+        if (!targetUserId || !blockedAssetId) {
+            alert('Selecciona usuario y activo a bloquear.');
+            return;
+        }
+
+        const confirmationMsg = disclaimer ? `${disclaimer.textContent.trim()}
+
+¿Confirmas que quieres usar el chip ahora?` : '¿Confirmas que quieres usar el chip de bloqueo ahora?';
+        if (!window.confirm(confirmationMsg)) {
+            return;
+        }
+
+        btn.disabled = true;
+
+        fetch('/team/block-chip/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify({
+                gp_id: gpId,
+                target_user_id: targetUserId,
+                asset_type: assetType,
+                blocked_asset_id: blockedAssetId,
+            }),
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    location.reload();
+                    return;
+                }
+                btn.disabled = false;
+                alert(data.error || 'No se pudo guardar el bloqueo.');
+            })
+            .catch(() => {
+                btn.disabled = false;
+                alert('Error al guardar el bloqueo.');
+            });
+    }
+
+    const saveBtn = document.querySelector('.button-save-team');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveTeamSelection);
+    }
+
+    const drsChipButton = document.getElementById('drs-chip-button');
+    if (drsChipButton) {
+        drsChipButton.addEventListener('click', toggleDrsChip);
+    }
+
+    const pitStopButton = document.getElementById('pitstop-chip-button');
+    if (pitStopButton) {
+        pitStopButton.addEventListener('click', openBlockChipModal);
+    }
+
+    const closeBlockModalButton = document.getElementById('close-block-chip-modal');
+    if (closeBlockModalButton) {
+        closeBlockModalButton.addEventListener('click', closeBlockChipModal);
+    }
+
+    const blockChipModal = document.getElementById('block-chip-modal');
+    if (blockChipModal) {
+        blockChipModal.addEventListener('click', function(event) {
+            if (event.target === blockChipModal) {
+                closeBlockChipModal();
+            }
+        });
+    }
+
+    const blockAssetTypeEl = document.getElementById('block-asset-type');
+    if (blockAssetTypeEl) {
+        blockAssetTypeEl.addEventListener('change', toggleBlockAssetSelect);
+        toggleBlockAssetSelect();
+    }
+
+    const blockBtn = document.getElementById('use-block-chip-button');
+    if (blockBtn) {
+        blockBtn.addEventListener('click', useBlockChip);
+    }
 
 });
 

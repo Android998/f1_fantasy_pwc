@@ -188,6 +188,19 @@
                         <progress id="budget-progressBar" value="{{remain_price}}" max="150"></progress>
                         <span id="budget-span" style="width: {{bar_length}}px;"></span>
                     </div>
+                    <div class="chip-buttons-wrap">
+                        <input id="triple-points-chip" type="checkbox" class="chip-hidden-input" {% if user_porra.triple_points_chip %}checked{% endif %} {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
+
+                        <button id="drs-chip-button" class="chip-action-btn chip-action-drs {% if user_porra.triple_points_chip %}active{% endif %}" type="button" {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
+                            <img src="{% static 'theme/assets/icons/drsboost.png' %}" alt="DRS Boost" onerror="this.style.display='none'">
+                            <span>DRS Boost</span>
+                        </button>
+
+                        <button id="pitstop-chip-button" class="chip-action-btn chip-action-pit" type="button" {% if current_block or not block_chip_available or block_chip_deadline_passed %}disabled{% endif %}>
+                            <img src="{% static 'theme/assets/icons/pitstop.png' %}" alt="Pit Stop" onerror="this.style.display='none'">
+                            <span>Pit Stop</span>
+                        </button>
+                    </div>
                 </section>
                 <section>
                     <button class="btn button-reset-team" type="button">
@@ -209,6 +222,62 @@
                         </div>
                     </div>                    
                 </section>
+            </div>
+            <div id="block-chip-modal" class="modal" style="display:none;">
+                <div class="modal-content block-chip-modal-content">
+                    <span class="close-button" id="close-block-chip-modal">&times;</span>
+                    <h3>Chip de Bloqueo</h3>
+                    <p class="chip-disclaimer">{{ block_chip_reset_message }}</p>
+
+                    {% if current_block %}
+                    <p class="chip-current-info">
+                        Ya has bloqueado a <strong>{{ current_block.target.username }}</strong>
+                        {% if current_block.asset_type == 'driver' and current_block.blocked_driver %}
+                            (Piloto: {{ current_block.blocked_driver.name }})
+                        {% elif current_block.asset_type == 'team' and current_block.blocked_team %}
+                            (Constructor: {{ current_block.blocked_team.name }})
+                        {% endif %}
+                        en este GP.
+                    </p>
+                    {% endif %}
+
+                    <div class="block-chip-form">
+                        <select id="block-target-user" class="myteam-sort-select" {% if current_block or not block_chip_available or block_chip_deadline_passed %}disabled{% endif %}>
+                            <option value="">Usuario objetivo</option>
+                            {% for target in block_targets %}
+                            <option value="{{ target.id }}" {% if target.id in blocked_users_ids %}disabled{% endif %}>{{ target.username }}{% if target.id in blocked_users_ids %} (ya bloqueado){% endif %}</option>
+                            {% endfor %}
+                        </select>
+
+                        <select id="block-asset-type" class="myteam-sort-select" {% if current_block or not block_chip_available or block_chip_deadline_passed %}disabled{% endif %}>
+                            <option value="driver">Piloto</option>
+                            <option value="team">Constructor</option>
+                        </select>
+
+                        <select id="block-driver-id" class="myteam-sort-select" {% if current_block or not block_chip_available or block_chip_deadline_passed %}disabled{% endif %}>
+                            <option value="">Piloto a bloquear</option>
+                            {% for piloto in pilotos %}
+                            <option value="{{ piloto.id }}">{{ piloto.name }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <select id="block-team-id" class="myteam-sort-select" style="display:none;" {% if current_block or not block_chip_available or block_chip_deadline_passed %}disabled{% endif %}>
+                            <option value="">Constructor a bloquear</option>
+                            {% for equipo in equipos %}
+                            <option value="{{ equipo.id }}">{{ equipo.name }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <button id="use-block-chip-button" class="btn button-save-team block-submit-btn" type="button" {% if current_block or not block_chip_available or block_chip_deadline_passed %}disabled{% endif %}>Usar bloqueo</button>
+                    </div>
+
+                    {% if not block_chip_available and not current_block %}
+                    <small class="chip-warning">Ya has usado tu chip de bloqueo en este bloque de 12 GP.</small>
+                    {% endif %}
+                    {% if block_chip_deadline_passed and not current_block %}
+                    <small class="chip-warning">El bloqueo se cierra 24h antes del cierre de equipos.</small>
+                    {% endif %}
+                </div>
             </div>
             <section style=" margin-top: 5vh; padding: 2%;">
                 <div style="padding-bottom: 2%; width: 100%;">

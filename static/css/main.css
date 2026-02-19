@@ -185,6 +185,7 @@
   /* height: 25vh; */
   padding: 1%;
   margin-bottom: 10px;
+  margin-top: 2%;
 }
 
 .subcontainer-home{
@@ -435,6 +436,109 @@
   margin-right: 20px;
   border-radius: 5px;
 }
+
+.chip-buttons-wrap{
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 170px;
+}
+
+.chip-hidden-input{
+  display: none;
+}
+
+.chip-action-btn{
+  border: 2px solid #2f2f2f;
+  border-radius: 8px;
+  background-color: #d8d8d8;
+  color: #141414;
+  font-family: "Formula1Bold";
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.55rem;
+  min-height: 40px;
+  transition: transform .1s linear, background-color .15s linear, border-color .15s linear;
+}
+
+.chip-action-btn img{
+  width: 27%;
+  height: auto;
+  object-fit: contain;
+}
+
+.chip-action-btn:hover:not(:disabled){
+  transform: translateY(-1px);
+}
+
+.chip-action-btn:disabled{
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chip-action-drs{
+  border-color: #8d1598;
+  background-color: #d68ce0;
+  color: #4a0d50;
+}
+
+.chip-action-drs.active{
+  border-color: #9e0a05;
+  background-color: #8d1598;
+  color: #000000;
+}
+
+.chip-action-pit{
+  border-color: #1d7c32;
+  background-color: #a5e4b0;
+  color: #0d3f18;
+}
+
+.block-chip-modal-content{
+  width: 420px;
+  max-width: 92vw;
+  text-align: left;
+}
+
+.block-chip-modal-content h3{
+  margin: 0 0 .55rem;
+}
+
+.chip-disclaimer{
+  font-family: "Formula1Regular";
+  font-size: 0.8rem;
+  margin-bottom: .75rem;
+}
+
+.chip-current-info{
+  font-size: 0.78rem;
+  margin-bottom: .75rem;
+}
+
+.block-chip-form{
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.block-chip-form .myteam-sort-select{
+  width: 100%;
+}
+
+.block-submit-btn{
+  margin-right: 0;
+  margin-top: .2rem;
+}
+
+.chip-warning{
+  margin-top: .45rem;
+  color: #8a5a00;
+  display: block;
+}
+
 
 .selection-div{
   height: 100%;

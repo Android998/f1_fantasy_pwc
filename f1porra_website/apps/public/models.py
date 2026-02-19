@@ -132,7 +132,33 @@ class Porra(models.Model):
     team_winner = models.ForeignKey(Team, to_field='id', on_delete=models.SET_NULL, blank=True, null=True, related_name='team_winner')
     team1 = models.ForeignKey(Team, to_field='id', on_delete=models.SET_NULL, blank=True, null=True, related_name='team1')
     team2 = models.ForeignKey(Team, to_field='id', on_delete=models.SET_NULL, blank=True, null=True, related_name='team2')
+    triple_points_chip = models.BooleanField(default=False)
     points = models.IntegerField(blank=True, null=True)
+
+
+class BlockChip(models.Model):
+    class AssetType(models.TextChoices):
+        DRIVER = 'driver', 'Driver'
+        TEAM = 'team', 'Team'
+
+    class Meta:
+        db_table = 'public_blockchip'
+        verbose_name_plural = 'blockchips'
+        constraints = [
+            models.UniqueConstraint(fields=['season', 'blocker', 'gp'], name='unique_block_per_gp'),
+        ]
+
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, null=True, blank=True)
+    gp = models.ForeignKey(GrandPrix, to_field='id', on_delete=models.CASCADE)
+    blocker = models.ForeignKey(User, on_delete=models.CASCADE, related_name='blocks_made')
+    target = models.ForeignKey(User, on_delete=models.CASCADE, related_name='blocks_received')
+    asset_type = models.CharField(max_length=8, choices=AssetType.choices)
+    blocked_driver = models.ForeignKey(Driver, to_field='id', on_delete=models.SET_NULL, blank=True, null=True)
+    blocked_team = models.ForeignKey(Team, to_field='id', on_delete=models.SET_NULL, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.blocker.username} blocked {self.target.username} ({self.asset_type}) @ {self.gp.country}"
 
 #
 # RACE RESULTS
