@@ -50,6 +50,8 @@ def adjust_color(hex_color, amount):
 
 
 def normalize_name(name):
+    if not name:
+        return ""
     return ' '.join(word.capitalize() if word != "RB" else "RB" for word in name.split())
 
 def _chip_window(nround):
@@ -992,13 +994,15 @@ def team(request):
     block_targets = User.objects.exclude(id=user.id).filter(is_active=True).order_by('username') if gp else User.objects.none()
 
     block_chip_reset_message = "Si activas este chip, no podrás volver a usarlo en este bloque de 12 GPs."
+    drs_chip_reset_message = block_chip_reset_message
     if gp and gp.nround:
         season_last_round = GrandPrix.objects.filter(season=current_season).aggregate(max_nround=Max('nround'))['max_nround'] or gp.nround
         next_window_round = ((_chip_window(gp.nround) + 1) * 12) + 1
         if next_window_round > season_last_round:
             block_chip_reset_message = "Si activas este chip, no podrás volver a usarlo hasta el final de temporada."
         else:
-            block_chip_reset_message = f"Si activas este chip, no podrás volver a usarlo hasta la round {next_window_round}."
+            block_chip_reset_message = f"Si activas este chip, no podrás volver a usarlo hasta la nround {next_window_round}."
+        drs_chip_reset_message = block_chip_reset_message
 
     return render(request, 'team.html', {
         'data': data,
@@ -1017,4 +1021,5 @@ def team(request):
         'blocked_users_ids': blocked_users_ids,
         'current_block': current_block,
         'block_chip_reset_message': block_chip_reset_message,
+        'drs_chip_reset_message': drs_chip_reset_message,
     })

@@ -321,7 +321,7 @@
 /* The car must NOT expand container */
 .driver-selected-photo.team-photo-stack .team-car {
     height: auto;
-    width: 95%;
+    width: 80%;
     max-width: 140%;
     object-fit: contain;
     position: absolute;

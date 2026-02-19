@@ -488,6 +488,29 @@ document.addEventListener('DOMContentLoaded', function() {
         const team2 = getDriverData("selection7");
         console.log(driver1, driver2, driver3, driver4, driver5, team1, team2);
 
+        const requiredFields = [
+            { label: 'Poleman', value: poleman },
+            { label: '1st Position', value: first_pos },
+            { label: '2nd Position', value: second_pos },
+            { label: '3rd Position', value: third_pos },
+            { label: 'Fast Lap', value: fast_lap },
+            { label: 'Best Team', value: best_team },
+            { label: 'Driver 1', value: driver1 },
+            { label: 'Driver 2', value: driver2 },
+            { label: 'Driver 3', value: driver3 },
+            { label: 'Driver 4', value: driver4 },
+            { label: 'Driver 5', value: driver5 },
+            { label: 'Team 1', value: team1 },
+            { label: 'Team 2', value: team2 },
+        ];
+
+        const missing = requiredFields.filter((field) => !field.value).map((field) => field.label);
+        if (missing.length > 0) {
+            const podiumStatus = `Poleman: ${poleman || '❌'} | 1st: ${first_pos || '❌'} | 2nd: ${second_pos || '❌'} | 3rd: ${third_pos || '❌'}`;
+            alert(`Team incomplete. Please complete all selections before saving. Missing: - ${missing.join('- ')} Podium selections status:${podiumStatus}`);
+            return;
+        }
+
         const csrfToken = getCSRFToken();
         const gpId = document.querySelector('meta[name="gp-id"]').getAttribute('content');
         const triplePointsChip = document.getElementById('triple-points-chip')?.checked || false;
@@ -561,6 +584,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const drsButton = document.getElementById('drs-chip-button');
         const tripleInput = document.getElementById('triple-points-chip');
         if (!drsButton || !tripleInput || tripleInput.disabled) return;
+
+        const isActivating = !tripleInput.checked;
+        if (isActivating) {
+            const confirmationMsg = drsButton.dataset.confirmMessage
+                ? `${drsButton.dataset.confirmMessage}
+
+¿Seguro que quieres activar DRS Boost en este GP?`
+                : '¿Seguro que quieres activar DRS Boost en este GP? No podrás volver a usarlo hasta la próxima ventana.';
+            if (!window.confirm(confirmationMsg)) {
+                return;
+            }
+        }
 
         tripleInput.checked = !tripleInput.checked;
         drsButton.classList.toggle('active', tripleInput.checked);

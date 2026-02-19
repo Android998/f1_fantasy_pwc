@@ -191,7 +191,7 @@
                     <div class="chip-buttons-wrap">
                         <input id="triple-points-chip" type="checkbox" class="chip-hidden-input" {% if user_porra.triple_points_chip %}checked{% endif %} {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
 
-                        <button id="drs-chip-button" class="chip-action-btn chip-action-drs {% if user_porra.triple_points_chip %}active{% endif %}" type="button" {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
+                        <button id="drs-chip-button" class="chip-action-btn chip-action-drs {% if user_porra.triple_points_chip %}active{% endif %}" type="button" data-confirm-message="{{ drs_chip_reset_message }}" {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
                             <img src="{% static 'theme/assets/icons/drsboost.png' %}" alt="DRS Boost" onerror="this.style.display='none'">
                             <span>DRS Boost</span>
                         </button>
