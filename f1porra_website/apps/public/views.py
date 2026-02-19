@@ -3,6 +3,7 @@ from django.db.models import Sum, Max, F, Q, Count, Value
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from datetime import datetime
 import datetime as dt
 import pytz
@@ -86,6 +87,126 @@ def prices(request):
 
 def rules(request):
     return render(request, 'rules.html')
+
+
+def calendar_view(request):
+    gp_id = _parse_int(request.GET.get("gp"))
+    season = current_season
+    if season is None:
+        season = Season.objects.order_by("-year").first()
+
+    if season is None:
+        return render(
+            request,
+            "calendar.html",
+            {
+                "gp_cards": [],
+                "selected_gp": None,
+                "state_counts": {"next": 0, "future": 0, "past": 0, "locked": 0},
+            },
+        )
+
+    now_utc = datetime.now(pytz.UTC)
+    gps = list(GrandPrix.objects.filter(season=season).order_by("nround", "id"))
+    scored_gp_ids = set(
+        Porra.objects.filter(season=season, points__isnull=False).values_list("gp_id", flat=True).distinct()
+    )
+    user_porra_gp_ids = set()
+    if request.user.is_authenticated:
+        user_porra_gp_ids = set(
+            Porra.objects.filter(season=season, user=request.user).values_list("gp_id", flat=True)
+        )
+
+    next_gp_id = None
+    for gp in gps:
+        if gp.last_edit_date and gp.last_edit_date > now_utc:
+            next_gp_id = gp.id
+            break
+
+    gp_by_id = {}
+    gp_cards = []
+    state_counts = {"next": 0, "future": 0, "past": 0, "locked": 0}
+
+    for gp in gps:
+        gp_by_id[gp.id] = gp
+
+        reference_dt = gp.gp_end_date or gp.last_edit_date
+        if not reference_dt:
+            continue
+
+        race_day = reference_dt.date()
+        is_past = gp.id in scored_gp_ids or (gp.gp_end_date is not None and gp.gp_end_date <= now_utc)
+        is_locked = (gp.last_edit_date is not None and gp.last_edit_date <= now_utc and not is_past)
+
+        if gp.id == next_gp_id:
+            state = "next"
+        elif is_past:
+            state = "past"
+        elif is_locked:
+            state = "locked"
+        else:
+            state = "future"
+
+        state_counts[state] += 1
+        weekend_start = race_day - dt.timedelta(days=2)
+        if weekend_start.month == race_day.month:
+            date_label = f"{weekend_start.day:02d} - {race_day.day:02d} {race_day.strftime('%b').upper()}"
+        else:
+            date_label = (
+                f"{weekend_start.day:02d} {weekend_start.strftime('%b').upper()} - "
+                f"{race_day.day:02d} {race_day.strftime('%b').upper()}"
+            )
+
+        actions = []
+        if state == "next":
+            actions.append({"label": "My Team", "url": reverse("public:team"), "external": False})
+        elif state == "past":
+            if request.user.is_authenticated and gp.id in user_porra_gp_ids:
+                actions.append(
+                    {
+                        "label": "My Team",
+                        "url": reverse(
+                            "public:view_team",
+                            kwargs={"username": request.user.username, "gp": gp.country},
+                        ),
+                        "external": False,
+                    }
+                )
+            actions.append(
+                {
+                    "label": "Standings",
+                    "url": f"{reverse('public:standings')}?gp={gp.country}",
+                    "external": False,
+                }
+            )
+
+        gp_cards.append(
+            {
+                "id": gp.id,
+                "round": gp.nround,
+                "country": gp.country,
+                "name": gp.name,
+                "state": state,
+                "date_label": date_label,
+                "is_selected": gp.id == gp_id,
+                "country_link": gp.country_link,
+                "gp_photo": gp.gp_photo,
+                "actions": actions,
+            }
+        )
+
+    selected_gp = gp_by_id.get(gp_id) if gp_id else None
+
+    return render(
+        request,
+        "calendar.html",
+        {
+            "selected_season": season.year,
+            "gp_cards": gp_cards,
+            "selected_gp": selected_gp,
+            "state_counts": state_counts,
+        },
+    )
 
 def statistics(request):
     return redirect("public:statistics_users")

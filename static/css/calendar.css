@@ -1,0 +1,191 @@
+.calendar-page {
+    min-height: 100vh;
+}
+
+.calendar-title {
+    font-family: Formula1Bold;
+    font-size: 2rem;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+}
+
+.calendar-cards-panel {
+    padding-top: 0.9rem;
+    padding-bottom: 1.4rem;
+}
+
+.calendar-cards-panel .gray-line {
+    margin-bottom: 1.1rem;
+}
+
+.calendar-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.calendar-card {
+    background: linear-gradient(150deg, #06080e 0%, #05060a 72%, #0b0f1a 100%);
+    border: 2px solid transparent;
+    border-radius: 14px;
+    color: #ffffff;
+    padding: 0.95rem 1rem;
+    height: 14.2rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.calendar-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+}
+
+.calendar-card.selected {
+    border-color: #e10600;
+}
+
+.calendar-card.next {
+    border-color: #e10600;
+    background: linear-gradient(135deg, #08214b 0%, #0d4f9a 42%, #1e86dd 100%);
+}
+
+.calendar-card.future {
+    border-color: transparent;
+}
+
+.calendar-card.past {
+    border-color: transparent;
+    opacity: 0.9;
+}
+
+.calendar-card.locked {
+    border-color: transparent;
+    background: linear-gradient(145deg, #151921 0%, #11151f 100%);
+    opacity: 0.94;
+}
+
+.calendar-card-head {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.calendar-round {
+    font-family: Formula1Bold;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.045em;
+    opacity: 0.86;
+}
+
+.calendar-country {
+    font-family: Formula1Bold;
+    font-size: 2.05rem;
+    line-height: 1;
+    margin: 0 0 0.45rem 0;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.calendar-country-flag {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.calendar-name {
+    margin: 0 0 auto 0;
+    font-family: Formula1Regular;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    opacity: 0.85;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 0.78rem;
+}
+
+.calendar-date {
+    margin: 1.15rem 0 0.75rem;
+    font-family: Formula1Bold;
+    font-size: 1.7rem;
+    text-transform: uppercase;
+    line-height: 1;
+    letter-spacing: 0.015em;
+}
+
+.calendar-track-map {
+    position: absolute;
+    right: 0.78rem;
+    bottom: 0.72rem;
+    width: 138px;
+    height: 62px;
+    object-fit: contain;
+    opacity: 0.56;
+    filter: brightness(0) invert(1) saturate(0) contrast(0.95);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.calendar-actions {
+    min-height: 2.15rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 2;
+}
+
+.calendar-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: none;
+    background: #e10600;
+    color: #ffffff;
+    text-decoration: none;
+    padding: 0.38rem 0.65rem;
+    font-family: Formula1Bold;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+}
+
+.calendar-action-btn:hover {
+    background: #b90400;
+    color: #ffffff;
+}
+
+.calendar-action-muted {
+    font-family: Formula1Bold;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    opacity: 0.75;
+}
+
+@media (max-width: 1380px) {
+    .calendar-cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.calendar-empty {
+    background: #fff4f4;
+    border: 1px solid #e10600;
+    border-radius: 8px;
+    color: #6e0000;
+    font-family: Formula1Bold;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    padding: 0.8rem;
+}
