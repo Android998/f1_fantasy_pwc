@@ -122,10 +122,38 @@ def _remove_blocked_asset_from_porra(user, gp, blocked_driver=None, blocked_team
     if fields_to_null:
         porra.save(update_fields=fields_to_null)
 
+def _get_latest_gp_round_for_prices():
+    driver_round = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+    team_round = TeamPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+
+    rounds = [value for value in [driver_round, team_round] if value is not None]
+    return max(rounds) if rounds else None
+
+
+def _budget_cap_for_user(user):
+    user_profile = UserProfile.objects.get(user=user, season=current_season)
+    user_team = user_profile.users_team
+
+    users_teams = UsersTeam.objects.annotate(
+        total_points=Coalesce(
+            Sum(
+                'userprofile__user__porra__points',
+                filter=Q(
+                    userprofile__season=current_season,
+                    userprofile__user__porra__season=current_season,
+                ),
+            ),
+            Value(0),
+        )
+    ).order_by('total_points')
+    last_users_team = users_teams.first() if users_teams.exists() else None
+
+    return 160.0 if user_team == last_users_team else 150.0
+
 # Create your views here.
 def home(request):
-    # Get the latest Grand Prix round number
-    latest_gp = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+    # Get the latest Grand Prix round number considering both drivers and constructors prices
+    latest_gp = _get_latest_gp_round_for_prices()
 
     # Get the latest Grand Prix details
     latest_grand_prix = GrandPrix.objects.filter(season=current_season).get(nround=latest_gp)
@@ -621,6 +649,13 @@ def standings(request):
     last_2_per_user = {user['user__username']: 0 for user in all_users}
     wins_per_team = {}
 
+    # Build a season-scoped user profile map to avoid joining all historical user profiles.
+    user_ids = list(porra_entries.values_list('user_id', flat=True).distinct())
+    season_profiles = {
+        profile.user_id: profile
+        for profile in UserProfile.objects.filter(user_id__in=user_ids, season=selected_season).select_related('users_team')
+    }
+
     for gp in grand_prix_list:
         # Get the relevant Porra entries for this Grand Prix
         gp_entries = porra_entries.filter(season=selected_season, gp=gp)
@@ -650,52 +685,58 @@ def standings(request):
             username = last_user['user__username']
             last_2_per_user[username] += 1
         
-        # Calculate team scores for this GP
-        team_scores = (
-            gp_entries
-            .values('user__userprofile__users_team__name')  # Group by team name
-            .annotate(team_points=Sum('points'))  # Sum of points per team
-            .filter(user__userprofile__users_team__name__isnull=False)  # Exclude users with no team
-            .order_by('-team_points')  # Order by points descending
-        )
+        # Calculate team scores for this GP using season-bound profiles.
+        team_scores = {}
+        for gp_entry in gp_entries.values('user_id', 'points'):
+            profile = season_profiles.get(gp_entry['user_id'])
+            if not profile or not profile.users_team:
+                continue
+            team_name = profile.users_team.name
+            team_scores[team_name] = team_scores.get(team_name, 0) + (gp_entry['points'] or 0)
 
         # Determine the team with the highest score and count it as a win
-        if team_scores.exists():
-            top_team = team_scores.first()
-            top_team_name = top_team['user__userprofile__users_team__name']
+        if team_scores:
+            top_team_name = max(team_scores.items(), key=lambda item: item[1])[0]
             wins_per_team[top_team_name] = wins_per_team.get(top_team_name, 0) + 1
 
-    # Aggregate the total points for each user
-    user_standings = porra_entries.values(
-        'user__username',
-        'user__first_name',
-        'user__userprofile__photo',
-        'user__userprofile__users_team__name'
-    ).annotate(total_points=Sum('points')).order_by('-total_points')
-
-    team_standings = (
+    # Aggregate the total points for each user without joining UserProfile.
+    raw_user_standings = (
         porra_entries
-        .values('user__userprofile__users_team__name')  # Group by team name
-        .annotate(
-            total_points=Sum('points')  # Sum of points per team
-        )
-        .filter(user__userprofile__users_team__name__isnull=False)  # Exclude users with no team
-        .order_by('-total_points')  # Order by points descending
+        .values('user_id', 'user__username', 'user__first_name')
+        .annotate(total_points=Sum('points'))
+        .order_by('-total_points')
     )
 
-    # Add wins to each team's standings
-    for team in team_standings:
-        team_name = team['user__userprofile__users_team__name']
-        team['wins'] = wins_per_team.get(team_name, 0)
-
-    # Merge the standings, wins, podiums, and last 2 into a single list of dictionaries
     standings_with_counts = []
-    for user in user_standings:
+    team_points_by_name = {}
+    for user in raw_user_standings:
+        profile = season_profiles.get(user['user_id'])
+        team_name = profile.users_team.name if profile and profile.users_team else None
+        photo = profile.photo if profile else None
         username = user['user__username']
-        user['wins'] = wins_per_user.get(username, 0)
-        user['podiums'] = podiums_per_user.get(username, 0)
-        user['last_2'] = last_2_per_user.get(username, 0)
-        standings_with_counts.append(user)
+        standing_row = {
+            'user__username': username,
+            'user__first_name': user['user__first_name'],
+            'profile_photo': photo,
+            'team_name': team_name,
+            'total_points': user['total_points'],
+            'wins': wins_per_user.get(username, 0),
+            'podiums': podiums_per_user.get(username, 0),
+            'last_2': last_2_per_user.get(username, 0),
+        }
+        standings_with_counts.append(standing_row)
+
+        if team_name:
+            team_points_by_name[team_name] = team_points_by_name.get(team_name, 0) + (user['total_points'] or 0)
+
+    team_standings = [
+        {
+            'team_name': team_name,
+            'total_points': total_points,
+            'wins': wins_per_team.get(team_name, 0),
+        }
+        for team_name, total_points in sorted(team_points_by_name.items(), key=lambda item: item[1], reverse=True)
+    ]
 
     return render(request, 'standings.html', {
         'user_standings': standings_with_counts, 
@@ -840,8 +881,8 @@ def team(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
         
 
-    # Get the latest Grand Prix round number
-    latest_gp = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+    # Get the latest Grand Prix round number considering both drivers and constructors prices
+    latest_gp = _get_latest_gp_round_for_prices()
 
     # Default placeholders
     latest_grand_prix = None
@@ -929,15 +970,19 @@ def team(request):
 
     # Drivers
     # Annotate prices only when GP info available; otherwise only total points
-    if latest_grand_prix and sec_latest_grand_prix:
-        drivers = Driver.objects.filter(season=current_season).annotate(
-            total_points=Coalesce(Sum('driverpoints__points'), Value(0)),
-            current_price=Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=latest_grand_prix.id)), Value(0)),
-            previous_price=Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=sec_latest_grand_prix.id)), Value(0))
-        ).order_by('-total_points')
+    if latest_grand_prix:
+        driver_annotations = {
+            'total_points': Coalesce(Sum('driverpoints__points'), Value(0)),
+            'current_price': Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=latest_grand_prix.id)), Value(0)),
+        }
+        if sec_latest_grand_prix:
+            driver_annotations['previous_price'] = Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=sec_latest_grand_prix.id)), Value(0))
+        drivers = Driver.objects.filter(season=current_season).annotate(**driver_annotations).order_by('-total_points')
     else:
         drivers = Driver.objects.filter(season=current_season).annotate(
-            total_points=Coalesce(Sum('driverpoints__points'), Value(0))
+            total_points=Coalesce(Sum('driverpoints__points'), Value(0)),
+            current_price=Value(0),
+            previous_price=Value(0),
         ).order_by('-total_points')
 
     for driver in drivers:
@@ -953,15 +998,19 @@ def team(request):
 
 
     # Teams
-    if latest_grand_prix and sec_latest_grand_prix:
-        teams = Team.objects.filter(season=current_season).annotate(
-            total_points=Coalesce(Sum('teampoints__points'), Value(0)),
-            current_price=Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=latest_grand_prix.id)), Value(0)),
-            previous_price=Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=sec_latest_grand_prix.id)), Value(0))
-        ).order_by('-total_points')
+    if latest_grand_prix:
+        team_annotations = {
+            'total_points': Coalesce(Sum('teampoints__points'), Value(0)),
+            'current_price': Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=latest_grand_prix.id)), Value(0)),
+        }
+        if sec_latest_grand_prix:
+            team_annotations['previous_price'] = Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=sec_latest_grand_prix.id)), Value(0))
+        teams = Team.objects.filter(season=current_season).annotate(**team_annotations).order_by('-total_points')
     else:
         teams = Team.objects.filter(season=current_season).annotate(
-            total_points=Coalesce(Sum('teampoints__points'), Value(0))
+            total_points=Coalesce(Sum('teampoints__points'), Value(0)),
+            current_price=Value(0),
+            previous_price=Value(0)
         ).order_by('-total_points')
 
     for team in teams:
@@ -976,8 +1025,6 @@ def team(request):
 
     # Get the user's Porra for the latest Grand Prix
     user = request.user
-    user_profile = UserProfile.objects.get(user=user, season=current_season)
-    user_team = user_profile.users_team
     gp = GrandPrix.objects.filter(season=current_season, nround=latest_gp).first() if latest_gp else None
     last_gp = GrandPrix.objects.filter(season=current_season, nround=second_latest_gp).first() if second_latest_gp else None
 
@@ -1042,19 +1089,9 @@ def team(request):
             else:
                 porra_list_names.append("")
 
-    # Calculate total points for each UsersTeam
-    users_teams = UsersTeam.objects.annotate(
-        total_points=Coalesce(Sum('userprofile__user__porra__points', filter=Q(userprofile__user__porra__season=current_season)), Value(0))
-    ).order_by('total_points')  # Ascending order to get the team with the lowest points
-    last_users_team = users_teams.first() if users_teams.exists() else None
-
-    # Check if the user is in the last-placed UsersTeam
-    if user_team == last_users_team:
-        remain_price = 160.0 - total_price
-        bar_length = remain_price * 220 / 160
-    else:
-        remain_price = 150.0 - total_price
-        bar_length = remain_price * 220 / 150
+    budget_cap = _budget_cap_for_user(user)
+    remain_price = budget_cap - total_price
+    bar_length = remain_price * 220 / budget_cap
 
     # Crear un diccionario para mapear nombres a posiciones
     piloto_positions = {name: index + 1 if index<6 else index-4 for index, name in enumerate(porra_list_names) if name != ""}
@@ -1094,6 +1131,7 @@ def team(request):
         'user_porra': user_porra,
         'remain_price': remain_price,
         'bar_length': bar_length,
+        'budget_cap': budget_cap,
         'porra_list_names': porra_list_names,
         'piloto_positions': piloto_positions,
         'latest_first_pos': latest_first_pos,

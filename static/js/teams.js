@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const driversTable = document.getElementById('drivers-table');
     const constructorsTable = document.getElementById('constructors-table');
     const sortSelect = document.getElementById('myteam-sort-select');
+    const budgetProgressBar = document.getElementById('budget-progressBar');
+
+    function getBudgetCap() {
+        const parsed = parseFloat(budgetProgressBar?.max);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 150;
+    }
 
     // Mostrar la tabla de pilotos por defecto
     driversTable.style.display = 'block';
@@ -127,7 +133,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const newBudget = availableBudget - parseFloat(price.replace('M', '').replace('$', ''));
 
         // Actualizar presupuesto disponible en el HTML
-        document.getElementById('budget-span').style.width = `${newBudget * 220 / 150}px`
+        const budgetCap = getBudgetCap();
+        document.getElementById('budget-span').style.width = `${newBudget * 220 / budgetCap}px`
         document.getElementById('budget-progressBar').value = newBudget
         BudgetEle.innerText = `$${newBudget.toFixed(1)} M`;
 
@@ -218,7 +225,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const newBudget = availableBudget + parseFloat(price.replace('M', '').replace('$', ''));
 
         // Actualizar presupuesto disponible en el HTML
-        document.getElementById('budget-span').style.width = `${newBudget * 220 / 150}px`
+        const budgetCap = getBudgetCap();
+        document.getElementById('budget-span').style.width = `${newBudget * 220 / budgetCap}px`
         document.getElementById('budget-progressBar').value = newBudget
         BudgetEle.innerText = `$${newBudget.toFixed(1)} M`;
 
@@ -278,7 +286,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const newBudget = availableBudget + parseFloat(price.replace('M', '').replace('$', ''));
 
         // Actualizar presupuesto disponible en el HTML
-        document.getElementById('budget-span').style.width = `${newBudget * 220 / 150}px`
+        const budgetCap = getBudgetCap();
+        document.getElementById('budget-span').style.width = `${newBudget * 220 / budgetCap}px`
         document.getElementById('budget-progressBar').value = newBudget
         BudgetEle.innerText = `$${newBudget.toFixed(1)} M`;
 
@@ -333,12 +342,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to reset all selections and go back to initial state
     function resetTeamSelection() {
         // Reset budget to initial state
-        const initialBudget = 150.0; // Initial budget value
+        const initialBudget = getBudgetCap(); // Initial budget value
         const BudgetEle = document.getElementById('available-budget').querySelector('span:last-child');
         BudgetEle.innerText = `$${initialBudget.toFixed(1)} M`;
 
         // Reset progress bar and width
-        document.getElementById('budget-span').style.width = `${initialBudget * 220 / 150}px`;
+        document.getElementById('budget-span').style.width = `${initialBudget * 220 / getBudgetCap()}px`;
         document.getElementById('budget-progressBar').value = initialBudget;
 
         // Reset each selected container to initial state

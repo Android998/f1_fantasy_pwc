@@ -29,8 +29,8 @@
             <div class="top-right-buttons">
                 {% if user.is_authenticated %}
                 <a href="{% url 'accounts:profile' %}" class="btn signed-in-btn profile-link">
-                    {% if user.userprofile.photo %}
-                        <img src="{{ user.userprofile.photo.url }}" class="circular-photo" alt="Profile Photo">
+                    {% if current_user_profile and current_user_profile.photo %}
+                        <img src="{{ current_user_profile.photo.url }}" class="circular-photo" alt="Profile Photo">
                     {% else %}
                         <img src="{% static 'theme/assets/users/default.png' %}" class="circular-photo" alt="Default Profile Photo">
                     {% endif %}

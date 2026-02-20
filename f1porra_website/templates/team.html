@@ -180,15 +180,13 @@
         <div class="team-selections">
             <div class="top-selection">
                 <section>
-                    <div class="budget-block">
-                        <label id="available-budget" class="budget-selection">
-                            <span style="font-family: Formula1Regular; font-weight: 100;font-size: 1rem;">Límite de coste:</span>
-                            <span style="font-weight:900;margin: 2%;">${{remain_price}} M</span>
-                        </label>
-                        <div class="budgetBar">
-                            <progress id="budget-progressBar" value="{{remain_price}}" max="150"></progress>
-                            <span id="budget-span" style="width: {{bar_length}}px;"></span>
-                        </div>
+                    <label id="available-budget" class="budget-selection">
+                        <span style="font-family: Formula1Regular; font-weight: 100;font-size: 1rem;">Límite de coste:</span>
+                        <span style="font-weight:900;margin: 2%;">${{remain_price}} M</span>
+                    </label>
+                    <div class="budgetBar">
+                        <progress id="budget-progressBar" value="{{remain_price}}" max="150"></progress>
+                        <span id="budget-span" style="width: {{bar_length}}px;"></span>
                     </div>
                     <div class="chip-buttons-wrap">
                         <input id="triple-points-chip" type="checkbox" class="chip-hidden-input" {% if user_porra.triple_points_chip %}checked{% endif %} {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
