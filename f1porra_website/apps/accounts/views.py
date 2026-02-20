@@ -8,16 +8,18 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.base import TemplateView
 from .models import UserProfile, UsersTeam
 from f1porra_website.apps.public.models import Season
+from datetime import datetime
 
 class ProfileView(LoginRequiredMixin, TemplateView):
     template_name = 'accounts/profile.html'
 
     def get(self, request):
+        current_year = datetime.now().year
         try:
-            current_season = Season.objects.get(is_active=True)
+            current_season = Season.objects.get(year=current_year)
         except Season.DoesNotExist:
-            # Handle no active season
-            return render(request, 'accounts/profile.html', {'error': 'No active season found.'})
+            # Handle no current season
+            return render(request, 'accounts/profile.html', {'error': 'No current season found.'})
         
         user_profile, created = UserProfile.objects.get_or_create(user=request.user, season=current_season)
         
@@ -40,8 +42,9 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         })
 
     def post(self, request):
+        current_year = datetime.now().year
         try:
-            current_season = Season.objects.get(is_active=True)
+            current_season = Season.objects.get(year=current_year)
         except Season.DoesNotExist:
             return render(request, 'accounts/profile.html', {'error': 'No active season found.'})
         

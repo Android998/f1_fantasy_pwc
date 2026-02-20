@@ -86,11 +86,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     applyListSorting();
 
+    function isRowBlocked(row) {
+        return row && row.dataset && row.dataset.blocked === 'true';
+    }
+
     // Función para manejar la selección de pilotos o equipos
     function handleSelection(button, type) {
         const row = button.closest(`.fila-${type}`);
         if (!row) {
             console.error('Row not found for type:', type);
+            return;
+        }
+        if (isRowBlocked(row)) {
             return;
         }
         const name = row.querySelector(`.driver-name span`).innerText;
@@ -258,6 +265,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleTableRemoval(button, type) {
         const row = button.closest(`.fila-${type}`);
         console.log(row);
+        if (isRowBlocked(row)) {
+            return;
+        }
 
         // Obtener presupuesto disponible actual
         const price = row.querySelector(`.driver-price span:first-child`).innerText;
@@ -832,7 +842,13 @@ function updateAddButtonVisibility() {
     const rows = document.querySelectorAll('.fila-piloto, .fila-equipo');
 
     rows.forEach(row => {
-        // Verificar si el piloto/equipo ya está seleccionado
+        const addButton = row.querySelector('#add-selection');
+        if (!addButton) return;
+
+        if (row.dataset.blocked === 'true') {
+            addButton.disabled = true;
+            return;
+        }
         if (row.querySelector('.no-selectable-piloto').style.display === 'none') {
             // Obtener el precio del piloto/equipo
             const price = row.querySelector(`.driver-price span:first-child`).innerText;
@@ -840,15 +856,15 @@ function updateAddButtonVisibility() {
 
             // Obtener presupuesto disponible actual
             const BudgetEle = document.getElementById('available-budget').querySelector('span:last-child');
-            let availableBudget = parseFloat(BudgetEle.innerText.replace('M', '').replace('$', ''));
+            const availableBudget = parseFloat(BudgetEle.innerText.replace('M', '').replace('$', ''));
 
             // Si no hay suficiente presupuesto, desactivar el botón de añadir y reducir la opacidad
             if (availableBudget < cost) {
                 row.style.opacity = '0.5';
-                row.querySelector('#add-selection').disabled = true;
+                addButton.disabled = true;
             } else {
                 row.style.opacity = '1';
-                row.querySelector('#add-selection').disabled = false;
+                addButton.disabled = false;
             }
         }
     });

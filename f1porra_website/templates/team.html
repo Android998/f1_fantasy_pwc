@@ -206,6 +206,13 @@
                             <span>Pit Stop</span>
                         </button>
                     </div>
+                    {% if incoming_block %}
+                    <p class="chip-current-info incoming-block-info">
+                        Estás bloqueado por <strong>{{ incoming_block.blocker.username }}</strong>
+                        {% if blocked_driver_name %}(Piloto bloqueado: {{ blocked_driver_name }}){% endif %}
+                        {% if blocked_team_name %}(Constructor bloqueado: {{ blocked_team_name }}){% endif %}
+                    </p>
+                    {% endif %}
                 </section>
                 <section>
                     <button class="btn button-reset-team" type="button">
@@ -700,7 +707,7 @@
                     <ul>
                         {% for piloto in pilotos %}
                         <li>
-                            <div class="fila-piloto" data-selected-container="{% if piloto.name in porra_list_names %}{{ piloto_positions|dict_lookup:piloto.name}}{% else %}null{% endif %}">
+                            <div class="fila-piloto {% if blocked_driver_name and piloto.name == blocked_driver_name %}blocked-asset-row{% endif %}" data-selected-container="{% if piloto.name in porra_list_names %}{{ piloto_positions|dict_lookup:piloto.name}}{% else %}null{% endif %}" data-blocked="{% if blocked_driver_name and piloto.name == blocked_driver_name %}true{% else %}false{% endif %}">
                                 <div class="foto-piloto" style="background-color: {{piloto.team.color_rgb|safe}}">
                                     <div class="foto-piloto-inside">
                                     <img src="{% static 'theme/assets/drivers/' %}{{ piloto.photo_link }}" width="135rem" height="auto"> 
@@ -738,12 +745,15 @@
                                         {%endif%}
                                     </div>
                                 </div>
+                                {% if blocked_driver_name and piloto.name == blocked_driver_name %}
+                                <div class="blocked-asset-pill" title="Bloqueado para este GP">🔒 Bloqueado</div>
+                                {% endif %}
                                 {% if piloto.name in porra_list_names %}
                                 <div style="display:none;" class="selectable-piloto">
                                 {% else %}
                                 <div class="selectable-piloto">
                                 {% endif %}
-                                    <button type="button" id="add-selection" class="btn add-piloto">
+                                    <button type="button" id="add-selection" class="btn add-piloto" {% if blocked_driver_name and piloto.name == blocked_driver_name %}disabled{% endif %}>
                                         <span style="height: 100%; width: 100%;">+</span>
                                     </button>
                                 </div>
@@ -767,8 +777,8 @@
                     <ul>
                         {% for equipo in equipos %}
                         <li>
-                            <div class="fila-equipo" 
-                                data-selected-container="{% if equipo.name in porra_list_names %}{{ piloto_positions|dict_lookup:equipo.name }}{% else %}null{% endif %}" 
+                            <div class="fila-equipo {% if blocked_team_name and equipo.name == blocked_team_name %}blocked-asset-row{% endif %}" 
+                                data-selected-container="{% if equipo.name in porra_list_names %}{{ piloto_positions|dict_lookup:equipo.name }}{% else %}null{% endif %}" data-blocked="{% if blocked_team_name and equipo.name == blocked_team_name %}true{% else %}false{% endif %}"
                                 data-car-src="{% if equipo.selected_link %}{% static 'theme/assets/teams/' %}{{ equipo.selected_link }}{% endif %}"
                                 data-logo-src="{% if equipo.photo_link %}{% static 'theme/assets/teams/' %}{{ equipo.photo_link }}{% endif %}">
                                 <div class="foto-piloto team-photo-stack" style="background-color: {{equipo.color_rgb|safe}};">
@@ -810,12 +820,15 @@
                                         {%endif%}
                                     </div>
                                 </div>
+                                {% if blocked_team_name and equipo.name == blocked_team_name %}
+                                <div class="blocked-asset-pill" title="Bloqueado para este GP">🔒 Bloqueado</div>
+                                {% endif %}
                                 {% if equipo.name in porra_list_names %}
                                 <div style="display:none;" class="selectable-piloto">
                                 {% else %}
                                 <div class="selectable-piloto">
                                 {% endif %}
-                                    <button type="button" id="add-selection" class="btn add-equipo">
+                                    <button type="button" id="add-selection" class="btn add-equipo" {% if blocked_team_name and equipo.name == blocked_team_name %}disabled{% endif %}>
                                         <span style="height: 100%; width: 100%;">+</span>
                                     </button>
                                 </div>

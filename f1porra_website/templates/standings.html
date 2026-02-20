@@ -5,9 +5,22 @@
 {% block content %}
 <div class="main-standings">
     <div class="top-filters">
-        <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase;margin-bottom: 2%;">Select Standings Grand Prix</h1>
+        <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase;margin-bottom: 2%;">Select Standings</h1>
         <hr class="gray-line-top"></hr>
         <div class="section-std ">
+            <div class="grand-prixes">
+                <div class="section-name-std">
+                    <span>Season</span>
+                </div>
+                <div class="dropdown-std">
+                    <button id="season-dropdown" class="dropbtn-std">{{ selected_season.name|default:selected_season.year }}</button>
+                    <div id="season-dropdown-content" class="dropdown-content-std">
+                        {% for season in season_list %}
+                        <a href="?season={{ season.year }}&gp={{ selected_gp }}" data-season-id="{{ season.year }}">{{ season.name|default:season.year }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
             <div class="grand-prixes">
                 <div class="section-name-std">
                     <span>Grand Prixes</span>
@@ -15,9 +28,9 @@
                 <div class="dropdown-std">
                     <button id="gp-dropdown" class="dropbtn-std">{{ selected_gp|default:"Overall" }}</button>
                     <div id="gp-dropdown-content" class="dropdown-content-std">
-                        <a href="?gp=overall" data-gp-id="overall">Overall</a>
+                        <a href="?season={{ selected_season.year }}&gp=overall" data-gp-id="overall">Overall</a>
                         {% for gp in grand_prix_list %}
-                        <a href="?gp={{ gp.country }}" data-gp-id="{{ gp.country }}">{{ gp.country }}</a>
+                        <a href="?season={{ selected_season.year }}&gp={{ gp.country }}" data-gp-id="{{ gp.country }}">{{ gp.country }}</a>
                         {% endfor %}
                     </div>
                 </div>

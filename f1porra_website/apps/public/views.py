@@ -88,6 +88,39 @@ def _block_chip_deadline_passed(gp, now):
         return True
     return now >= (gp.last_edit_date - dt.timedelta(days=1))
 
+def _get_incoming_block_for_user(user, gp):
+    if not user or not gp:
+        return None
+    return BlockChip.objects.filter(
+        season=current_season,
+        gp=gp,
+        target=user,
+    ).select_related('blocked_driver', 'blocked_team', 'blocker').first()
+
+
+def _remove_blocked_asset_from_porra(user, gp, blocked_driver=None, blocked_team=None):
+    if not user or not gp:
+        return
+
+    porra = Porra.objects.filter(season=current_season, user=user, gp=gp).first()
+    if not porra:
+        return
+
+    fields_to_null = []
+    if blocked_driver and blocked_driver in [porra.driver1, porra.driver2, porra.driver3, porra.driver4, porra.driver5]:
+        for field in ['driver1', 'driver2', 'driver3', 'driver4', 'driver5']:
+            if getattr(porra, field) == blocked_driver:
+                setattr(porra, field, None)
+                fields_to_null.append(field)
+
+    if blocked_team and blocked_team in [porra.team1, porra.team2]:
+        for field in ['team1', 'team2']:
+            if getattr(porra, field) == blocked_team:
+                setattr(porra, field, None)
+                fields_to_null.append(field)
+
+    if fields_to_null:
+        porra.save(update_fields=fields_to_null)
 
 # Create your views here.
 def home(request):
@@ -519,10 +552,6 @@ def use_block_chip(request):
     if BlockChip.objects.filter(season=current_season, gp=gp, target=target).exists():
         return JsonResponse({'success': False, 'error': 'Ese usuario ya ha sido bloqueado en este GP.'}, status=400)
 
-    if gp.nround and gp.nround > 1:
-        if BlockChip.objects.filter(season=current_season, gp__nround=gp.nround - 1, target=target).exists():
-            return JsonResponse({'success': False, 'error': 'Ese usuario está protegido porque ya fue bloqueado en el GP anterior.'}, status=400)
-
     blocked_driver = None
     blocked_team = None
     if asset_type == BlockChip.AssetType.DRIVER:
@@ -546,33 +575,41 @@ def use_block_chip(request):
         blocked_team=blocked_team,
     )
 
+    _remove_blocked_asset_from_porra(
+        user=target,
+        gp=gp,
+        blocked_driver=blocked_driver,
+        blocked_team=blocked_team,
+    )
+
     return JsonResponse({'success': True})
 
 def standings(request):
+    selected_season_year = request.GET.get('season', str(current_season.year))
+    selected_season = Season.objects.get(year=int(selected_season_year))
     selected_gp = request.GET.get('gp', 'overall')
 
-    # Get all users and initialize counts
-    all_users = UserProfile.objects.all().values('user__username')
+    # Get all completed Grand Prixes (those with points) for the selected season
+    grand_prix_with_points = Porra.objects.filter(points__gt=0, season=selected_season).values_list('gp', flat=True).distinct()
+    grand_prix_list = GrandPrix.objects.filter(id__in=grand_prix_with_points).order_by('nround')
+
+    if selected_gp == 'overall':
+        # Overall standings: no filtering by Grand Prix
+        porra_entries = Porra.objects.filter(season=selected_season).all()
+    else:
+        # Filter standings by the selected Grand Prix
+        porra_entries = Porra.objects.filter(season=selected_season, gp__country=selected_gp)
+
+    # Get all users for the selected season who have porras
+    all_users = porra_entries.values('user__username').distinct()
     wins_per_user = {user['user__username']: 0 for user in all_users}
     podiums_per_user = {user['user__username']: 0 for user in all_users}
     last_2_per_user = {user['user__username']: 0 for user in all_users}
     wins_per_team = {}
 
-    # Get all completed Grand Prixes (those with points)
-    grand_prix_with_points = Porra.objects.filter(points__gt=0).values_list('gp', flat=True).distinct().filter(season=current_season)
-    grand_prix_list = GrandPrix.objects.filter(id__in=grand_prix_with_points).order_by('nround')
-    print(grand_prix_list)
-
-    if selected_gp == 'overall':
-        # Overall standings: no filtering by Grand Prix
-        porra_entries = Porra.objects.filter(season=current_season).all()
-    else:
-        # Filter standings by the selected Grand Prix
-        porra_entries = Porra.objects.filter(season=current_season, gp__country=selected_gp)
-
     for gp in grand_prix_list:
         # Get the relevant Porra entries for this Grand Prix
-        gp_entries = porra_entries.filter(season=current_season, gp=gp)
+        gp_entries = porra_entries.filter(season=selected_season, gp=gp)
 
         # Get the last two positions
         last_two_entries = gp_entries.order_by('points')[:2].values('user__username')
@@ -646,7 +683,14 @@ def standings(request):
         user['last_2'] = last_2_per_user.get(username, 0)
         standings_with_counts.append(user)
 
-    return render(request, 'standings.html', {'user_standings': standings_with_counts, 'grand_prix_list': grand_prix_list, 'selected_gp': selected_gp, 'team_standings': team_standings})  
+    return render(request, 'standings.html', {
+        'user_standings': standings_with_counts, 
+        'grand_prix_list': grand_prix_list, 
+        'selected_gp': selected_gp, 
+        'team_standings': team_standings,
+        'season_list': Season.objects.all().order_by('-year'),
+        'selected_season': selected_season
+    })  
 
 
 def view_team(request, username, gp):
@@ -728,6 +772,21 @@ def team(request):
             # Get or create the GP
             user = request.user
             gp = GrandPrix.objects.get(season=current_season, country=gp_id)
+
+            incoming_block = _get_incoming_block_for_user(user, gp)
+            blocked_driver = incoming_block.blocked_driver if incoming_block else None
+            blocked_team = incoming_block.blocked_team if incoming_block else None
+
+            blocked_driver_names = {blocked_driver.name} if blocked_driver else set()
+            blocked_team_names = {blocked_team.name} if blocked_team else set()
+
+            for driver_name in [driver1_name, driver2_name, driver3_name, driver4_name, driver5_name]:
+                if driver_name and driver_name in blocked_driver_names:
+                    return JsonResponse({'success': False, 'error': 'Ese piloto está bloqueado para este GP.'}, status=400)
+
+            for team_name in [team1_name, team2_name]:
+                if team_name and team_name in blocked_team_names:
+                    return JsonResponse({'success': False, 'error': 'Ese constructor está bloqueado para este GP.'}, status=400)
 
             if use_triple_points_chip and not _triple_chip_available(user, gp):
                 return JsonResponse({'success': False, 'error': 'Ya has usado el chip de triples puntos en este bloque de 12 GPs.'}, status=400)
@@ -990,6 +1049,9 @@ def team(request):
     block_chip_available = _block_chip_available(user, gp) if gp else False
     block_chip_deadline_passed = _block_chip_deadline_passed(gp, now) if gp else True
     current_block = BlockChip.objects.filter(season=current_season, blocker=user, gp=gp).select_related('target', 'blocked_driver', 'blocked_team').first() if gp else None
+    incoming_block = _get_incoming_block_for_user(user, gp) if gp else None
+    blocked_driver_name = incoming_block.blocked_driver.name if incoming_block and incoming_block.blocked_driver else ''
+    blocked_team_name = incoming_block.blocked_team.name if incoming_block and incoming_block.blocked_team else ''
     blocked_users_ids = list(BlockChip.objects.filter(season=current_season, gp=gp).values_list('target_id', flat=True)) if gp else []
     active_user_ids = Porra.objects.filter(season=current_season).values_list('user_id', flat=True).distinct()
     block_targets = (
@@ -1027,6 +1089,9 @@ def team(request):
         'block_targets': block_targets,
         'blocked_users_ids': blocked_users_ids,
         'current_block': current_block,
+        'incoming_block': incoming_block,
+        'blocked_driver_name': blocked_driver_name,
+        'blocked_team_name': blocked_team_name,
         'block_chip_reset_message': block_chip_reset_message,
         'drs_chip_reset_message': drs_chip_reset_message,
     })
