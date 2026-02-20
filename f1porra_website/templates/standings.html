@@ -3,26 +3,55 @@
 {% load static %}
 
 {% block content %}
-<div class="main-standings">
-    <div class="top-filters">
-        <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase;margin-bottom: 2%;">Select Standings Grand Prix</h1>
+<link href="{% static 'css/statistics.css' %}" rel="stylesheet">
+<div class="main-standings statistics-page">
+    <div class="top-filters stats-top-filters">
+        <h1 class="stats-title">Select Standings</h1>
         <hr class="gray-line-top"></hr>
-        <div class="section-std ">
-            <div class="grand-prixes">
+        <form method="get" class="stats-filter-grid">
+            <div class="section-std">
                 <div class="section-name-std">
-                    <span>Grand Prixes</span>
+                    <span>Season</span>
                 </div>
                 <div class="dropdown-std">
-                    <button id="gp-dropdown" class="dropbtn-std">{{ selected_gp|default:"Overall" }}</button>
-                    <div id="gp-dropdown-content" class="dropdown-content-std">
-                        <a href="?gp=overall" data-gp-id="overall">Overall</a>
-                        {% for gp in grand_prix_list %}
-                        <a href="?gp={{ gp.country }}" data-gp-id="{{ gp.country }}">{{ gp.country }}</a>
+                    <select id="season-select" name="season" class="dropbtn-std stats-select">
+                        {% for season in season_list %}
+                        <option value="{{ season.year }}" {% if selected_season.year == season.year %}selected{% endif %}>{{ season.name|default:season.year }}</option>
                         {% endfor %}
-                    </div>
+                    </select>
                 </div>
             </div>
-        </div>
+
+            <div class="section-std">
+                <div class="section-name-std">
+                    <span>Grand Prix</span>
+                </div>
+                <div class="dropdown-std">
+                    <select id="gp-select" name="gp" class="dropbtn-std stats-select">
+                        <option value="overall" {% if selected_gp == 'overall' %}selected{% endif %}>Overall</option>
+                        {% for gp in grand_prix_list %}
+                        <option value="{{ gp.country }}" {% if selected_gp == gp.country %}selected{% endif %}>{{ gp.country }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-std stats-actions-cell">
+                <div class="section-name-std">
+                    <span>Actions</span>
+                </div>
+                <div class="stats-filter-actions">
+                    <button type="submit" class="stats-btn">Apply</button>
+                    <button
+                        type="button"
+                        class="stats-btn stats-btn-secondary"
+                        onclick="window.location.href='?season={% if selected_season %}{{ selected_season.year }}{% endif %}&gp=overall';"
+                    >
+                        Reset
+                    </button>
+                </div>
+            </div>
+        </form>
     </div>
     <div class="user-standings">
         <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase;margin-bottom: 2%;">Users Standings</h1>
@@ -37,7 +66,9 @@
                     <th class="wins">Wins</th>
                     <th class="podiums">Podiums</th>
                     <th class="last-2">Last 2</th>
+                    {% if selected_gp != 'overall' %}
                     <th class="view-team">Picked Team</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>
@@ -45,16 +76,16 @@
                 <tr>
                     <td class="rank">{{ forloop.counter }}</td>
                     <td class="user-name">
-                        {% if user.user__userprofile__photo %}
-                            <img src="/media/{{ user.user__userprofile__photo }}" class="profile-photo" alt="Profile Photo">
+                        {% if user.profile_photo %}
+                            <img src="/media/{{ user.profile_photo }}" class="profile-photo" alt="Profile Photo">
                         {% else %}
                             <img src="{% static 'theme/assets/users/default.png' %}"  class="profile-photo" alt="Default Profile Photo">
                         {% endif %}
                         {{ user.user__first_name }}
                     </td>
                     <td class="team-name">
-                        {% if user.user__userprofile__users_team__name %}
-                            {{ user.user__userprofile__users_team__name }}
+                        {% if user.team_name %}
+                            {{ user.team_name }}
                         {% else %}
                             No Team
                         {% endif %}
@@ -63,17 +94,15 @@
                     <td class="wins">{{ user.wins }}</td>
                     <td class="podiums">{{ user.podiums }}</td>
                     <td class="last-2">{{ user.last_2 }}</td>
+                    {% if selected_gp != 'overall' %}
                     <td style="font-size: 0.8em;" class="view-team">
-                        {% if selected_gp != 'overall' %}
-                            <a href="{% url 'public:view_team' user.user__username selected_gp %}">View team</a>
-                        {% else %}
-                            <span></span>
-                        {% endif %}
+                        <a href="{% url 'public:view_team' user.user__username selected_gp %}">View team</a>
                     </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8">No standings available.</td>
+                    <td colspan="{% if selected_gp == 'overall' %}7{% else %}8{% endif %}">No standings available.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -95,7 +124,7 @@
                 {% for team in team_standings %}
                 <tr>
                     <td class="rank">{{ forloop.counter }}</td>
-                    <td class="team-name">{{ team.user__userprofile__users_team__name }}</td>
+                    <<td class="team-name">{{ team.user__userprofile__users_team__name }}</td>
                     <td class="points">{{ team.total_points }}</td>
                     <td class="wins">{{ team.wins }}</td>
                 </tr>
@@ -108,6 +137,22 @@
         </table>
     </div>
 </div>
-<script src="{% static 'js/standings.js' %}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector(".stats-filter-grid");
+    const seasonSelect = document.getElementById("season-select");
+    const gpSelect = document.getElementById("gp-select");
+    if (!form || !seasonSelect || !gpSelect) return;
+
+    seasonSelect.addEventListener("change", function () {
+        gpSelect.value = "overall";
+        form.submit();
+    });
+
+    gpSelect.addEventListener("change", function () {
+        form.submit();
+    });
+});
+</script>
 {% endblock %}
 

@@ -185,6 +185,7 @@
   /* height: 25vh; */
   padding: 1%;
   margin-bottom: 10px;
+  margin-top: 2%;
 }
 
 .subcontainer-home{
@@ -346,7 +347,8 @@
   border-radius: 1%;
   margin-bottom: 10px;
   width:  var(--screen-desk);
-  height: 140vh;
+  min-height: 110vh;
+  height: auto;
   background-color: lightgrey;
   padding:1%;
   margin: 0.5%;
@@ -357,22 +359,59 @@
 
 .fantasy-team{
   width: 100%;
-  margin-top: 10px;
-  height: 90%;
+  margin-top: 0;
+  height: auto;
   display: flex; 
   justify-content: center;
+  align-items: flex-start;
+  gap: 0.8rem;
 }
 
 .team-selections{
-  width: 55%
+  width: 55%;
+  display: flex;
+  flex-direction: column;
+  margin-top: 0;
 }
 
 .top-selection{
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
   display: flex;
-  margin-left: 20px;
+  margin-left: 0;
+  margin-bottom: 0.9rem;
+  padding: 0 1.5%;
+  gap: 0.9rem;
 } 
+
+.top-selection > section:first-child{
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: nowrap;
+  gap: 0.9rem;
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  max-width: calc(100% - 270px);
+}
+
+.budget-block{
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 190px;
+  flex: 0 0 190px;
+}
+
+.top-selection > section:last-child{
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  min-width: 250px;
+  flex: 0 0 250px;
+  padding-top: 0;
+}
 
 .budget-selection{
   font-size: 1.3rem;
@@ -381,6 +420,8 @@
   display: flex;
   flex-direction: column;
   font-family: "Formula1Bold";
+  min-width: 0;
+  margin-bottom: 0;
 }
 
 .budgetBar{
@@ -389,8 +430,8 @@
   position: relative;
   overflow: hidden;
   background-color: gray;
-  margin-top: 5%;
-  width: 220px;
+  margin-top: 0.35rem;
+  width: 190px;
   border-radius: 100px;
 }
 
@@ -416,7 +457,7 @@
 .button-reset-team{
   color: white;
   background-color: black;
-  margin-right: 10px;
+  margin-right: 0;
   border-radius: 5px;
 }
 
@@ -424,7 +465,7 @@
     color: white;
     background-color: #E10600;
     text-align: center; 
-    margin-right: 20px;
+    margin-right: 0;
     border-radius: 5px;
 }
 
@@ -432,9 +473,189 @@
   color: lightgray;
   background-color: darkgray;
   text-align: center; 
-  margin-right: 20px;
+  margin-right: 0;
   border-radius: 5px;
 }
+
+.chip-buttons-wrap{
+  margin-top: 0.2rem;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.65rem;
+  width: auto;
+  flex-wrap: nowrap;
+}
+
+.chip-hidden-input{
+  display: none;
+}
+
+.chip-action-btn{
+  border: 2px solid #2f2f2f;
+  border-radius: 8px;
+  background-color: #d8d8d8;
+  color: #141414;
+  font-family: "Formula1Bold";
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.55rem;
+  min-height: 40px;
+  width: 140px;
+  justify-content: center;
+  white-space: nowrap;
+  transition: transform .1s linear, background-color .15s linear, border-color .15s linear;
+}
+
+.chip-action-btn img{
+  width: 27%;
+  height: auto;
+  object-fit: contain;
+}
+
+.chip-action-btn:hover:not(:disabled){
+  transform: translateY(-1px);
+}
+
+.chip-action-btn:disabled{
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chip-action-drs{
+  border-color: #8d1598;
+  background-color: #d68ce0;
+  color: #4a0d50;
+}
+
+.chip-action-drs.active{
+  border-color: #8d1598;
+  background-color: #8d1598;
+  color: #ffffff;
+}
+
+.drs-chip-row{
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 42px;
+  margin: 0;
+}
+
+.chip-status{
+  font-family: "Formula1Bold";
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  padding: 0.25rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  min-width: 64px;
+  min-height: 28px;
+  text-align: center;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip-status.active{
+  color: #0e5d26;
+  background-color: #c7f4d4;
+  border-color: #53b96e;
+  display: inline-flex;
+}
+
+.chip-action-pit{
+  border-color: #1d7c32;
+  background-color: #a5e4b0;
+  color: #0d3f18;
+}
+
+.top-selection .incoming-block-info{
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.6rem);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.confirm-action-modal-content{
+  width: 460px;
+  max-width: 94vw;
+  text-align: left;
+  border-radius: 10px;
+}
+
+.confirm-action-modal-content h3{
+  margin: 0 0 .65rem;
+  font-family: "Formula1Bold";
+  text-transform: uppercase;
+  font-size: 1rem;
+}
+
+.confirm-action-modal-content p{
+  margin: 0 0 .9rem;
+  font-family: "Formula1Regular";
+  font-size: 0.9rem;
+  line-height: 1.35;
+  white-space: pre-line;
+}
+
+.confirm-action-buttons{
+  display: flex;
+  justify-content: center;
+  gap: .55rem;
+}
+
+.confirm-action-buttons .button-save-team,
+.confirm-action-buttons .button-reset-team{
+  margin-right: 0;
+  min-width: 112px;
+}
+
+.block-chip-modal-content{
+  width: 420px;
+  max-width: 92vw;
+  text-align: left;
+}
+
+.block-chip-modal-content h3{
+  margin: 0 0 .55rem;
+}
+
+.chip-disclaimer{
+  font-family: "Formula1Regular";
+  font-size: 0.8rem;
+  margin-bottom: .75rem;
+}
+
+.chip-current-info{
+  font-size: 0.78rem;
+  margin-bottom: .75rem;
+}
+
+.block-chip-form{
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.block-chip-form .myteam-sort-select{
+  width: 100%;
+}
+
+.block-submit-btn{
+  margin-right: 0;
+  margin-top: .2rem;
+}
+
+.chip-warning{
+  margin-top: .45rem;
+  color: #8a5a00;
+  display: block;
+}
+
 
 .selection-div{
   height: 100%;
@@ -461,6 +682,10 @@
   border: 3px solid red
 }
 
+#selection1.drs-boost-active{
+  border: 3px solid #8d1598;
+}
+
 #selection1::after{
   position: absolute;
   margin: 2px;
@@ -478,6 +703,11 @@
   border-radius: 100px; /* Optional: Add border-radius for rounded corners */
   cursor: pointer; /* Change cursor to pointer to indicate it's clickable */
   z-index: 2; /* Ensure it overlays the other components */
+}
+
+#selection1.drs-boost-active::after{
+  content: "3x";
+  background-color: #8d1598;
 }
 
 .driver-selected-photo{
@@ -540,7 +770,7 @@
   padding: 1%; 
   display: flex; 
   justify-content: center; 
-  margin-top: 2%; 
+  margin-top: 0; 
   list-style-type: none;
 }
 
@@ -600,7 +830,35 @@
 .selectable-list{  
   width: 45%;
   height: 100%;
-  
+  margin-top: 0.25rem;
+}
+
+.myteam-sort-bar{
+  width: 95%;
+  margin: 0 2% 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  font-family: "Formula1Bold";
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.myteam-sort-select{
+  border: none;
+  border-radius: 8px;
+  background-color: gray;
+  color: white;
+  padding: 0.32rem 0.5rem;
+  font-family: "Formula1Bold";
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.myteam-sort-select:focus{
+  outline: 2px solid #E10600;
+  outline-offset: 1px;
 }
 
 .team-driver-selectable{  
@@ -745,8 +1003,6 @@ ul {
   display:flex;
   width:100%;
   justify-content: end;
-  margin-top: 6%;
-  margin-right: 7%;
 }
 
 .foto-piloto-inside{
@@ -910,17 +1166,24 @@ ul {
 
 
 .general-selections{
-  margin: 1% 0.5% 4% 0.5%;
+  margin: 0.8% 0.5% 1% 0.5%;
   width:  var(--screen-desk);
-  height: 10%;
+  height: auto;
+  min-height: 0;
   width: 100%;
   display: flex; 
   justify-content: space-around;
+  align-items: flex-start;
+}
+
+.selection-cards-wrap{
+  margin-top: 1rem;
+  padding: 1.2% 2% 1.8%;
 }
 
 .section {
   width:15%;
-  height: 100%;
+  height: auto;
   display: flex;
   flex-direction: column;
   padding: 0.5%;
@@ -1067,10 +1330,35 @@ ul {
   text-align: center;
   width: 300px;
   font-family: "Formula1Bold";
+  position: relative;
 }
 
 .close-button {
-  float: right;
+  position: absolute;
+  top: 10px;
+  right: 12px;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.blocked-asset-row{
+  filter: grayscale(100%);
+  opacity: 0.65;
+}
+
+.blocked-asset-pill{
+  align-self: center;
+  background: #f3f4f6;
+  border: 1px solid #9ca3af;
+  color: #374151;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.35rem;
+  white-space: nowrap;
+}
+
+.incoming-block-info{
+  margin-top: 0.6rem;
 }

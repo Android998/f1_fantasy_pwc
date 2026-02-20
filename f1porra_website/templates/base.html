@@ -15,11 +15,11 @@
     <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" />
     <link href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic" rel="stylesheet" type="text/css" />
     <!-- Core theme CSS (includes Bootstrap)-->
-    <link href="{% static 'theme/css/styles.css' %}" rel="stylesheet" />
-    <link href="{% static 'css/main.css' %}" rel="stylesheet" />
-    <link href="{% static 'css/user.css' %}" rel="stylesheet" />
-    <link href="{% static 'css/standings.css' %}" rel="stylesheet"/>
-    <link href="{% static 'css/viewteam.css' %}" rel="stylesheet"/>
+    <link href="{% static 'theme/css/styles.css' %}?v=1" rel="stylesheet" />
+    <link href="{% static 'css/main.css' %}?v=6" rel="stylesheet" />
+    <link href="{% static 'css/user.css' %}?v=1" rel="stylesheet" />
+    <link href="{% static 'css/standings.css' %}?v=1" rel="stylesheet"/>
+    <link href="{% static 'css/viewteam.css' %}?v=1" rel="stylesheet"/>
     <!-- Add your CSS links here -->
 </head>
 <body>
@@ -29,8 +29,8 @@
             <div class="top-right-buttons">
                 {% if user.is_authenticated %}
                 <a href="{% url 'accounts:profile' %}" class="btn signed-in-btn profile-link">
-                    {% if user.userprofile.photo %}
-                        <img src="{{ user.userprofile.photo.url }}" class="circular-photo" alt="Profile Photo">
+                    {% if current_user_profile and current_user_profile.photo %}
+                        <img src="{{ current_user_profile.photo.url }}" class="circular-photo" alt="Profile Photo">
                     {% else %}
                         <img src="{% static 'theme/assets/users/default.png' %}" class="circular-photo" alt="Default Profile Photo">
                     {% endif %}
@@ -63,6 +63,8 @@
                         <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == standings_url %} activate {%endif%}" href="{{standings_url}}">Standings</a></li>
                         {%url 'public:rules' as rules_url %}
                         <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == rules_url %} activate {%endif%}" href="{{rules_url}}">Rules</a></li>
+                        {%url 'public:calendar' as calendar_url %}
+                        <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == calendar_url %} activate {%endif%}" href="{{calendar_url}}">Calendar</a></li>
                         {%url 'public:statistics' as statistics_url%}
                         {%url 'public:statistics_users' as statistics_users_url%}
                         {%url 'public:statistics_assets' as statistics_assets_url%}

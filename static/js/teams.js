@@ -6,6 +6,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const constructorsTab = document.getElementById('constructors-tab');
     const driversTable = document.getElementById('drivers-table');
     const constructorsTable = document.getElementById('constructors-table');
+    const sortSelect = document.getElementById('myteam-sort-select');
+    const budgetProgressBar = document.getElementById('budget-progressBar');
+
+    function getBudgetCap() {
+        const parsed = parseFloat(budgetProgressBar?.max);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 150;
+    }
 
     // Mostrar la tabla de pilotos por defecto
     driversTable.style.display = 'block';
@@ -31,18 +38,92 @@ document.addEventListener('DOMContentLoaded', function() {
         driversTab.classList.remove('active');
     });
 
+    function parsePointsFromRow(row) {
+        const pointsText = row.querySelector('.driver-stats ul li:first-child span')?.innerText || '0';
+        const match = pointsText.match(/-?\d+(\.\d+)?/);
+        return match ? parseFloat(match[0]) : 0;
+    }
+
+    function parsePriceFromRow(row) {
+        const priceText = row.querySelector('.driver-price span:first-child')?.innerText || '0';
+        const numeric = priceText.replace(/[^\d.-]/g, '');
+        const value = parseFloat(numeric);
+        return Number.isFinite(value) ? value : 0;
+    }
+
+    function rowSortValue(row, sortKey) {
+        const points = parsePointsFromRow(row);
+        const price = parsePriceFromRow(row);
+
+        if (sortKey === 'price') return price;
+        if (sortKey === 'ppm') return price > 0 ? points / price : 0;
+        return points;
+    }
+
+    function sortRowsInTable(tableEl, sortKey) {
+        if (!tableEl) return;
+        const listContainer = tableEl.querySelector('ul');
+        if (!listContainer) return;
+
+        const items = Array.from(listContainer.querySelectorAll(':scope > li'));
+        items.sort((a, b) => {
+            const rowA = a.querySelector('.fila-piloto, .fila-equipo');
+            const rowB = b.querySelector('.fila-piloto, .fila-equipo');
+            const valueA = rowA ? rowSortValue(rowA, sortKey) : 0;
+            const valueB = rowB ? rowSortValue(rowB, sortKey) : 0;
+            if (valueA !== valueB) return valueB - valueA;
+
+            const nameA = rowA?.querySelector('.driver-name span')?.innerText?.toLowerCase() || '';
+            const nameB = rowB?.querySelector('.driver-name span')?.innerText?.toLowerCase() || '';
+            return nameA.localeCompare(nameB);
+        });
+
+        items.forEach(item => listContainer.appendChild(item));
+    }
+
+    function applyListSorting() {
+        const sortKey = sortSelect ? sortSelect.value : 'points';
+        sortRowsInTable(driversTable, sortKey);
+        sortRowsInTable(constructorsTable, sortKey);
+    }
+
+    if (sortSelect) {
+        sortSelect.addEventListener('change', applyListSorting);
+    }
+    applyListSorting();
+
+    function isRowBlocked(row) {
+        return row && row.dataset && row.dataset.blocked === 'true';
+    }
+
     // Función para manejar la selección de pilotos o equipos
     function handleSelection(button, type) {
         const row = button.closest(`.fila-${type}`);
+        if (!row) {
+            console.error('Row not found for type:', type);
+            return;
+        }
+        if (isRowBlocked(row)) {
+            return;
+        }
         const name = row.querySelector(`.driver-name span`).innerText;
         const price = row.querySelector(`.driver-price span:first-child`).innerText;
         const priceChange = row.querySelector('.price-up') ? row.querySelector('.price-up').innerText : row.querySelector('.price-down').innerText;
         const priceChangeClass = row.querySelector('.price-up') ? 'price-up' : 'price-down';
-        const photoSrc = row.querySelector('.foto-piloto-inside img').getAttribute('src');
         const bgColor = row.querySelector('.foto-piloto').style.backgroundColor;
 
-        // Modificar la ruta de la imagen del piloto si es piloto
-        const selectedPhotoSrc = photoSrc.replace('/drivers/drivers/', '/drivers/selected/');
+        let selectedPhotoSrc = '';
+        let selectedLogoSrc = '';
+
+        if (type === 'piloto') {
+            const photoImg = row.querySelector('.foto-piloto-inside img');
+            const photoSrc = photoImg ? photoImg.getAttribute('src') : '';
+            selectedPhotoSrc = photoSrc.replace('/drivers/drivers/', '/drivers/selected/');
+        } else {
+            // Constructors
+            selectedPhotoSrc = row.dataset.carSrc || (row.querySelector('img.team-car')?.getAttribute('src') || '');
+            selectedLogoSrc = row.dataset.logoSrc || (row.querySelector('img.team-logo')?.getAttribute('src') || '');
+        }
 
         // Obtener presupuesto disponible actual
         const BudgetEle = document.getElementById('available-budget').querySelector('span:last-child')
@@ -52,7 +133,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const newBudget = availableBudget - parseFloat(price.replace('M', '').replace('$', ''));
 
         // Actualizar presupuesto disponible en el HTML
-        document.getElementById('budget-span').style.width = `${newBudget * 220 / 150}px`
+        const budgetCap = getBudgetCap();
+        document.getElementById('budget-span').style.width = `${newBudget * 220 / budgetCap}px`
         document.getElementById('budget-progressBar').value = newBudget
         BudgetEle.innerText = `$${newBudget.toFixed(1)} M`;
 
@@ -77,6 +159,11 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById(`${type}-price-change-${selectedContainer}`).innerText = priceChange;
             document.getElementById(`${type}-price-change-${selectedContainer}`).className = priceChangeClass;
             document.getElementById(`${type}-photo-${selectedContainer}`).setAttribute('src', selectedPhotoSrc);
+
+            if (type === 'equipo' && selectedLogoSrc) {
+                const logoEl = document.getElementById(`equipo-logo-${selectedContainer}`);
+                if (logoEl) logoEl.setAttribute('src', selectedLogoSrc);
+            }
 
             // Cambiar el color de fondo del contenedor seleccionado
             selectionContainer.querySelector('.driver-selected-photo').style.backgroundColor = bgColor;
@@ -138,7 +225,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const newBudget = availableBudget + parseFloat(price.replace('M', '').replace('$', ''));
 
         // Actualizar presupuesto disponible en el HTML
-        document.getElementById('budget-span').style.width = `${newBudget * 220 / 150}px`
+        const budgetCap = getBudgetCap();
+        document.getElementById('budget-span').style.width = `${newBudget * 220 / budgetCap}px`
         document.getElementById('budget-progressBar').value = newBudget
         BudgetEle.innerText = `$${newBudget.toFixed(1)} M`;
 
@@ -185,6 +273,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleTableRemoval(button, type) {
         const row = button.closest(`.fila-${type}`);
         console.log(row);
+        if (isRowBlocked(row)) {
+            return;
+        }
 
         // Obtener presupuesto disponible actual
         const price = row.querySelector(`.driver-price span:first-child`).innerText;
@@ -195,7 +286,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const newBudget = availableBudget + parseFloat(price.replace('M', '').replace('$', ''));
 
         // Actualizar presupuesto disponible en el HTML
-        document.getElementById('budget-span').style.width = `${newBudget * 220 / 150}px`
+        const budgetCap = getBudgetCap();
+        document.getElementById('budget-span').style.width = `${newBudget * 220 / budgetCap}px`
         document.getElementById('budget-progressBar').value = newBudget
         BudgetEle.innerText = `$${newBudget.toFixed(1)} M`;
 
@@ -250,12 +342,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to reset all selections and go back to initial state
     function resetTeamSelection() {
         // Reset budget to initial state
-        const initialBudget = 150.0; // Initial budget value
+        const initialBudget = getBudgetCap(); // Initial budget value
         const BudgetEle = document.getElementById('available-budget').querySelector('span:last-child');
         BudgetEle.innerText = `$${initialBudget.toFixed(1)} M`;
 
         // Reset progress bar and width
-        document.getElementById('budget-span').style.width = `${initialBudget * 220 / 150}px`;
+        document.getElementById('budget-span').style.width = `${initialBudget * 220 / getBudgetCap()}px`;
         document.getElementById('budget-progressBar').value = initialBudget;
 
         // Reset each selected container to initial state
@@ -415,8 +507,32 @@ document.addEventListener('DOMContentLoaded', function() {
         const team2 = getDriverData("selection7");
         console.log(driver1, driver2, driver3, driver4, driver5, team1, team2);
 
+        const requiredFields = [
+            { label: 'Poleman', value: poleman },
+            { label: '1st Position', value: first_pos },
+            { label: '2nd Position', value: second_pos },
+            { label: '3rd Position', value: third_pos },
+            { label: 'Fast Lap', value: fast_lap },
+            { label: 'Best Team', value: best_team },
+            { label: 'Driver 1', value: driver1 },
+            { label: 'Driver 2', value: driver2 },
+            { label: 'Driver 3', value: driver3 },
+            { label: 'Driver 4', value: driver4 },
+            { label: 'Driver 5', value: driver5 },
+            { label: 'Team 1', value: team1 },
+            { label: 'Team 2', value: team2 },
+        ];
+
+        const missing = requiredFields.filter((field) => !field.value).map((field) => field.label);
+        if (missing.length > 0) {
+            const podiumStatus = `Poleman: ${poleman || '❌'} | 1st: ${first_pos || '❌'} | 2nd: ${second_pos || '❌'} | 3rd: ${third_pos || '❌'}`;
+            alert(`Team incomplete. Please complete all selections before saving. Missing: - ${missing.join('- ')} Podium selections status:${podiumStatus}`);
+            return;
+        }
+
         const csrfToken = getCSRFToken();
         const gpId = document.querySelector('meta[name="gp-id"]').getAttribute('content');
+        const triplePointsChip = document.getElementById('triple-points-chip')?.checked || false;
 
         // Disable the button to prevent multiple submissions
         const saveButton = document.getElementById("save-team-button");
@@ -443,7 +559,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 driver4: driver4,
                 driver5: driver5,
                 team1: team1,
-                team2: team2
+                team2: team2,
+                triple_points_chip: triplePointsChip
             })
         })
         .then(response => response.json())
@@ -467,8 +584,247 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Event listener for the Reset Team button
-    document.querySelector('.button-save-team').addEventListener('click', saveTeamSelection);
+    function toggleBlockAssetSelect() {
+        const assetTypeEl = document.getElementById('block-asset-type');
+        const driverSelect = document.getElementById('block-driver-id');
+        const teamSelect = document.getElementById('block-team-id');
+        if (!assetTypeEl || !driverSelect || !teamSelect) return;
+
+        if (assetTypeEl.value === 'team') {
+            driverSelect.style.display = 'none';
+            teamSelect.style.display = 'inline-block';
+        } else {
+            driverSelect.style.display = 'inline-block';
+            teamSelect.style.display = 'none';
+        }
+    }
+
+    let confirmActionResolver = null;
+
+    function closeConfirmActionModal(result = false) {
+        const modal = document.getElementById('confirm-action-modal');
+        const acceptBtn = document.getElementById('confirm-action-accept');
+        const cancelBtn = document.getElementById('confirm-action-cancel');
+        const closeBtn = document.getElementById('close-confirm-action-modal');
+
+        if (!modal || !acceptBtn || !cancelBtn || !closeBtn) return;
+
+        modal.style.display = 'none';
+        acceptBtn.onclick = null;
+        cancelBtn.onclick = null;
+        closeBtn.onclick = null;
+        modal.onclick = null;
+
+        if (confirmActionResolver) {
+            const resolver = confirmActionResolver;
+            confirmActionResolver = null;
+            resolver(result);
+        }
+    }
+
+    function showConfirmActionModal(message, title = 'Confirm action') {
+        const modal = document.getElementById('confirm-action-modal');
+        const titleEl = document.getElementById('confirm-action-title');
+        const messageEl = document.getElementById('confirm-action-message');
+        const acceptBtn = document.getElementById('confirm-action-accept');
+        const cancelBtn = document.getElementById('confirm-action-cancel');
+        const closeBtn = document.getElementById('close-confirm-action-modal');
+
+        if (!modal || !titleEl || !messageEl || !acceptBtn || !cancelBtn || !closeBtn) {
+            return Promise.resolve(window.confirm(message));
+        }
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        modal.style.display = 'flex';
+
+        return new Promise((resolve) => {
+            confirmActionResolver = resolve;
+
+            acceptBtn.onclick = () => closeConfirmActionModal(true);
+            cancelBtn.onclick = () => closeConfirmActionModal(false);
+            closeBtn.onclick = () => closeConfirmActionModal(false);
+            modal.onclick = (event) => {
+                if (event.target === modal) {
+                    closeConfirmActionModal(false);
+                }
+            };
+        });
+    }
+
+    async function toggleDrsChip() {
+        const drsButton = document.getElementById('drs-chip-button');
+        const tripleInput = document.getElementById('triple-points-chip');
+        if (!drsButton || !tripleInput || tripleInput.disabled) return;
+
+        const isActivating = !tripleInput.checked;
+        if (isActivating) {
+            const confirmationMsg = drsButton.dataset.confirmMessage
+                ? `${drsButton.dataset.confirmMessage}
+
+¿Seguro que quieres activar DRS Boost en este GP?`
+                : '¿Seguro que quieres activar DRS Boost en este GP? No podrás volver a usarlo hasta la próxima ventana.';
+            const confirmed = await showConfirmActionModal(confirmationMsg, 'Activar DRS Boost');
+            if (!confirmed) {
+                return;
+            }
+        }
+
+        tripleInput.checked = !tripleInput.checked;
+        syncDrsChipVisualState();
+    }
+
+    function syncDrsChipVisualState() {
+        const drsButton = document.getElementById('drs-chip-button');
+        const tripleInput = document.getElementById('triple-points-chip');
+        const statusEl = document.getElementById('drs-chip-status');
+        const captainCard = document.getElementById('selection1');
+        if (!drsButton || !tripleInput) return;
+
+        const isActive = !!tripleInput.checked;
+        drsButton.classList.toggle('active', isActive);
+
+        if (captainCard) {
+            captainCard.classList.toggle('drs-boost-active', isActive);
+        }
+
+        if (statusEl) {
+            statusEl.textContent = isActive ? 'Active' : '';
+            statusEl.classList.toggle('active', isActive);
+        }
+    }
+
+    function openBlockChipModal() {
+        const modal = document.getElementById('block-chip-modal');
+        const trigger = document.getElementById('pitstop-chip-button');
+        if (!modal || !trigger || trigger.disabled) return;
+        modal.style.display = 'flex';
+    }
+
+    function closeBlockChipModal() {
+        const modal = document.getElementById('block-chip-modal');
+        if (!modal) return;
+        modal.style.display = 'none';
+    }
+
+    async function useBlockChip() {
+        const btn = document.getElementById('use-block-chip-button');
+        const targetUserEl = document.getElementById('block-target-user');
+        const assetTypeEl = document.getElementById('block-asset-type');
+        const driverSelect = document.getElementById('block-driver-id');
+        const teamSelect = document.getElementById('block-team-id');
+        const disclaimer = document.querySelector('#block-chip-modal .chip-disclaimer');
+        const gpId = document.querySelector('meta[name="gp-id"]').getAttribute('content');
+
+        if (!btn || !targetUserEl || !assetTypeEl || !driverSelect || !teamSelect) return;
+
+        const assetType = assetTypeEl.value;
+        const blockedAssetId = assetType === 'team' ? teamSelect.value : driverSelect.value;
+        const targetUserId = targetUserEl.value;
+
+        if (!targetUserId || !blockedAssetId) {
+            alert('Selecciona usuario y activo a bloquear.');
+            return;
+        }
+
+        const confirmationMsg = disclaimer ? `${disclaimer.textContent.trim()}
+
+¿Confirmas que quieres usar el chip ahora?` : '¿Confirmas que quieres usar el chip de bloqueo ahora?';
+        const confirmed = await showConfirmActionModal(confirmationMsg, 'Chip de Bloqueo');
+        if (!confirmed) {
+            return;
+        }
+
+        btn.disabled = true;
+
+        fetch('/team/block-chip/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify({
+                gp_id: gpId,
+                target_user_id: targetUserId,
+                asset_type: assetType,
+                blocked_asset_id: blockedAssetId,
+            }),
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    location.reload();
+                    return;
+                }
+                btn.disabled = false;
+                alert(data.error || 'No se pudo guardar el bloqueo.');
+            })
+            .catch(() => {
+                btn.disabled = false;
+                alert('Error al guardar el bloqueo.');
+            });
+    }
+
+    const saveBtn = document.querySelector('.button-save-team');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveTeamSelection);
+    }
+
+    const drsChipButton = document.getElementById('drs-chip-button');
+    if (drsChipButton) {
+        drsChipButton.addEventListener('click', toggleDrsChip);
+    }
+    syncDrsChipVisualState();
+
+    const pitStopButton = document.getElementById('pitstop-chip-button');
+    if (pitStopButton) {
+        pitStopButton.addEventListener('click', openBlockChipModal);
+    }
+
+    const closeBlockModalButton = document.getElementById('close-block-chip-modal');
+    if (closeBlockModalButton) {
+        closeBlockModalButton.addEventListener('click', closeBlockChipModal);
+    }
+
+    const blockChipModal = document.getElementById('block-chip-modal');
+    if (blockChipModal) {
+        blockChipModal.addEventListener('click', function(event) {
+            if (event.target === blockChipModal) {
+                closeBlockChipModal();
+            }
+        });
+    }
+
+    const blockAssetTypeEl = document.getElementById('block-asset-type');
+    if (blockAssetTypeEl) {
+        blockAssetTypeEl.addEventListener('change', toggleBlockAssetSelect);
+        toggleBlockAssetSelect();
+    }
+
+    const blockBtn = document.getElementById('use-block-chip-button');
+    if (blockBtn) {
+        blockBtn.addEventListener('click', useBlockChip);
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key !== 'Escape') return;
+
+        const confirmModal = document.getElementById('confirm-action-modal');
+        const blockModal = document.getElementById('block-chip-modal');
+        const saveModal = document.getElementById('save-success-modal');
+
+        if (confirmModal && confirmModal.style.display === 'flex') {
+            closeConfirmActionModal(false);
+            return;
+        }
+        if (blockModal && blockModal.style.display === 'flex') {
+            closeBlockChipModal();
+            return;
+        }
+        if (saveModal && saveModal.style.display === 'flex') {
+            closeModal();
+        }
+    });
 
 });
 
@@ -495,7 +851,13 @@ function updateAddButtonVisibility() {
     const rows = document.querySelectorAll('.fila-piloto, .fila-equipo');
 
     rows.forEach(row => {
-        // Verificar si el piloto/equipo ya está seleccionado
+        const addButton = row.querySelector('#add-selection');
+        if (!addButton) return;
+
+        if (row.dataset.blocked === 'true') {
+            addButton.disabled = true;
+            return;
+        }
         if (row.querySelector('.no-selectable-piloto').style.display === 'none') {
             // Obtener el precio del piloto/equipo
             const price = row.querySelector(`.driver-price span:first-child`).innerText;
@@ -503,15 +865,15 @@ function updateAddButtonVisibility() {
 
             // Obtener presupuesto disponible actual
             const BudgetEle = document.getElementById('available-budget').querySelector('span:last-child');
-            let availableBudget = parseFloat(BudgetEle.innerText.replace('M', '').replace('$', ''));
+            const availableBudget = parseFloat(BudgetEle.innerText.replace('M', '').replace('$', ''));
 
             // Si no hay suficiente presupuesto, desactivar el botón de añadir y reducir la opacidad
             if (availableBudget < cost) {
                 row.style.opacity = '0.5';
-                row.querySelector('#add-selection').disabled = true;
+                addButton.disabled = true;
             } else {
                 row.style.opacity = '1';
-                row.querySelector('#add-selection').disabled = false;
+                addButton.disabled = false;
             }
         }
     });

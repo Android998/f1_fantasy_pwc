@@ -5,7 +5,7 @@
 <link href="{% static 'css/statistics.css' %}" rel="stylesheet">
 <div class="main-standings statistics-page">
     <div class="top-filters stats-top-filters">
-        <h1 class="stats-title">User Statistics</h1>
+        <h1 id="stats-page-title" class="stats-title">User Statistics</h1>
         <hr class="gray-line-top">
 
         <div class="stats-filter-grid">
@@ -16,6 +16,16 @@
                         <option value="2026">2026</option>
                         <option value="2025" selected>2025</option>
                         <option value="2024">2024</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-std">
+                <div class="section-name-std"><span>Type</span></div>
+                <div class="dropdown-std">
+                    <select id="entity-select" class="dropbtn-std stats-select">
+                        <option value="users" selected>Users</option>
+                        <option value="teams">Teams</option>
                     </select>
                 </div>
             </div>
@@ -45,7 +55,7 @@
             </div>
 
             <div id="entities-section" class="section-std">
-                <div class="section-name-std"><span>Users</span></div>
+                <div class="section-name-std"><span id="entities-label">Users</span></div>
                 <div class="dropdown-std users-dropdown">
                     <button id="users-dropdown-btn" class="dropbtn-std stats-select users-dropbtn" type="button">All users</button>
                     <div id="users-dropdown-content" class="dropdown-content-std users-dropdown-content"></div>
@@ -63,7 +73,7 @@
             <div class="section-std stats-actions-cell">
                 <div class="section-name-std"><span>Actions</span></div>
                 <div class="stats-filter-actions">
-                    <button id="apply-filters-btn" class="stats-btn">Apply Filters</button>
+                    <button id="apply-filters-btn" class="stats-btn">Apply</button>
                     <button id="reset-filters-btn" class="stats-btn stats-btn-secondary">Reset</button>
                 </div>
             </div>
@@ -71,7 +81,7 @@
     </div>
 
     <div class="user-standings stats-chart-panel">
-        <h1 class="stats-title">User Trends</h1>
+        <h1 id="trends-title" class="stats-title">User Trends</h1>
         <hr class="gray-line">
         <p id="stats-feedback" class="stats-feedback"></p>
         <div id="stats-empty-state" class="stats-empty-state" hidden></div>
@@ -79,7 +89,7 @@
     </div>
 
     <div class="user-standings stats-matrix-panel">
-        <h1 class="stats-title">Users Matrix</h1>
+        <h1 id="matrix-title" class="stats-title">Users Matrix</h1>
         <hr class="gray-line">
         <div class="stats-table-wrapper">
             <table class="standings-table statistics-table">

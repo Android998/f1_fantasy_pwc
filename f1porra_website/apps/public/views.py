@@ -3,18 +3,21 @@ from django.db.models import Sum, Max, F, Q, Count, Value
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from datetime import datetime
 import datetime as dt
 import pytz
 import json
 from datetime import date
-from .models import Season, Driver, Team, DriverPoints, TeamPoints, GrandPrix, Porra, RaceResults
+from .models import Season, Driver, Team, DriverPoints, TeamPoints, GrandPrix, Porra, RaceResults, BlockChip
 from f1porra_website.apps.accounts.models import UserProfile, UsersTeam
 from f1porra_website.apps.public.services import (
     build_assets_matrix_payload,
     build_assets_trends_payload,
     build_matrix_payload,
     build_optimal_team_payload,
+    build_teams_matrix_payload,
+    build_teams_trends_payload,
     build_trends_payload,
 )
 from django.contrib.auth.models import User
@@ -47,13 +50,110 @@ def adjust_color(hex_color, amount):
 
 
 def normalize_name(name):
+    if not name:
+        return ""
     return ' '.join(word.capitalize() if word != "RB" else "RB" for word in name.split())
 
+def _chip_window(nround):
+    if not nround:
+        return None
+    return (nround - 1) // 12
+
+
+def _triple_chip_available(user, gp):
+    if not gp or not gp.nround:
+        return False
+    return not Porra.objects.filter(
+        season=current_season,
+        user=user,
+        gp__nround__gt=_chip_window(gp.nround) * 12,
+        gp__nround__lte=(_chip_window(gp.nround) + 1) * 12,
+        triple_points_chip=True,
+    ).exists()
+
+
+def _block_chip_available(user, gp):
+    if not gp or not gp.nround:
+        return False
+    return not BlockChip.objects.filter(
+        season=current_season,
+        blocker=user,
+        gp__nround__gt=_chip_window(gp.nround) * 12,
+        gp__nround__lte=(_chip_window(gp.nround) + 1) * 12,
+    ).exists()
+
+
+def _block_chip_deadline_passed(gp, now):
+    if not gp or not gp.last_edit_date:
+        return True
+    return now >= (gp.last_edit_date - dt.timedelta(days=1))
+
+def _get_incoming_block_for_user(user, gp):
+    if not user or not gp:
+        return None
+    return BlockChip.objects.filter(
+        season=current_season,
+        gp=gp,
+        target=user,
+    ).select_related('blocked_driver', 'blocked_team', 'blocker').first()
+
+
+def _remove_blocked_asset_from_porra(user, gp, blocked_driver=None, blocked_team=None):
+    if not user or not gp:
+        return
+
+    porra = Porra.objects.filter(season=current_season, user=user, gp=gp).first()
+    if not porra:
+        return
+
+    fields_to_null = []
+    if blocked_driver and blocked_driver in [porra.driver1, porra.driver2, porra.driver3, porra.driver4, porra.driver5]:
+        for field in ['driver1', 'driver2', 'driver3', 'driver4', 'driver5']:
+            if getattr(porra, field) == blocked_driver:
+                setattr(porra, field, None)
+                fields_to_null.append(field)
+
+    if blocked_team and blocked_team in [porra.team1, porra.team2]:
+        for field in ['team1', 'team2']:
+            if getattr(porra, field) == blocked_team:
+                setattr(porra, field, None)
+                fields_to_null.append(field)
+
+    if fields_to_null:
+        porra.save(update_fields=fields_to_null)
+
+def _get_latest_gp_round_for_prices():
+    driver_round = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+    team_round = TeamPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+
+    rounds = [value for value in [driver_round, team_round] if value is not None]
+    return max(rounds) if rounds else None
+
+
+def _budget_cap_for_user(user):
+    user_profile = UserProfile.objects.get(user=user, season=current_season)
+    user_team = user_profile.users_team
+
+    users_teams = UsersTeam.objects.annotate(
+        total_points=Coalesce(
+            Sum(
+                'userprofile__user__porra__points',
+                filter=Q(
+                    userprofile__season=current_season,
+                    userprofile__user__porra__season=current_season,
+                ),
+            ),
+            Value(0),
+        )
+    ).order_by('total_points')
+    last_users_team = users_teams.first() if users_teams.exists() else None
+
+    return 160.0 if user_team == last_users_team else 150.0
 
 # Create your views here.
 def home(request):
-    # Get the latest Grand Prix round number
-    latest_gp = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+    # Get the latest Grand Prix round number considering both drivers and constructors prices
+    latest_gp = _get_latest_gp_round_for_prices()
 
     # Get the latest Grand Prix details
     latest_grand_prix = GrandPrix.objects.filter(season=current_season).get(nround=latest_gp)
@@ -84,6 +184,126 @@ def prices(request):
 
 def rules(request):
     return render(request, 'rules.html')
+
+
+def calendar_view(request):
+    gp_id = _parse_int(request.GET.get("gp"))
+    season = current_season
+    if season is None:
+        season = Season.objects.order_by("-year").first()
+
+    if season is None:
+        return render(
+            request,
+            "calendar.html",
+            {
+                "gp_cards": [],
+                "selected_gp": None,
+                "state_counts": {"next": 0, "future": 0, "past": 0, "locked": 0},
+            },
+        )
+
+    now_utc = datetime.now(pytz.UTC)
+    gps = list(GrandPrix.objects.filter(season=season).order_by("nround", "id"))
+    scored_gp_ids = set(
+        Porra.objects.filter(season=season, points__isnull=False).values_list("gp_id", flat=True).distinct()
+    )
+    user_porra_gp_ids = set()
+    if request.user.is_authenticated:
+        user_porra_gp_ids = set(
+            Porra.objects.filter(season=season, user=request.user).values_list("gp_id", flat=True)
+        )
+
+    next_gp_id = None
+    for gp in gps:
+        if gp.last_edit_date and gp.last_edit_date > now_utc:
+            next_gp_id = gp.id
+            break
+
+    gp_by_id = {}
+    gp_cards = []
+    state_counts = {"next": 0, "future": 0, "past": 0, "locked": 0}
+
+    for gp in gps:
+        gp_by_id[gp.id] = gp
+
+        reference_dt = gp.gp_end_date or gp.last_edit_date
+        if not reference_dt:
+            continue
+
+        race_day = reference_dt.date()
+        is_past = gp.id in scored_gp_ids or (gp.gp_end_date is not None and gp.gp_end_date <= now_utc)
+        is_locked = (gp.last_edit_date is not None and gp.last_edit_date <= now_utc and not is_past)
+
+        if gp.id == next_gp_id:
+            state = "next"
+        elif is_past:
+            state = "past"
+        elif is_locked:
+            state = "locked"
+        else:
+            state = "future"
+
+        state_counts[state] += 1
+        weekend_start = race_day - dt.timedelta(days=2)
+        if weekend_start.month == race_day.month:
+            date_label = f"{weekend_start.day:02d} - {race_day.day:02d} {race_day.strftime('%b').upper()}"
+        else:
+            date_label = (
+                f"{weekend_start.day:02d} {weekend_start.strftime('%b').upper()} - "
+                f"{race_day.day:02d} {race_day.strftime('%b').upper()}"
+            )
+
+        actions = []
+        if state == "next":
+            actions.append({"label": "My Team", "url": reverse("public:team"), "external": False})
+        elif state == "past":
+            if request.user.is_authenticated and gp.id in user_porra_gp_ids:
+                actions.append(
+                    {
+                        "label": "My Team",
+                        "url": reverse(
+                            "public:view_team",
+                            kwargs={"username": request.user.username, "gp": gp.country},
+                        ),
+                        "external": False,
+                    }
+                )
+            actions.append(
+                {
+                    "label": "Standings",
+                    "url": f"{reverse('public:standings')}?gp={gp.country}",
+                    "external": False,
+                }
+            )
+
+        gp_cards.append(
+            {
+                "id": gp.id,
+                "round": gp.nround,
+                "country": gp.country,
+                "name": gp.name,
+                "state": state,
+                "date_label": date_label,
+                "is_selected": gp.id == gp_id,
+                "country_link": gp.country_link,
+                "gp_photo": gp.gp_photo,
+                "actions": actions,
+            }
+        )
+
+    selected_gp = gp_by_id.get(gp_id) if gp_id else None
+
+    return render(
+        request,
+        "calendar.html",
+        {
+            "selected_season": season.year,
+            "gp_cards": gp_cards,
+            "selected_gp": selected_gp,
+            "state_counts": state_counts,
+        },
+    )
 
 def statistics(request):
     return redirect("public:statistics_users")
@@ -202,14 +422,24 @@ def statistics_matrix_api(request):
     gp_to = _parse_int(request.GET.get("gp_to"))
     sort_by = request.GET.get("sort_by", "total_points")
     sort_dir = request.GET.get("sort_dir", "desc")
+    entity = request.GET.get("entity", "users")
 
-    payload = build_matrix_payload(
-        season_year=season,
-        gp_from=gp_from,
-        gp_to=gp_to,
-        sort_by=sort_by,
-        sort_dir=sort_dir,
-    )
+    if entity == "teams":
+        payload = build_teams_matrix_payload(
+            season_year=season,
+            gp_from=gp_from,
+            gp_to=gp_to,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
+    else:
+        payload = build_matrix_payload(
+            season_year=season,
+            gp_from=gp_from,
+            gp_to=gp_to,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
     return JsonResponse(payload)
 
 
@@ -219,21 +449,35 @@ def statistics_trends_api(request):
     gp_to = _parse_int(request.GET.get("gp_to"))
     metric = request.GET.get("metric", "cumulative_points")
     preset = request.GET.get("preset")
-    users = _parse_int_list(request.GET.getlist("users"))
-    users_csv = _parse_int_list([request.GET.get("users", "")])
-
-    selected_users = users if users else users_csv
     current_user_id = request.user.id if request.user.is_authenticated else None
+    entity = request.GET.get("entity", "users")
 
-    payload = build_trends_payload(
-        season_year=season,
-        metric=metric,
-        gp_from=gp_from,
-        gp_to=gp_to,
-        preset=preset,
-        current_user_id=current_user_id,
-        selected_user_ids=selected_users or None,
-    )
+    if entity == "teams":
+        teams = _parse_int_list(request.GET.getlist("teams"))
+        teams_csv = _parse_int_list([request.GET.get("teams", "")])
+        selected_teams = teams if teams else teams_csv
+        payload = build_teams_trends_payload(
+            season_year=season,
+            metric=metric,
+            gp_from=gp_from,
+            gp_to=gp_to,
+            preset=preset,
+            current_user_id=current_user_id,
+            selected_team_ids=selected_teams or None,
+        )
+    else:
+        users = _parse_int_list(request.GET.getlist("users"))
+        users_csv = _parse_int_list([request.GET.get("users", "")])
+        selected_users = users if users else users_csv
+        payload = build_trends_payload(
+            season_year=season,
+            metric=metric,
+            gp_from=gp_from,
+            gp_to=gp_to,
+            preset=preset,
+            current_user_id=current_user_id,
+            selected_user_ids=selected_users or None,
+        )
     return JsonResponse(payload)
 
 
@@ -303,32 +547,118 @@ def _parse_int_list(values):
     # Preserve order, deduplicate
     return list(dict.fromkeys(parsed))
 
+@login_required
+def use_block_chip(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+    now = datetime.now(pytz.UTC)
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    gp_id = payload.get('gp_id')
+    target_user_id = payload.get('target_user_id')
+    asset_type = payload.get('asset_type')
+    blocked_asset_id = payload.get('blocked_asset_id')
+
+    gp = GrandPrix.objects.filter(season=current_season, country=gp_id).first()
+    if not gp:
+        return JsonResponse({'success': False, 'error': 'GP no válido'}, status=400)
+
+    if _block_chip_deadline_passed(gp, now):
+        return JsonResponse({'success': False, 'error': 'El bloqueo debe usarse al menos 24h antes del cierre.'}, status=400)
+
+    if not _block_chip_available(request.user, gp):
+        return JsonResponse({'success': False, 'error': 'Ya has usado el chip de bloqueo en este bloque de 12 GPs.'}, status=400)
+
+    target = User.objects.filter(id=target_user_id, is_active=True).exclude(id=request.user.id).first()
+    if not target:
+        return JsonResponse({'success': False, 'error': 'Usuario objetivo no válido.'}, status=400)
+
+    if BlockChip.objects.filter(season=current_season, gp=gp, target=target).exists():
+        return JsonResponse({'success': False, 'error': 'Ese usuario ya ha sido bloqueado en este GP.'}, status=400)
+
+    blocked_driver = None
+    blocked_team = None
+    if asset_type == BlockChip.AssetType.DRIVER:
+        blocked_driver = Driver.objects.filter(season=current_season, id=blocked_asset_id).first()
+        if not blocked_driver:
+            return JsonResponse({'success': False, 'error': 'Piloto bloqueado no válido.'}, status=400)
+    elif asset_type == BlockChip.AssetType.TEAM:
+        blocked_team = Team.objects.filter(season=current_season, id=blocked_asset_id).first()
+        if not blocked_team:
+            return JsonResponse({'success': False, 'error': 'Constructor bloqueado no válido.'}, status=400)
+    else:
+        return JsonResponse({'success': False, 'error': 'Tipo de activo no válido.'}, status=400)
+
+    BlockChip.objects.create(
+        season=current_season,
+        gp=gp,
+        blocker=request.user,
+        target=target,
+        asset_type=asset_type,
+        blocked_driver=blocked_driver,
+        blocked_team=blocked_team,
+    )
+
+    _remove_blocked_asset_from_porra(
+        user=target,
+        gp=gp,
+        blocked_driver=blocked_driver,
+        blocked_team=blocked_team,
+    )
+
+    return JsonResponse({'success': True})
 
 def standings(request):
+    default_season = current_season or Season.objects.order_by('-year').first()
+    if default_season is None:
+        return render(request, 'standings.html', {
+            'user_standings': [],
+            'grand_prix_list': [],
+            'selected_gp': 'overall',
+            'team_standings': [],
+            'season_list': [],
+            'selected_season': None,
+        })
+
+    selected_season_year = request.GET.get('season', str(default_season.year))
+    selected_season = Season.objects.filter(year=int(selected_season_year)).first() or default_season
     selected_gp = request.GET.get('gp', 'overall')
 
-    # Get all users and initialize counts
-    all_users = UserProfile.objects.all().values('user__username')
+    # Get all completed Grand Prixes (those with points) for the selected season
+    grand_prix_with_points = Porra.objects.filter(points__gt=0, season=selected_season).values_list('gp', flat=True).distinct()
+    grand_prix_list = GrandPrix.objects.filter(id__in=grand_prix_with_points).order_by('nround')
+    available_gp_countries = set(grand_prix_list.values_list('country', flat=True))
+    if selected_gp != 'overall' and selected_gp not in available_gp_countries:
+        selected_gp = 'overall'
+
+    if selected_gp == 'overall':
+        # Overall standings: no filtering by Grand Prix
+        porra_entries = Porra.objects.filter(season=selected_season).all()
+    else:
+        # Filter standings by the selected Grand Prix
+        porra_entries = Porra.objects.filter(season=selected_season, gp__country=selected_gp)
+
+    # Get all users for the selected season who have porras
+    all_users = porra_entries.values('user__username').distinct()
     wins_per_user = {user['user__username']: 0 for user in all_users}
     podiums_per_user = {user['user__username']: 0 for user in all_users}
     last_2_per_user = {user['user__username']: 0 for user in all_users}
     wins_per_team = {}
 
-    # Get all completed Grand Prixes (those with points)
-    grand_prix_with_points = Porra.objects.filter(points__gt=0).values_list('gp', flat=True).distinct().filter(season=current_season)
-    grand_prix_list = GrandPrix.objects.filter(id__in=grand_prix_with_points).order_by('nround')
-    print(grand_prix_list)
-
-    if selected_gp == 'overall':
-        # Overall standings: no filtering by Grand Prix
-        porra_entries = Porra.objects.filter(season=current_season).all()
-    else:
-        # Filter standings by the selected Grand Prix
-        porra_entries = Porra.objects.filter(season=current_season, gp__country=selected_gp)
+    # Build a season-scoped user profile map to avoid joining all historical user profiles.
+    user_ids = list(porra_entries.values_list('user_id', flat=True).distinct())
+    season_profiles = {
+        profile.user_id: profile
+        for profile in UserProfile.objects.filter(user_id__in=user_ids, season=selected_season).select_related('users_team')
+    }
 
     for gp in grand_prix_list:
         # Get the relevant Porra entries for this Grand Prix
-        gp_entries = porra_entries.filter(season=current_season, gp=gp)
+        gp_entries = porra_entries.filter(season=selected_season, gp=gp)
 
         # Get the last two positions
         last_two_entries = gp_entries.order_by('points')[:2].values('user__username')
@@ -355,54 +685,67 @@ def standings(request):
             username = last_user['user__username']
             last_2_per_user[username] += 1
         
-        # Calculate team scores for this GP
-        team_scores = (
-            gp_entries
-            .values('user__userprofile__users_team__name')  # Group by team name
-            .annotate(team_points=Sum('points'))  # Sum of points per team
-            .filter(user__userprofile__users_team__name__isnull=False)  # Exclude users with no team
-            .order_by('-team_points')  # Order by points descending
-        )
+        # Calculate team scores for this GP using season-bound profiles.
+        team_scores = {}
+        for gp_entry in gp_entries.values('user_id', 'points'):
+            profile = season_profiles.get(gp_entry['user_id'])
+            if not profile or not profile.users_team:
+                continue
+            team_name = profile.users_team.name
+            team_scores[team_name] = team_scores.get(team_name, 0) + (gp_entry['points'] or 0)
 
         # Determine the team with the highest score and count it as a win
-        if team_scores.exists():
-            top_team = team_scores.first()
-            top_team_name = top_team['user__userprofile__users_team__name']
+        if team_scores:
+            top_team_name = max(team_scores.items(), key=lambda item: item[1])[0]
             wins_per_team[top_team_name] = wins_per_team.get(top_team_name, 0) + 1
 
-    # Aggregate the total points for each user
-    user_standings = porra_entries.values(
-        'user__username',
-        'user__first_name',
-        'user__userprofile__photo',
-        'user__userprofile__users_team__name'
-    ).annotate(total_points=Sum('points')).order_by('-total_points')
-
-    team_standings = (
+    # Aggregate the total points for each user without joining UserProfile.
+    raw_user_standings = (
         porra_entries
-        .values('user__userprofile__users_team__name')  # Group by team name
-        .annotate(
-            total_points=Sum('points')  # Sum of points per team
-        )
-        .filter(user__userprofile__users_team__name__isnull=False)  # Exclude users with no team
-        .order_by('-total_points')  # Order by points descending
+        .values('user_id', 'user__username', 'user__first_name')
+        .annotate(total_points=Sum('points'))
+        .order_by('-total_points')
     )
 
-    # Add wins to each team's standings
-    for team in team_standings:
-        team_name = team['user__userprofile__users_team__name']
-        team['wins'] = wins_per_team.get(team_name, 0)
-
-    # Merge the standings, wins, podiums, and last 2 into a single list of dictionaries
     standings_with_counts = []
-    for user in user_standings:
+    team_points_by_name = {}
+    for user in raw_user_standings:
+        profile = season_profiles.get(user['user_id'])
+        team_name = profile.users_team.name if profile and profile.users_team else None
+        photo = profile.photo if profile else None
         username = user['user__username']
-        user['wins'] = wins_per_user.get(username, 0)
-        user['podiums'] = podiums_per_user.get(username, 0)
-        user['last_2'] = last_2_per_user.get(username, 0)
-        standings_with_counts.append(user)
+        standing_row = {
+            'user__username': username,
+            'user__first_name': user['user__first_name'],
+            'profile_photo': photo,
+            'team_name': team_name,
+            'total_points': user['total_points'],
+            'wins': wins_per_user.get(username, 0),
+            'podiums': podiums_per_user.get(username, 0),
+            'last_2': last_2_per_user.get(username, 0),
+        }
+        standings_with_counts.append(standing_row)
 
-    return render(request, 'standings.html', {'user_standings': standings_with_counts, 'grand_prix_list': grand_prix_list, 'selected_gp': selected_gp, 'team_standings': team_standings})  
+        if team_name:
+            team_points_by_name[team_name] = team_points_by_name.get(team_name, 0) + (user['total_points'] or 0)
+
+    team_standings = [
+        {
+            'team_name': team_name,
+            'total_points': total_points,
+            'wins': wins_per_team.get(team_name, 0),
+        }
+        for team_name, total_points in sorted(team_points_by_name.items(), key=lambda item: item[1], reverse=True)
+    ]
+
+    return render(request, 'standings.html', {
+        'user_standings': standings_with_counts, 
+        'grand_prix_list': grand_prix_list, 
+        'selected_gp': selected_gp, 
+        'team_standings': team_standings,
+        'season_list': Season.objects.all().order_by('-year'),
+        'selected_season': selected_season
+    })  
 
 
 def view_team(request, username, gp):
@@ -479,11 +822,29 @@ def team(request):
             driver5_name = normalize_name(data.get('driver5'))
             team1_name = normalize_name(data.get('team1'))
             team2_name = normalize_name(data.get('team2'))
+            use_triple_points_chip = bool(data.get('triple_points_chip', False))
             
-
             # Get or create the GP
             user = request.user
             gp = GrandPrix.objects.get(season=current_season, country=gp_id)
+
+            incoming_block = _get_incoming_block_for_user(user, gp)
+            blocked_driver = incoming_block.blocked_driver if incoming_block else None
+            blocked_team = incoming_block.blocked_team if incoming_block else None
+
+            blocked_driver_names = {blocked_driver.name} if blocked_driver else set()
+            blocked_team_names = {blocked_team.name} if blocked_team else set()
+
+            for driver_name in [driver1_name, driver2_name, driver3_name, driver4_name, driver5_name]:
+                if driver_name and driver_name in blocked_driver_names:
+                    return JsonResponse({'success': False, 'error': 'Ese piloto está bloqueado para este GP.'}, status=400)
+
+            for team_name in [team1_name, team2_name]:
+                if team_name and team_name in blocked_team_names:
+                    return JsonResponse({'success': False, 'error': 'Ese constructor está bloqueado para este GP.'}, status=400)
+
+            if use_triple_points_chip and not _triple_chip_available(user, gp):
+                return JsonResponse({'success': False, 'error': 'Ya has usado el chip de triples puntos en este bloque de 12 GPs.'}, status=400)
 
             # Obtener o crear la porra para el usuario y el GP
             porra, created = Porra.objects.update_or_create(
@@ -505,6 +866,7 @@ def team(request):
                     'driver5': Driver.objects.filter(season=current_season, name=driver5_name).first() if driver5_name else None,
                     'team1': Team.objects.filter(season=current_season, name=team1_name).first() if team1_name else None,
                     'team2': Team.objects.filter(season=current_season, name=team2_name).first() if team2_name else None,
+                    'triple_points_chip': use_triple_points_chip,
                 }
             )
           
@@ -519,33 +881,57 @@ def team(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
         
 
-    # Get the latest Grand Prix round number
-    latest_gp = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
-    second_latest_gp = latest_gp - 1
+    # Get the latest Grand Prix round number considering both drivers and constructors prices
+    latest_gp = _get_latest_gp_round_for_prices()
 
-    # Get the latest Grand Prix details
-    latest_grand_prix = GrandPrix.objects.filter(season=current_season).get(nround=latest_gp)
-    sec_latest_grand_prix = GrandPrix.objects.filter(season=current_season).get(nround=second_latest_gp)
+    # Default placeholders
+    latest_grand_prix = None
+    sec_latest_grand_prix = None
 
-    # Calculate time remaining
-    time_remaining = latest_grand_prix.last_edit_date - now # Calculate time remaining
-    due_date = latest_grand_prix.last_edit_date <= now
-    days = max(time_remaining.days, 0)
-    hours = time_remaining.seconds//3600 if not due_date else 0
-    minutes = (time_remaining.seconds//60)%60 if not due_date else 0
+    # Determine second latest only when there's more than one round
+    second_latest_gp = None
+    if latest_gp and latest_gp > 1:
+        second_latest_gp = latest_gp - 1
 
-    data = {
-        'round': latest_grand_prix.nround,
-        'name': latest_grand_prix.country,
-        'official_name': latest_grand_prix.name,
-        'photo_link': latest_grand_prix.photo_link,  
-        'country_link': latest_grand_prix.country_link, 
-        'gp_photo': latest_grand_prix.gp_photo, 
-        'hours': hours,
-        'minutes': minutes,
-        'days': days,
-        'due_date': due_date
-    }
+    # Use .first() to avoid DoesNotExist exceptions
+    if latest_gp:
+        latest_grand_prix = GrandPrix.objects.filter(season=current_season, nround=latest_gp).first()
+    if second_latest_gp:
+        sec_latest_grand_prix = GrandPrix.objects.filter(season=current_season, nround=second_latest_gp).first()
+
+    # Calculate time remaining only when latest GP and its date exist
+    if latest_grand_prix and latest_grand_prix.last_edit_date:
+        time_remaining = latest_grand_prix.last_edit_date - now
+        due_date = latest_grand_prix.last_edit_date <= now
+        days = max(time_remaining.days, 0)
+        hours = time_remaining.seconds // 3600 if not due_date else 0
+        minutes = (time_remaining.seconds // 60) % 60 if not due_date else 0
+
+        data = {
+            'round': latest_grand_prix.nround,
+            'name': latest_grand_prix.country,
+            'official_name': latest_grand_prix.name,
+            'photo_link': latest_grand_prix.photo_link,
+            'country_link': latest_grand_prix.country_link,
+            'gp_photo': latest_grand_prix.gp_photo,
+            'hours': hours,
+            'minutes': minutes,
+            'days': days,
+            'due_date': due_date
+        }
+    else:
+        data = {
+            'round': latest_gp,
+            'name': '',
+            'official_name': '',
+            'photo_link': '',
+            'country_link': '',
+            'gp_photo': '',
+            'hours': 0,
+            'minutes': 0,
+            'days': 0,
+            'due_date': True
+        }
 
     # Calculate the number of porras
     total_porras = Porra.objects.filter(season=current_season).count()
@@ -583,47 +969,83 @@ def team(request):
 
 
     # Drivers
-    drivers = Driver.objects.filter(season=current_season).annotate(
-        total_points=Coalesce(Sum('driverpoints__points'), Value(0)),
-        current_price=Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=latest_grand_prix.id)), Value(0)),
-        previous_price=Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=sec_latest_grand_prix.id)), Value(0))
-    ).order_by('-total_points')
+    # Annotate prices only when GP info available; otherwise only total points
+    if latest_grand_prix:
+        driver_annotations = {
+            'total_points': Coalesce(Sum('driverpoints__points'), Value(0)),
+            'current_price': Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=latest_grand_prix.id)), Value(0)),
+        }
+        if sec_latest_grand_prix:
+            driver_annotations['previous_price'] = Coalesce(Sum('driverpoints__price', filter=Q(driverpoints__gp__id=sec_latest_grand_prix.id)), Value(0))
+        drivers = Driver.objects.filter(season=current_season).annotate(**driver_annotations).order_by('-total_points')
+    else:
+        drivers = Driver.objects.filter(season=current_season).annotate(
+            total_points=Coalesce(Sum('driverpoints__points'), Value(0)),
+            current_price=Value(0),
+            previous_price=Value(0),
+        ).order_by('-total_points')
 
     for driver in drivers:
-        driver.price_change = driver.current_price - driver.previous_price if driver.previous_price else 0
-        driver.pick_rate = round(driver_pick_rates.get(driver.id, 0) * 100.0 / total_porras, 1)
+        # Ensure price fields exist
+        current_price = getattr(driver, 'current_price', 0) or 0
+        previous_price = getattr(driver, 'previous_price', 0) or 0
+        driver.price_change = current_price - previous_price if previous_price else 0
+        # Avoid division by zero when there are no porras
+        if total_porras and total_porras > 0:
+            driver.pick_rate = round(driver_pick_rates.get(driver.id, 0) * 100.0 / total_porras, 1)
+        else:
+            driver.pick_rate = 0
 
 
     # Teams
-    teams = Team.objects.filter(season=current_season).annotate(
-        total_points=Coalesce(Sum('teampoints__points'), Value(0)),
-        current_price=Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=latest_grand_prix.id)), Value(0)),
-        previous_price=Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=sec_latest_grand_prix.id)), Value(0))
-    ).order_by('-total_points')
+    if latest_grand_prix:
+        team_annotations = {
+            'total_points': Coalesce(Sum('teampoints__points'), Value(0)),
+            'current_price': Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=latest_grand_prix.id)), Value(0)),
+        }
+        if sec_latest_grand_prix:
+            team_annotations['previous_price'] = Coalesce(Sum('teampoints__price', filter=Q(teampoints__gp__id=sec_latest_grand_prix.id)), Value(0))
+        teams = Team.objects.filter(season=current_season).annotate(**team_annotations).order_by('-total_points')
+    else:
+        teams = Team.objects.filter(season=current_season).annotate(
+            total_points=Coalesce(Sum('teampoints__points'), Value(0)),
+            current_price=Value(0),
+            previous_price=Value(0)
+        ).order_by('-total_points')
 
     for team in teams:
-        team.price_change = team.current_price - team.previous_price if team.previous_price else 0
-        team.pick_rate = round(team_pick_rates.get(team.id, 0) * 100.0 / total_porras, 1)
+        current_price = getattr(team, 'current_price', 0) or 0
+        previous_price = getattr(team, 'previous_price', 0) or 0
+        team.price_change = current_price - previous_price if previous_price else 0
+        if total_porras and total_porras > 0:
+            team.pick_rate = round(team_pick_rates.get(team.id, 0) * 100.0 / total_porras, 1)
+        else:
+            team.pick_rate = 0
 
 
     # Get the user's Porra for the latest Grand Prix
     user = request.user
-    user_profile = UserProfile.objects.get(user=user)
-    user_team = user_profile.users_team
-    gp = GrandPrix.objects.filter(season=current_season, nround=latest_gp).first()
-    last_gp =GrandPrix.objects.filter(season=current_season, nround=second_latest_gp).first()
-    try:
-        print(user, gp, current_season)
-        user_porra = Porra.objects.get(user=user, gp=gp, season=current_season)
-    except Porra.DoesNotExist:
-        print("NO PORRA FOR CURRENT GP")
+    gp = GrandPrix.objects.filter(season=current_season, nround=latest_gp).first() if latest_gp else None
+    last_gp = GrandPrix.objects.filter(season=current_season, nround=second_latest_gp).first() if second_latest_gp else None
+
+    # Get user's porra only if there's a latest GP
+    if gp:
+        try:
+            user_porra = Porra.objects.get(user=user, gp=gp, season=current_season)
+        except Porra.DoesNotExist:
+            user_porra = {}
+    else:
         user_porra = {}
-    
-    try:
-        latest_first_pos = Porra.objects.filter(season=current_season).get(user=user, gp=last_gp).first_pos.name or None
-    except Porra.DoesNotExist:
-        latest_first_pos =""
-        print("NO LAST FIRST POS FOUND")
+
+    # Get latest first_pos from the previous GP when available
+    if last_gp:
+        try:
+            latest_first_pos_obj = Porra.objects.filter(season=current_season).get(user=user, gp=last_gp)
+            latest_first_pos = latest_first_pos_obj.first_pos.name if latest_first_pos_obj.first_pos else ""
+        except Porra.DoesNotExist:
+            latest_first_pos = ""
+    else:
+        latest_first_pos = ""
 
     # Initialize total price and price change dictionaries
     total_price = 0
@@ -638,9 +1060,15 @@ def team(request):
         for driver in drivers_in_porra:
             if driver:
                 porra_list_names.append(driver.name)
-                driver.current_price = DriverPoints.objects.filter(driver=driver, gp=latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
-                previous_price = DriverPoints.objects.filter(driver=driver, gp=sec_latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
-                driver.price_change = driver.current_price- previous_price
+                if latest_grand_prix:
+                    driver.current_price = DriverPoints.objects.filter(driver=driver, gp=latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
+                else:
+                    driver.current_price = 0
+                if sec_latest_grand_prix:
+                    previous_price = DriverPoints.objects.filter(driver=driver, gp=sec_latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
+                else:
+                    previous_price = 0
+                driver.price_change = driver.current_price - previous_price
                 total_price += driver.current_price
             else:
                 porra_list_names.append("")
@@ -648,28 +1076,74 @@ def team(request):
         for team in teams_in_porra:
             if team:
                 porra_list_names.append(team.name)
-                team.current_price = TeamPoints.objects.filter(team=team, gp=latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
-                previous_price = TeamPoints.objects.filter(team=team, gp=sec_latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
-                team.price_change = team.current_price- previous_price
+                if latest_grand_prix:
+                    team.current_price = TeamPoints.objects.filter(team=team, gp=latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
+                else:
+                    team.current_price = 0
+                if sec_latest_grand_prix:
+                    previous_price = TeamPoints.objects.filter(team=team, gp=sec_latest_grand_prix).aggregate(Sum('price'))['price__sum'] or 0
+                else:
+                    previous_price = 0
+                team.price_change = team.current_price - previous_price
                 total_price += team.current_price
             else:
                 porra_list_names.append("")
 
-    # Calculate total points for each UsersTeam
-    users_teams = UsersTeam.objects.annotate(
-        total_points=Coalesce(Sum('userprofile__user__porra__points', filter=Q(userprofile__user__porra__season=current_season)), Value(0))
-    ).order_by('total_points')  # Ascending order to get the team with the lowest points
-    last_users_team = users_teams.first() if users_teams.exists() else None
-
-    # Check if the user is in the last-placed UsersTeam
-    if user_team == last_users_team:
-        remain_price = 160.0 - total_price
-        bar_length = remain_price * 220 / 160
-    else:
-        remain_price = 150.0 - total_price
-        bar_length = remain_price * 220 / 150
+    budget_cap = _budget_cap_for_user(user)
+    remain_price = budget_cap - total_price
+    bar_length = remain_price * 220 / budget_cap
 
     # Crear un diccionario para mapear nombres a posiciones
     piloto_positions = {name: index + 1 if index<6 else index-4 for index, name in enumerate(porra_list_names) if name != ""}
 
-    return render(request, 'team.html', {'data': data, "pilotos": drivers, "equipos": teams, 'user_porra': user_porra, 'remain_price': remain_price, 'bar_length': bar_length, 'porra_list_names': porra_list_names, 'piloto_positions': piloto_positions, 'latest_first_pos':latest_first_pos})
+    triple_chip_available = _triple_chip_available(user, gp) if gp else False
+    block_chip_available = _block_chip_available(user, gp) if gp else False
+    block_chip_deadline_passed = _block_chip_deadline_passed(gp, now) if gp else True
+    current_block = BlockChip.objects.filter(season=current_season, blocker=user, gp=gp).select_related('target', 'blocked_driver', 'blocked_team').first() if gp else None
+    incoming_block = _get_incoming_block_for_user(user, gp) if gp else None
+    blocked_driver_name = incoming_block.blocked_driver.name if incoming_block and incoming_block.blocked_driver else ''
+    blocked_team_name = incoming_block.blocked_team.name if incoming_block and incoming_block.blocked_team else ''
+    blocked_users_ids = list(BlockChip.objects.filter(season=current_season, gp=gp).values_list('target_id', flat=True)) if gp else []
+    active_user_ids = Porra.objects.filter(season=current_season).values_list('user_id', flat=True).distinct()
+    block_targets = (
+        User.objects.filter(id__in=active_user_ids, is_active=True)
+        .exclude(id=user.id)
+        .order_by('username')
+        if gp
+        else User.objects.none()
+    )
+
+    block_chip_reset_message = "Si activas este chip, no podrás volver a usarlo en este bloque de 12 GPs."
+    drs_chip_reset_message = block_chip_reset_message
+    if gp and gp.nround:
+        season_last_round = GrandPrix.objects.filter(season=current_season).aggregate(max_nround=Max('nround'))['max_nround'] or gp.nround
+        next_window_round = ((_chip_window(gp.nround) + 1) * 12) + 1
+        if next_window_round > season_last_round:
+            block_chip_reset_message = "Si activas este chip, no podrás volver a usarlo hasta el final de temporada."
+        else:
+            block_chip_reset_message = f"Si activas este chip, no podrás volver a usarlo hasta la ronda {next_window_round}."
+        drs_chip_reset_message = block_chip_reset_message
+
+    return render(request, 'team.html', {
+        'data': data,
+        "pilotos": drivers,
+        "equipos": teams,
+        'user_porra': user_porra,
+        'remain_price': remain_price,
+        'bar_length': bar_length,
+        'budget_cap': budget_cap,
+        'porra_list_names': porra_list_names,
+        'piloto_positions': piloto_positions,
+        'latest_first_pos': latest_first_pos,
+        'triple_chip_available': triple_chip_available,
+        'block_chip_available': block_chip_available,
+        'block_chip_deadline_passed': block_chip_deadline_passed,
+        'block_targets': block_targets,
+        'blocked_users_ids': blocked_users_ids,
+        'current_block': current_block,
+        'incoming_block': incoming_block,
+        'blocked_driver_name': blocked_driver_name,
+        'blocked_team_name': blocked_team_name,
+        'block_chip_reset_message': block_chip_reset_message,
+        'drs_chip_reset_message': drs_chip_reset_message,
+    })

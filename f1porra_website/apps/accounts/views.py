@@ -7,12 +7,21 @@ from django.contrib.auth.forms import PasswordResetForm as DjangoPasswordResetFo
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.base import TemplateView
 from .models import UserProfile, UsersTeam
+from f1porra_website.apps.public.models import Season
+from datetime import datetime
 
 class ProfileView(LoginRequiredMixin, TemplateView):
     template_name = 'accounts/profile.html'
 
     def get(self, request):
-        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+        current_year = datetime.now().year
+        try:
+            current_season = Season.objects.get(year=current_year)
+        except Season.DoesNotExist:
+            # Handle no current season
+            return render(request, 'accounts/profile.html', {'error': 'No current season found.'})
+        
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user, season=current_season)
         
         user_form = UserProfileForm(instance=request.user)
         profile_form = UserProfileExtraForm(instance=user_profile)
@@ -33,7 +42,13 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         })
 
     def post(self, request):
-        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+        current_year = datetime.now().year
+        try:
+            current_season = Season.objects.get(year=current_year)
+        except Season.DoesNotExist:
+            return render(request, 'accounts/profile.html', {'error': 'No active season found.'})
+        
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user, season=current_season)
 
         # Handle the personal information update
         user_form = UserProfileForm(request.POST, instance=request.user)

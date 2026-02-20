@@ -1,6 +1,6 @@
 from django.db.models import Max
 from datetime import date
-from f1porra_website.apps.public.models import Season, DriverPoints, TeamPoints, Porra, RaceResults
+from f1porra_website.apps.public.models import Season, DriverPoints, TeamPoints, Porra, RaceResults, BlockChip
 
 def compute_porra_points():
     # Get the latest Grand Prix based on round number
@@ -55,23 +55,36 @@ def compute_porra_points():
         driver_points = DriverPoints.objects.filter(season=current_season, gp__nround=latest_gp)
         team_points = TeamPoints.objects.filter(season=current_season, gp__nround=latest_gp)
 
+         # Apply optional block-chip effects for this user and GP
+        block_effect = BlockChip.objects.filter(
+            season=current_season,
+            gp__nround=latest_gp,
+            target=porra.user,
+        ).first()
+
+        blocked_driver_id = block_effect.blocked_driver_id if block_effect else None
+        blocked_team_id = block_effect.blocked_team_id if block_effect else None
+
         # Summing up points for selected drivers
         for i, driver in enumerate([porra.driver1, porra.driver2, porra.driver3, porra.driver4, porra.driver5], start=1):
             if driver:
+                if blocked_driver_id and driver.id == blocked_driver_id:
+                    continue
+
                 driver_point = driver_points.filter(driver=driver).first()
                 if driver_point:
                     if i == 1:
-                        total_points += driver_point.points*2
+                        multiplier = 3 if porra.triple_points_chip else 2
+                        total_points += driver_point.points * multiplier
                     else:
                         total_points += driver_point.points
-
 
         # Summing up points for selected teams
         for i, team in enumerate([porra.team1, porra.team2], start=1):
             if team:
-                team_point = team_points.filter(team=team).first()
-                if team_point:
-                    total_points += team_point.points
+                if blocked_team_id and team.id == blocked_team_id:
+                    continue
+
 
         # Print total points for the user
         print(f"Total points for user {porra.user.username}: {total_points}")
