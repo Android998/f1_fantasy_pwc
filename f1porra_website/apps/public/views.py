@@ -903,7 +903,7 @@ def team(request):
 
     # Get the user's Porra for the latest Grand Prix
     user = request.user
-    user_profile = UserProfile.objects.get(user=user)
+    user_profile = UserProfile.objects.get(user=user, season=current_season)
     user_team = user_profile.users_team
     gp = GrandPrix.objects.filter(season=current_season, nround=latest_gp).first() if latest_gp else None
     last_gp = GrandPrix.objects.filter(season=current_season, nround=second_latest_gp).first() if second_latest_gp else None

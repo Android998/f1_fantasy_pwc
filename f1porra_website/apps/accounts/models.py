@@ -17,10 +17,14 @@ class UsersTeam(models.Model):
     #         raise ValidationError('A team can have at most 2 users.')
 
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     photo = models.ImageField(upload_to='user_photos/', null=True, blank=True)
     users_team = models.ForeignKey(UsersTeam, on_delete=models.SET_NULL, null=True, blank=True)
     season = models.ForeignKey(Season, on_delete=models.CASCADE, null=True, blank=True)
 
+    class Meta:
+        unique_together = [['user', 'season']]
+
     def __str__(self):
-        return self.user.username
+        season_name = self.season.name if self.season else "No Season"
+        return f"{season_name} - {self.user.username}"
