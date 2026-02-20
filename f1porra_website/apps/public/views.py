@@ -991,7 +991,14 @@ def team(request):
     block_chip_deadline_passed = _block_chip_deadline_passed(gp, now) if gp else True
     current_block = BlockChip.objects.filter(season=current_season, blocker=user, gp=gp).select_related('target', 'blocked_driver', 'blocked_team').first() if gp else None
     blocked_users_ids = list(BlockChip.objects.filter(season=current_season, gp=gp).values_list('target_id', flat=True)) if gp else []
-    block_targets = User.objects.exclude(id=user.id).filter(is_active=True).order_by('username') if gp else User.objects.none()
+    active_user_ids = Porra.objects.filter(season=current_season).values_list('user_id', flat=True).distinct()
+    block_targets = (
+        User.objects.filter(id__in=active_user_ids, is_active=True)
+        .exclude(id=user.id)
+        .order_by('username')
+        if gp
+        else User.objects.none()
+    )
 
     block_chip_reset_message = "Si activas este chip, no podrás volver a usarlo en este bloque de 12 GPs."
     drs_chip_reset_message = block_chip_reset_message
@@ -1001,7 +1008,7 @@ def team(request):
         if next_window_round > season_last_round:
             block_chip_reset_message = "Si activas este chip, no podrás volver a usarlo hasta el final de temporada."
         else:
-            block_chip_reset_message = f"Si activas este chip, no podrás volver a usarlo hasta la nround {next_window_round}."
+            block_chip_reset_message = f"Si activas este chip, no podrás volver a usarlo hasta la ronda {next_window_round}."
         drs_chip_reset_message = block_chip_reset_message
 
     return render(request, 'team.html', {

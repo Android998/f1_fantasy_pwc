@@ -442,7 +442,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  width: 170px;
+  width: 250px;
 }
 
 .chip-hidden-input{
@@ -461,6 +461,9 @@
   gap: 0.55rem;
   padding: 0.35rem 0.55rem;
   min-height: 40px;
+  width: 170px;
+  justify-content: center;
+  white-space: nowrap;
   transition: transform .1s linear, background-color .15s linear, border-color .15s linear;
 }
 
@@ -486,15 +489,78 @@
 }
 
 .chip-action-drs.active{
-  border-color: #9e0a05;
+  border-color: #8d1598;
   background-color: #8d1598;
-  color: #000000;
+  color: #ffffff;
+}
+
+.drs-chip-row{
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 42px;
+}
+
+.chip-status{
+  font-family: "Formula1Bold";
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  padding: 0.25rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  min-width: 64px;
+  min-height: 28px;
+  text-align: center;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip-status.active{
+  color: #0e5d26;
+  background-color: #c7f4d4;
+  border-color: #53b96e;
+  display: inline-flex;
 }
 
 .chip-action-pit{
   border-color: #1d7c32;
   background-color: #a5e4b0;
   color: #0d3f18;
+}
+
+.confirm-action-modal-content{
+  width: 460px;
+  max-width: 94vw;
+  text-align: left;
+  border-radius: 10px;
+}
+
+.confirm-action-modal-content h3{
+  margin: 0 0 .65rem;
+  font-family: "Formula1Bold";
+  text-transform: uppercase;
+  font-size: 1rem;
+}
+
+.confirm-action-modal-content p{
+  margin: 0 0 .9rem;
+  font-family: "Formula1Regular";
+  font-size: 0.9rem;
+  line-height: 1.35;
+  white-space: pre-line;
+}
+
+.confirm-action-buttons{
+  display: flex;
+  justify-content: center;
+  gap: .55rem;
+}
+
+.confirm-action-buttons .button-save-team,
+.confirm-action-buttons .button-reset-team{
+  margin-right: 0;
+  min-width: 112px;
 }
 
 .block-chip-modal-content{
@@ -565,6 +631,10 @@
   border: 3px solid red
 }
 
+#selection1.drs-boost-active{
+  border: 3px solid #8d1598;
+}
+
 #selection1::after{
   position: absolute;
   margin: 2px;
@@ -582,6 +652,11 @@
   border-radius: 100px; /* Optional: Add border-radius for rounded corners */
   cursor: pointer; /* Change cursor to pointer to indicate it's clickable */
   z-index: 2; /* Ensure it overlays the other components */
+}
+
+#selection1.drs-boost-active::after{
+  content: "3x";
+  background-color: #8d1598;
 }
 
 .driver-selected-photo{
@@ -1197,10 +1272,14 @@ ul {
   text-align: center;
   width: 300px;
   font-family: "Formula1Bold";
+  position: relative;
 }
 
 .close-button {
-  float: right;
+  position: absolute;
+  top: 10px;
+  right: 12px;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 22px;
+  line-height: 1;
 }

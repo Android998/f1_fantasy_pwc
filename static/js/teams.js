@@ -580,7 +580,60 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function toggleDrsChip() {
+    let confirmActionResolver = null;
+
+    function closeConfirmActionModal(result = false) {
+        const modal = document.getElementById('confirm-action-modal');
+        const acceptBtn = document.getElementById('confirm-action-accept');
+        const cancelBtn = document.getElementById('confirm-action-cancel');
+        const closeBtn = document.getElementById('close-confirm-action-modal');
+
+        if (!modal || !acceptBtn || !cancelBtn || !closeBtn) return;
+
+        modal.style.display = 'none';
+        acceptBtn.onclick = null;
+        cancelBtn.onclick = null;
+        closeBtn.onclick = null;
+        modal.onclick = null;
+
+        if (confirmActionResolver) {
+            const resolver = confirmActionResolver;
+            confirmActionResolver = null;
+            resolver(result);
+        }
+    }
+
+    function showConfirmActionModal(message, title = 'Confirm action') {
+        const modal = document.getElementById('confirm-action-modal');
+        const titleEl = document.getElementById('confirm-action-title');
+        const messageEl = document.getElementById('confirm-action-message');
+        const acceptBtn = document.getElementById('confirm-action-accept');
+        const cancelBtn = document.getElementById('confirm-action-cancel');
+        const closeBtn = document.getElementById('close-confirm-action-modal');
+
+        if (!modal || !titleEl || !messageEl || !acceptBtn || !cancelBtn || !closeBtn) {
+            return Promise.resolve(window.confirm(message));
+        }
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        modal.style.display = 'flex';
+
+        return new Promise((resolve) => {
+            confirmActionResolver = resolve;
+
+            acceptBtn.onclick = () => closeConfirmActionModal(true);
+            cancelBtn.onclick = () => closeConfirmActionModal(false);
+            closeBtn.onclick = () => closeConfirmActionModal(false);
+            modal.onclick = (event) => {
+                if (event.target === modal) {
+                    closeConfirmActionModal(false);
+                }
+            };
+        });
+    }
+
+    async function toggleDrsChip() {
         const drsButton = document.getElementById('drs-chip-button');
         const tripleInput = document.getElementById('triple-points-chip');
         if (!drsButton || !tripleInput || tripleInput.disabled) return;
@@ -592,13 +645,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
 ¿Seguro que quieres activar DRS Boost en este GP?`
                 : '¿Seguro que quieres activar DRS Boost en este GP? No podrás volver a usarlo hasta la próxima ventana.';
-            if (!window.confirm(confirmationMsg)) {
+            const confirmed = await showConfirmActionModal(confirmationMsg, 'Activar DRS Boost');
+            if (!confirmed) {
                 return;
             }
         }
 
         tripleInput.checked = !tripleInput.checked;
-        drsButton.classList.toggle('active', tripleInput.checked);
+        syncDrsChipVisualState();
+    }
+
+    function syncDrsChipVisualState() {
+        const drsButton = document.getElementById('drs-chip-button');
+        const tripleInput = document.getElementById('triple-points-chip');
+        const statusEl = document.getElementById('drs-chip-status');
+        const captainCard = document.getElementById('selection1');
+        if (!drsButton || !tripleInput) return;
+
+        const isActive = !!tripleInput.checked;
+        drsButton.classList.toggle('active', isActive);
+
+        if (captainCard) {
+            captainCard.classList.toggle('drs-boost-active', isActive);
+        }
+
+        if (statusEl) {
+            statusEl.textContent = isActive ? 'Active' : '';
+            statusEl.classList.toggle('active', isActive);
+        }
     }
 
     function openBlockChipModal() {
@@ -614,7 +688,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.style.display = 'none';
     }
 
-    function useBlockChip() {
+    async function useBlockChip() {
         const btn = document.getElementById('use-block-chip-button');
         const targetUserEl = document.getElementById('block-target-user');
         const assetTypeEl = document.getElementById('block-asset-type');
@@ -637,7 +711,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const confirmationMsg = disclaimer ? `${disclaimer.textContent.trim()}
 
 ¿Confirmas que quieres usar el chip ahora?` : '¿Confirmas que quieres usar el chip de bloqueo ahora?';
-        if (!window.confirm(confirmationMsg)) {
+        const confirmed = await showConfirmActionModal(confirmationMsg, 'Chip de Bloqueo');
+        if (!confirmed) {
             return;
         }
 
@@ -680,6 +755,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (drsChipButton) {
         drsChipButton.addEventListener('click', toggleDrsChip);
     }
+    syncDrsChipVisualState();
 
     const pitStopButton = document.getElementById('pitstop-chip-button');
     if (pitStopButton) {
@@ -710,6 +786,26 @@ document.addEventListener('DOMContentLoaded', function() {
     if (blockBtn) {
         blockBtn.addEventListener('click', useBlockChip);
     }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key !== 'Escape') return;
+
+        const confirmModal = document.getElementById('confirm-action-modal');
+        const blockModal = document.getElementById('block-chip-modal');
+        const saveModal = document.getElementById('save-success-modal');
+
+        if (confirmModal && confirmModal.style.display === 'flex') {
+            closeConfirmActionModal(false);
+            return;
+        }
+        if (blockModal && blockModal.style.display === 'flex') {
+            closeBlockChipModal();
+            return;
+        }
+        if (saveModal && saveModal.style.display === 'flex') {
+            closeModal();
+        }
+    });
 
 });
 

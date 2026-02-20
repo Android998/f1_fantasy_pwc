@@ -191,10 +191,15 @@
                     <div class="chip-buttons-wrap">
                         <input id="triple-points-chip" type="checkbox" class="chip-hidden-input" {% if user_porra.triple_points_chip %}checked{% endif %} {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
 
-                        <button id="drs-chip-button" class="chip-action-btn chip-action-drs {% if user_porra.triple_points_chip %}active{% endif %}" type="button" data-confirm-message="{{ drs_chip_reset_message }}" {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
-                            <img src="{% static 'theme/assets/icons/drsboost.png' %}" alt="DRS Boost" onerror="this.style.display='none'">
-                            <span>DRS Boost</span>
-                        </button>
+                        <div class="drs-chip-row">
+                            <button id="drs-chip-button" class="chip-action-btn chip-action-drs {% if user_porra.triple_points_chip %}active{% endif %}" type="button" data-confirm-message="{{ drs_chip_reset_message }}" {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
+                                <img src="{% static 'theme/assets/icons/drsboost.png' %}" alt="DRS Boost" onerror="this.style.display='none'">
+                                <span>DRS Boost</span>
+                            </button>
+                            <span id="drs-chip-status" class="chip-status {% if user_porra.triple_points_chip %}active{% endif %}">
+                                {% if user_porra.triple_points_chip %}Active{% endif %}
+                            </span>
+                        </div>
 
                         <button id="pitstop-chip-button" class="chip-action-btn chip-action-pit" type="button" {% if current_block or not block_chip_available or block_chip_deadline_passed %}disabled{% endif %}>
                             <img src="{% static 'theme/assets/icons/pitstop.png' %}" alt="Pit Stop" onerror="this.style.display='none'">
@@ -279,6 +284,17 @@
                     {% endif %}
                 </div>
             </div>
+            <div id="confirm-action-modal" class="modal" style="display:none;">
+                <div class="modal-content confirm-action-modal-content">
+                    <span class="close-button" id="close-confirm-action-modal">&times;</span>
+                    <h3 id="confirm-action-title">Confirm action</h3>
+                    <p id="confirm-action-message"></p>
+                    <div class="confirm-action-buttons">
+                        <button id="confirm-action-cancel" class="btn button-reset-team" type="button">Cancel</button>
+                        <button id="confirm-action-accept" class="btn button-save-team" type="button">Confirm</button>
+                    </div>
+                </div>
+            </div>
             <section style=" margin-top: 5vh; padding: 2%;">
                 <div style="padding-bottom: 2%; width: 100%;">
                     <div class=driver-selected-li>
@@ -294,9 +310,9 @@
                                 <span class="selection-text">Añadir Piloto</span>
                             </div>
                             {% if user_porra.driver1 %}
-                            <div id="selection1" class="selected-div" style="display: flex;">
+                            <div id="selection1" class="selected-div {% if user_porra.triple_points_chip %}drs-boost-active{% endif %}" style="display: flex;">
                             {% else %}
-                            <div id="selection1" class="selected-div" style="display: none;">
+                            <div id="selection1" class="selected-div {% if user_porra.triple_points_chip %}drs-boost-active{% endif %}" style="display: none;">
                             {% endif %}
                                 <div style="background-color:{{user_porra.driver1.team.color_rgb}}" class="driver-selected-photo">
                                     <div>
