@@ -397,7 +397,7 @@ def build_teams_matrix_payload(
     gp_ids = [gp.id for gp in gps]
     porras = list(
         Porra.objects.filter(season=season, gp_id__in=gp_ids, points__isnull=False)
-        .select_related("user", "gp", "user__userprofile__users_team")
+        .select_related("user", "gp")
         .order_by("gp__nround", "user__username")
     )
 
@@ -542,7 +542,7 @@ def build_teams_trends_payload(
 
     porras = list(
         Porra.objects.filter(season=season, gp_id__in=gp_ids, points__isnull=False)
-        .select_related("user", "gp", "user__userprofile__users_team")
+        .select_related("user", "gp")
         .order_by("gp__nround", "user__username")
     )
 

@@ -58,16 +58,16 @@
                 <tr>
                     <td class="rank">{{ forloop.counter }}</td>
                     <td class="user-name">
-                        {% if user.user__userprofile__photo %}
-                            <img src="/media/{{ user.user__userprofile__photo }}" class="profile-photo" alt="Profile Photo">
+                        {% if user.profile_photo %}
+                            <img src="/media/{{ user.profile_photo }}" class="profile-photo" alt="Profile Photo">
                         {% else %}
                             <img src="{% static 'theme/assets/users/default.png' %}"  class="profile-photo" alt="Default Profile Photo">
                         {% endif %}
                         {{ user.user__first_name }}
                     </td>
                     <td class="team-name">
-                        {% if user.user__userprofile__users_team__name %}
-                            {{ user.user__userprofile__users_team__name }}
+                        {% if user.team_name %}
+                            {{ user.team_name }}
                         {% else %}
                             No Team
                         {% endif %}
@@ -108,7 +108,7 @@
                 {% for team in team_standings %}
                 <tr>
                     <td class="rank">{{ forloop.counter }}</td>
-                    <td class="team-name">{{ team.user__userprofile__users_team__name }}</td>
+                    <<td class="team-name">{{ team.user__userprofile__users_team__name }}</td>
                     <td class="points">{{ team.total_points }}</td>
                     <td class="wins">{{ team.wins }}</td>
                 </tr>

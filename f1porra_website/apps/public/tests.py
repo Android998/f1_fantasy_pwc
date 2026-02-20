@@ -102,3 +102,41 @@ class TeamViewBudgetAndPricesTests(TestCase):
         expected_total_spent = sum(10 + i for i in range(1, 6)) + 20 + 25
         self.assertEqual(context['budget_cap'], 160.0)
         self.assertEqual(context['remain_price'], 160.0 - expected_total_spent)
+
+
+class StandingsSeasonScopedProfileTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+        self.season_2025 = Season.objects.create(year=2025, name="2025")
+        self.season_2026 = Season.objects.create(year=2026, name="2026")
+        self._old_current_season = views.current_season
+        views.current_season = self.season_2026
+
+        self.user = User.objects.create_user(username="multi", first_name="Multi User", password="secret")
+
+        old_team = UsersTeam.objects.create(name="Old Team", color="#123456")
+        new_team = UsersTeam.objects.create(name="New Team", color="#654321")
+
+        UserProfile.objects.create(user=self.user, users_team=old_team, season=self.season_2025)
+        UserProfile.objects.create(user=self.user, users_team=new_team, season=self.season_2026)
+
+        self.gp_2025 = GrandPrix.objects.create(season=self.season_2025, country="Monaco", nround=1, name="Monaco GP")
+        self.gp_2026 = GrandPrix.objects.create(season=self.season_2026, country="Spain", nround=1, name="Spanish GP")
+
+        Porra.objects.create(season=self.season_2025, user=self.user, gp=self.gp_2025, points=90)
+        Porra.objects.create(season=self.season_2026, user=self.user, gp=self.gp_2026, points=120)
+
+    def tearDown(self):
+        views.current_season = self._old_current_season
+
+    def test_standings_uses_selected_season_profile_and_no_duplicate_rows(self):
+        request = self.factory.get('/standings/', {'season': '2026', 'gp': 'overall'})
+
+        with patch('f1porra_website.apps.public.views.render') as mocked_render:
+            views.standings(request)
+
+        context = mocked_render.call_args.args[2]
+        self.assertEqual(len(context['user_standings']), 1)
+        self.assertEqual(context['user_standings'][0]['team_name'], 'New Team')
+        self.assertEqual(context['team_standings'][0]['team_name'], 'New Team')

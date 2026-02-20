@@ -135,7 +135,16 @@ def _budget_cap_for_user(user):
     user_team = user_profile.users_team
 
     users_teams = UsersTeam.objects.annotate(
-        total_points=Coalesce(Sum('userprofile__user__porra__points', filter=Q(userprofile__user__porra__season=current_season)), Value(0))
+        total_points=Coalesce(
+            Sum(
+                'userprofile__user__porra__points',
+                filter=Q(
+                    userprofile__season=current_season,
+                    userprofile__user__porra__season=current_season,
+                ),
+            ),
+            Value(0),
+        )
     ).order_by('total_points')
     last_users_team = users_teams.first() if users_teams.exists() else None
 
@@ -626,6 +635,13 @@ def standings(request):
     last_2_per_user = {user['user__username']: 0 for user in all_users}
     wins_per_team = {}
 
+    # Build a season-scoped user profile map to avoid joining all historical user profiles.
+    user_ids = list(porra_entries.values_list('user_id', flat=True).distinct())
+    season_profiles = {
+        profile.user_id: profile
+        for profile in UserProfile.objects.filter(user_id__in=user_ids, season=selected_season).select_related('users_team')
+    }
+
     for gp in grand_prix_list:
         # Get the relevant Porra entries for this Grand Prix
         gp_entries = porra_entries.filter(season=selected_season, gp=gp)
@@ -655,52 +671,58 @@ def standings(request):
             username = last_user['user__username']
             last_2_per_user[username] += 1
         
-        # Calculate team scores for this GP
-        team_scores = (
-            gp_entries
-            .values('user__userprofile__users_team__name')  # Group by team name
-            .annotate(team_points=Sum('points'))  # Sum of points per team
-            .filter(user__userprofile__users_team__name__isnull=False)  # Exclude users with no team
-            .order_by('-team_points')  # Order by points descending
-        )
+        # Calculate team scores for this GP using season-bound profiles.
+        team_scores = {}
+        for gp_entry in gp_entries.values('user_id', 'points'):
+            profile = season_profiles.get(gp_entry['user_id'])
+            if not profile or not profile.users_team:
+                continue
+            team_name = profile.users_team.name
+            team_scores[team_name] = team_scores.get(team_name, 0) + (gp_entry['points'] or 0)
 
         # Determine the team with the highest score and count it as a win
-        if team_scores.exists():
-            top_team = team_scores.first()
-            top_team_name = top_team['user__userprofile__users_team__name']
+        if team_scores:
+            top_team_name = max(team_scores.items(), key=lambda item: item[1])[0]
             wins_per_team[top_team_name] = wins_per_team.get(top_team_name, 0) + 1
 
-    # Aggregate the total points for each user
-    user_standings = porra_entries.values(
-        'user__username',
-        'user__first_name',
-        'user__userprofile__photo',
-        'user__userprofile__users_team__name'
-    ).annotate(total_points=Sum('points')).order_by('-total_points')
-
-    team_standings = (
+    # Aggregate the total points for each user without joining UserProfile.
+    raw_user_standings = (
         porra_entries
-        .values('user__userprofile__users_team__name')  # Group by team name
-        .annotate(
-            total_points=Sum('points')  # Sum of points per team
-        )
-        .filter(user__userprofile__users_team__name__isnull=False)  # Exclude users with no team
-        .order_by('-total_points')  # Order by points descending
+        .values('user_id', 'user__username', 'user__first_name')
+        .annotate(total_points=Sum('points'))
+        .order_by('-total_points')
     )
 
-    # Add wins to each team's standings
-    for team in team_standings:
-        team_name = team['user__userprofile__users_team__name']
-        team['wins'] = wins_per_team.get(team_name, 0)
-
-    # Merge the standings, wins, podiums, and last 2 into a single list of dictionaries
     standings_with_counts = []
-    for user in user_standings:
+    team_points_by_name = {}
+    for user in raw_user_standings:
+        profile = season_profiles.get(user['user_id'])
+        team_name = profile.users_team.name if profile and profile.users_team else None
+        photo = profile.photo if profile else None
         username = user['user__username']
-        user['wins'] = wins_per_user.get(username, 0)
-        user['podiums'] = podiums_per_user.get(username, 0)
-        user['last_2'] = last_2_per_user.get(username, 0)
-        standings_with_counts.append(user)
+        standing_row = {
+            'user__username': username,
+            'user__first_name': user['user__first_name'],
+            'profile_photo': photo,
+            'team_name': team_name,
+            'total_points': user['total_points'],
+            'wins': wins_per_user.get(username, 0),
+            'podiums': podiums_per_user.get(username, 0),
+            'last_2': last_2_per_user.get(username, 0),
+        }
+        standings_with_counts.append(standing_row)
+
+        if team_name:
+            team_points_by_name[team_name] = team_points_by_name.get(team_name, 0) + (user['total_points'] or 0)
+
+    team_standings = [
+        {
+            'team_name': team_name,
+            'total_points': total_points,
+            'wins': wins_per_team.get(team_name, 0),
+        }
+        for team_name, total_points in sorted(team_points_by_name.items(), key=lambda item: item[1], reverse=True)
+    ]
 
     return render(request, 'standings.html', {
         'user_standings': standings_with_counts, 
