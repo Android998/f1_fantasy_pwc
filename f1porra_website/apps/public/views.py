@@ -612,6 +612,37 @@ def use_block_chip(request):
 
     return JsonResponse({'success': True})
 
+
+@login_required
+def cancel_block_chip(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+    now = datetime.now(pytz.UTC)
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    gp_id = payload.get('gp_id')
+    gp = GrandPrix.objects.filter(season=current_season, country=gp_id).first()
+    if not gp:
+        return JsonResponse({'success': False, 'error': 'GP no válido'}, status=400)
+
+    current_block = BlockChip.objects.filter(
+        season=current_season,
+        gp=gp,
+        blocker=request.user,
+    ).select_related('target', 'blocked_driver', 'blocked_team').first()
+    if not current_block:
+        return JsonResponse({'success': False, 'error': 'No tienes un bloqueo activo para este GP.'}, status=400)
+
+    if _block_chip_deadline_passed(gp, now):
+        return JsonResponse({'success': False, 'error': 'El bloqueo ya no puede modificarse para este GP.'}, status=400)
+
+    current_block.delete()
+    return JsonResponse({'success': True})
+
 def standings(request):
     default_season = current_season or Season.objects.order_by('-year').first()
     if default_season is None:
