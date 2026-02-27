@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<link href="{% static 'css/achievements.css' %}?v=1" rel="stylesheet">
+
+<div class="main-standings achievements-page">
+    <div class="user-standings achievements-panel">
+        <h1 class="achievements-title">Achievements</h1>
+        <hr class="gray-line">
+        <p class="achievements-subtitle">Logros desbloqueables para darle mas picante a la porra.</p>
+
+        <div class="achievements-stack">
+            {% for achievement in achievements %}
+            <article class="achievement-card">
+                <div class="achievement-content">
+                    <div class="achievement-text">
+                        <div class="achievement-header">
+                            <h2 class="achievement-name">{{ achievement.name }}</h2>
+                        </div>
+                        <p class="achievement-description">{{ achievement.description }}</p>
+                    </div>
+                    <div class="achievement-icon-wrap" aria-hidden="true">
+                        <span class="achievement-icon {{ achievement.icon_class|default:'icon-symbol' }}">{{ achievement.icon }}</span>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
