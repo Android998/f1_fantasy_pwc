@@ -63,6 +63,8 @@
                         <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == standings_url %} activate {%endif%}" href="{{standings_url}}">Standings</a></li>
                         {%url 'public:rules' as rules_url %}
                         <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == rules_url %} activate {%endif%}" href="{{rules_url}}">Rules</a></li>
+                        {%url 'public:achievements' as achievements_url %}
+                        <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == achievements_url %} activate {%endif%}" href="{{achievements_url}}">Achievements</a></li>
                         {%url 'public:calendar' as calendar_url %}
                         <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == calendar_url %} activate {%endif%}" href="{{calendar_url}}">Calendar</a></li>
                         {%url 'public:statistics' as statistics_url%}
