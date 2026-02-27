@@ -613,13 +613,27 @@ def use_block_chip(request):
     return JsonResponse({'success': True})
 
 def standings(request):
-    selected_season_year = request.GET.get('season', str(current_season.year))
-    selected_season = Season.objects.get(year=int(selected_season_year))
+    default_season = current_season or Season.objects.order_by('-year').first()
+    if default_season is None:
+        return render(request, 'standings.html', {
+            'user_standings': [],
+            'grand_prix_list': [],
+            'selected_gp': 'overall',
+            'team_standings': [],
+            'season_list': [],
+            'selected_season': None,
+        })
+
+    selected_season_year = request.GET.get('season', str(default_season.year))
+    selected_season = Season.objects.filter(year=int(selected_season_year)).first() or default_season
     selected_gp = request.GET.get('gp', 'overall')
 
     # Get all completed Grand Prixes (those with points) for the selected season
     grand_prix_with_points = Porra.objects.filter(points__gt=0, season=selected_season).values_list('gp', flat=True).distinct()
     grand_prix_list = GrandPrix.objects.filter(id__in=grand_prix_with_points).order_by('nround')
+    available_gp_countries = set(grand_prix_list.values_list('country', flat=True))
+    if selected_gp != 'overall' and selected_gp not in available_gp_countries:
+        selected_gp = 'overall'
 
     if selected_gp == 'overall':
         # Overall standings: no filtering by Grand Prix
