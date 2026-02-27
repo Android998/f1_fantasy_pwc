@@ -1007,11 +1007,11 @@ ul {
   align-self: flex-start;
   position: absolute;
   right: 1rem;
-  bottom: 0.8rem;
+  bottom: 0.5rem;
 }
 
 .driver-number{
-  width: 3rem;
+  width: 2.8rem;
   height: auto;
 } 
 

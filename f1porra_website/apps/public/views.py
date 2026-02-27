@@ -20,6 +20,8 @@ from f1porra_website.apps.public.services import (
     build_teams_trends_payload,
     build_trends_payload,
 )
+from f1porra_website.apps.public.services.achievement_service import sync_achievements
+from f1porra_website.apps.public.models import Achievement, UserAchievement
 from django.contrib.auth.models import User
 import logging
 from django.core.exceptions import ObjectDoesNotExist
@@ -191,6 +193,84 @@ def prices(request):
 
 def rules(request):
     return render(request, 'rules.html')
+
+@login_required
+def achievements(request):
+    sync_achievements()
+
+    achievements = list(Achievement.objects.order_by("sort_order", "name"))
+    unlocked_map = {
+        ua.achievement_id: ua
+        for ua in UserAchievement.objects.filter(user=request.user).select_related("gp", "season")
+    }
+
+    payload = []
+    for achievement in achievements:
+        unlocked = unlocked_map.get(achievement.id)
+        unlocked_label = None
+        if unlocked:
+            if unlocked.gp and unlocked.season:
+                unlocked_label = f"{unlocked.gp.country} {unlocked.season.year}"
+            elif unlocked.season:
+                unlocked_label = f"{unlocked.season.year}"
+            elif unlocked.gp:
+                unlocked_label = unlocked.gp.country
+        payload.append(
+            {
+                "slug": achievement.slug,
+                "name": achievement.name,
+                "description": achievement.description,
+                "icon": achievement.icon,
+                "icon_class": achievement.icon_class,
+                "unlocked": bool(unlocked),
+                "unlocked_label": unlocked_label,
+            }
+        )
+
+    hall_of_famers = {
+        "big_guy",
+        "hall_of_fame",
+        "world_champion",
+        "constructor_legend",
+        "grand_chelem",
+    }
+    principiante = {
+        "mr_consistency",
+        "almost_there",
+        "capitan_general",
+        "untouchable",
+    }
+    cojo = {
+        "latifisexual",
+        "rock_bottom",
+        "public_enemy",
+    }
+
+    sections = [
+        {"title": "Hall of Famers", "achievements": []},
+        {"title": "Principiante", "achievements": []},
+        {"title": "Cojo", "achievements": []},
+        {"title": "Miscelaneo", "achievements": []},
+    ]
+    section_map = {
+        "hall": sections[0]["achievements"],
+        "principiante": sections[1]["achievements"],
+        "cojo": sections[2]["achievements"],
+        "misc": sections[3]["achievements"],
+    }
+
+    for item in payload:
+        slug = item.get("slug")
+        if slug in hall_of_famers:
+            section_map["hall"].append(item)
+        elif slug in principiante:
+            section_map["principiante"].append(item)
+        elif slug in cojo:
+            section_map["cojo"].append(item)
+        else:
+            section_map["misc"].append(item)
+
+    return render(request, "achievements.html", {"sections": sections})
 
 
 def calendar_view(request):
@@ -620,6 +700,38 @@ def use_block_chip(request):
         blocked_team=blocked_team,
     )
 
+    return JsonResponse({'success': True})
+
+
+@login_required
+def cancel_block_chip(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+    current_season = get_current_season()
+    now = datetime.now(pytz.UTC)
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    gp_id = payload.get('gp_id')
+    gp = GrandPrix.objects.filter(season=current_season, country=gp_id).first()
+    if not gp:
+        return JsonResponse({'success': False, 'error': 'GP no válido'}, status=400)
+
+    current_block = BlockChip.objects.filter(
+        season=current_season,
+        gp=gp,
+        blocker=request.user,
+    ).select_related('target', 'blocked_driver', 'blocked_team').first()
+    if not current_block:
+        return JsonResponse({'success': False, 'error': 'No tienes un bloqueo activo para este GP.'}, status=400)
+
+    if _block_chip_deadline_passed(gp, now):
+        return JsonResponse({'success': False, 'error': 'El bloqueo ya no puede modificarse para este GP.'}, status=400)
+
+    current_block.delete()
     return JsonResponse({'success': True})
 
 def standings(request):

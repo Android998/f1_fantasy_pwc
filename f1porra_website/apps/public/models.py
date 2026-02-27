@@ -186,3 +186,43 @@ class RaceResults(models.Model):
     third_pos = models.ForeignKey(Driver, to_field='id', on_delete=models.SET_NULL, blank=True, null=True, related_name='third_pos_res')
     fast_lap = models.ForeignKey(Driver, to_field='id', on_delete=models.SET_NULL, blank=True, null=True, related_name='fast_lap_res')
     team_winner = models.ForeignKey(Team, to_field='id', on_delete=models.SET_NULL, blank=True, null=True, related_name='team_winner_res')
+
+
+class Achievement(models.Model):
+    class Category(models.TextChoices):
+        GP = 'gp', 'GP'
+        SEASON = 'season', 'Season'
+        ALL_TIME = 'all_time', 'All Time'
+
+    slug = models.SlugField(unique=True)
+    name = models.CharField(max_length=128)
+    description = models.TextField()
+    category = models.CharField(max_length=16, choices=Category.choices, default=Category.SEASON)
+    icon = models.CharField(max_length=16, blank=True, null=True)
+    icon_class = models.CharField(max_length=32, blank=True, null=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'public_achievements'
+        verbose_name_plural = 'achievements'
+
+    def __str__(self):
+        return self.name
+
+
+class UserAchievement(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE)
+    season = models.ForeignKey(Season, on_delete=models.SET_NULL, blank=True, null=True)
+    gp = models.ForeignKey(GrandPrix, on_delete=models.SET_NULL, blank=True, null=True)
+    unlocked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'public_userachievements'
+        verbose_name_plural = 'userachievements'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'achievement'], name='unique_user_achievement'),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.achievement.name}"

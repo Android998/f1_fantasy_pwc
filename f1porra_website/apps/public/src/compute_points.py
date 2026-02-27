@@ -1,6 +1,7 @@
 from django.db.models import Max
 from datetime import date
 from f1porra_website.apps.public.models import Season, DriverPoints, TeamPoints, Porra, RaceResults, BlockChip
+from f1porra_website.apps.public.services.achievement_service import recompute_achievements
 
 def compute_porra_points():
     # Get the latest Grand Prix based on round number
@@ -94,3 +95,4 @@ def compute_porra_points():
         porra.save()
 
     print(f"\nPoints calculation completed for Grand Prix round {latest_gp}.")
+    recompute_achievements(rebuild=False)

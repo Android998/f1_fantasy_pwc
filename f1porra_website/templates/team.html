@@ -203,7 +203,15 @@
                             </span>
                         </div>
 
-                        <button id="pitstop-chip-button" class="chip-action-btn chip-action-pit" type="button" {% if current_block or not block_chip_available or block_chip_deadline_passed %}disabled{% endif %}>
+                        <button id="pitstop-chip-button"
+                            class="chip-action-btn chip-action-pit"
+                            type="button"
+                            data-has-block="{% if current_block %}true{% else %}false{% endif %}"
+                            data-block-target="{% if current_block and current_block.target %}{{ current_block.target.username|escape }}{% endif %}"
+                            data-block-asset-type="{% if current_block %}{{ current_block.asset_type|escape }}{% endif %}"
+                            data-block-driver="{% if current_block and current_block.blocked_driver %}{{ current_block.blocked_driver.name|escape }}{% endif %}"
+                            data-block-team="{% if current_block and current_block.blocked_team %}{{ current_block.blocked_team.name|escape }}{% endif %}"
+                            {% if block_chip_deadline_passed or not current_block and not block_chip_available %}disabled{% endif %}>
                             <img src="{% static 'theme/assets/icons/pitstop.png' %}" alt="Pit Stop" onerror="this.style.display='none'">
                             <span>Pit Stop</span>
                         </button>

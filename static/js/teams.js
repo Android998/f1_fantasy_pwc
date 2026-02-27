@@ -703,10 +703,68 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function openBlockChipModal() {
+    function getCurrentBlockDetailsFromTrigger(trigger) {
+        if (!trigger || trigger.dataset.hasBlock !== 'true') return null;
+        const targetUser = trigger.dataset.blockTarget || 'usuario';
+        const assetType = trigger.dataset.blockAssetType || '';
+        const blockedDriver = trigger.dataset.blockDriver || '';
+        const blockedTeam = trigger.dataset.blockTeam || '';
+        const blockedAssetText = assetType === 'team'
+            ? (blockedTeam ? `Constructor bloqueado: ${blockedTeam}` : '')
+            : (blockedDriver ? `Piloto bloqueado: ${blockedDriver}` : '');
+
+        return { targetUser, blockedAssetText };
+    }
+
+    async function cancelBlockChip(trigger) {
+        const gpId = document.querySelector('meta[name="gp-id"]').getAttribute('content');
+        const details = getCurrentBlockDetailsFromTrigger(trigger);
+        const detailText = details
+            ? `Bloqueo activo sobre ${details.targetUser}.${details.blockedAssetText ? `\n${details.blockedAssetText}` : ''}`
+            : 'Tienes un bloqueo activo en este GP.';
+
+        const confirmationMsg = `${detailText}\n\n¿Seguro que quieres cancelar este bloqueo?`;
+        const confirmed = await showConfirmActionModal(confirmationMsg, 'Cancelar bloqueo');
+        if (!confirmed) {
+            return;
+        }
+
+        trigger.disabled = true;
+        fetch('/team/block-chip/cancel/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify({
+                gp_id: gpId,
+            }),
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    location.reload();
+                    return;
+                }
+                trigger.disabled = false;
+                alert(data.error || 'No se pudo cancelar el bloqueo.');
+            })
+            .catch(() => {
+                trigger.disabled = false;
+                alert('Error al cancelar el bloqueo.');
+            });
+    }
+
+    async function openBlockChipModal() {
         const modal = document.getElementById('block-chip-modal');
         const trigger = document.getElementById('pitstop-chip-button');
         if (!modal || !trigger || trigger.disabled) return;
+
+        if (trigger.dataset.hasBlock === 'true') {
+            await cancelBlockChip(trigger);
+            return;
+        }
+
         modal.style.display = 'flex';
     }
 
