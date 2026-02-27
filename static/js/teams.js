@@ -116,13 +116,18 @@ document.addEventListener('DOMContentLoaded', function() {
         let selectedLogoSrc = '';
 
         if (type === 'piloto') {
-            const photoImg = row.querySelector('.foto-piloto-inside img');
-            const photoSrc = photoImg ? photoImg.getAttribute('src') : '';
-            selectedPhotoSrc = photoSrc.replace('/drivers/drivers/', '/drivers/selected/');
+            selectedPhotoSrc = row.dataset.selectedSrc || '';
+            console.log("[MyTeam] selected src from row:", selectedPhotoSrc);
+
+            // fallback (optional)
+            if (!selectedPhotoSrc) {
+                const photoImg = row.querySelector('.foto-piloto-inside img');
+                selectedPhotoSrc = photoImg ? photoImg.getAttribute('src') : '';
+                console.log("[MyTeam] fallback src:", selectedPhotoSrc);
+            }
         } else {
-            // Constructors
             selectedPhotoSrc = row.dataset.carSrc || (row.querySelector('img.team-car')?.getAttribute('src') || '');
-            selectedLogoSrc = row.dataset.logoSrc || (row.querySelector('img.team-logo')?.getAttribute('src') || '');
+            selectedLogoSrc  = row.dataset.logoSrc || (row.querySelector('img.team-logo')?.getAttribute('src') || '');
         }
 
         // Obtener presupuesto disponible actual
@@ -199,8 +204,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-
-
     // Función para manejar la eliminación de pilotos o equipos
     function handleRemoval(button, type) {
         const container = button.closest(`.selected-div`);
@@ -266,8 +269,6 @@ document.addEventListener('DOMContentLoaded', function() {
             handleRemoval(this, 'equipo');
         });
     }
-
-
 
     // Función para manejar la eliminación desde la tabla
     function handleTableRemoval(button, type) {
@@ -336,8 +337,6 @@ document.addEventListener('DOMContentLoaded', function() {
             handleTableRemoval(this, 'equipo');
         });
     });
-
-
 
     // Function to reset all selections and go back to initial state
     function resetTeamSelection() {

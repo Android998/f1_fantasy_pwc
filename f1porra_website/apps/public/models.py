@@ -70,6 +70,16 @@ class Driver(models.Model):
     
     def __str__(self):
         return self.season.name + " - " + self.name
+    
+    @property
+    def number_photo_link(self):
+        return self.photo_link.replace("drivers/", "number/")
+    
+    @property
+    def selected_photo_link(self):
+        # from: season2026/drivers/name.png
+        # to:   season2026/selected/name.png
+        return (self.photo_link or "").replace("drivers/", "selected/")
 
 #
 # DRIVER POINTS
