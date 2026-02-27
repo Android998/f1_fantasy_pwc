@@ -10,23 +10,35 @@
         <hr class="gray-line">
         <p class="achievements-subtitle">Logros desbloqueables para darle mas picante a la porra.</p>
 
-        <div class="achievements-stack">
-            {% for achievement in achievements %}
-            <article class="achievement-card">
-                <div class="achievement-content">
-                    <div class="achievement-text">
-                        <div class="achievement-header">
-                            <h2 class="achievement-name">{{ achievement.name }}</h2>
+        {% for section in sections %}
+        <section class="achievements-section">
+            <h2 class="achievements-section-title">{{ section.title }}</h2>
+            <div class="achievements-stack">
+                {% for achievement in section.achievements %}
+                <article class="achievement-card {% if not achievement.unlocked %}locked{% endif %}">
+                    <div class="achievement-content">
+                        <div class="achievement-text">
+                            <div class="achievement-header">
+                                <h2 class="achievement-name">{{ achievement.name }}</h2>
+                            </div>
+                            <p class="achievement-description {% if not achievement.unlocked %}is-blurred{% endif %}">{{ achievement.description }}</p>
+                            <div class="achievement-meta">
+                                {% if achievement.unlocked %}
+                                    <span class="achievement-unlocked">Unlocked: {{ achievement.unlocked_label|default:"-" }}</span>
+                                {% else %}
+                                    <span class="achievement-hidden">Hidden</span>
+                                {% endif %}
+                            </div>
                         </div>
-                        <p class="achievement-description">{{ achievement.description }}</p>
+                        <div class="achievement-icon-wrap" aria-hidden="true">
+                            <span class="achievement-icon {{ achievement.icon_class|default:'icon-symbol' }}">{{ achievement.icon }}</span>
+                        </div>
                     </div>
-                    <div class="achievement-icon-wrap" aria-hidden="true">
-                        <span class="achievement-icon {{ achievement.icon_class|default:'icon-symbol' }}">{{ achievement.icon }}</span>
-                    </div>
-                </div>
-            </article>
-            {% endfor %}
-        </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}
