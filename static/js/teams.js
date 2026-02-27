@@ -14,6 +14,21 @@ document.addEventListener('DOMContentLoaded', function() {
         return Number.isFinite(parsed) && parsed > 0 ? parsed : 150;
     }
 
+    function setBudgetValue(rawBudget) {
+        const BudgetEle = document.getElementById('available-budget')?.querySelector('span:last-child');
+        const budgetSpan = document.getElementById('budget-span');
+        const progressEl = document.getElementById('budget-progressBar');
+        const budgetCap = getBudgetCap();
+        if (!BudgetEle || !budgetSpan || !progressEl || !Number.isFinite(budgetCap) || budgetCap <= 0) return;
+
+        const clampedBudget = Math.max(0, Math.min(budgetCap, Number(rawBudget) || 0));
+        const percent = (clampedBudget / budgetCap) * 100;
+
+        budgetSpan.style.width = `${percent}%`;
+        progressEl.value = clampedBudget;
+        BudgetEle.innerText = `$${clampedBudget.toFixed(1)} M`;
+    }
+
     // Mostrar la tabla de pilotos por defecto
     driversTable.style.display = 'block';
     constructorsTable.style.display = 'none';
@@ -92,6 +107,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     applyListSorting();
 
+    // Sync budget bar with the rendered budget value on initial load.
+    const initialBudgetText = document.getElementById('available-budget')?.querySelector('span:last-child')?.innerText || '';
+    const initialBudget = parseFloat(initialBudgetText.replace('M', '').replace('$', ''));
+    if (Number.isFinite(initialBudget)) {
+        setBudgetValue(initialBudget);
+    } else {
+        setBudgetValue(getBudgetCap());
+    }
+
     function isRowBlocked(row) {
         return row && row.dataset && row.dataset.blocked === 'true';
     }
@@ -138,10 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const newBudget = availableBudget - parseFloat(price.replace('M', '').replace('$', ''));
 
         // Actualizar presupuesto disponible en el HTML
-        const budgetCap = getBudgetCap();
-        document.getElementById('budget-span').style.width = `${newBudget * 220 / budgetCap}px`
-        document.getElementById('budget-progressBar').value = newBudget
-        BudgetEle.innerText = `$${newBudget.toFixed(1)} M`;
+        setBudgetValue(newBudget);
 
         // Buscar el siguiente contenedor de selección disponible
         let selectedContainer = null;
@@ -228,10 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const newBudget = availableBudget + parseFloat(price.replace('M', '').replace('$', ''));
 
         // Actualizar presupuesto disponible en el HTML
-        const budgetCap = getBudgetCap();
-        document.getElementById('budget-span').style.width = `${newBudget * 220 / budgetCap}px`
-        document.getElementById('budget-progressBar').value = newBudget
-        BudgetEle.innerText = `$${newBudget.toFixed(1)} M`;
+        setBudgetValue(newBudget);
 
         // Ocultar el contenedor de selección y mostrar el botón de añadir
         container.style.display = 'none';
@@ -287,10 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const newBudget = availableBudget + parseFloat(price.replace('M', '').replace('$', ''));
 
         // Actualizar presupuesto disponible en el HTML
-        const budgetCap = getBudgetCap();
-        document.getElementById('budget-span').style.width = `${newBudget * 220 / budgetCap}px`
-        document.getElementById('budget-progressBar').value = newBudget
-        BudgetEle.innerText = `$${newBudget.toFixed(1)} M`;
+        setBudgetValue(newBudget);
 
         // Encontrar el contenedor de selección asociado
         const selectedContainerIndex = parseInt(row.dataset.selectedContainer, 10);
@@ -342,12 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetTeamSelection() {
         // Reset budget to initial state
         const initialBudget = getBudgetCap(); // Initial budget value
-        const BudgetEle = document.getElementById('available-budget').querySelector('span:last-child');
-        BudgetEle.innerText = `$${initialBudget.toFixed(1)} M`;
-
-        // Reset progress bar and width
-        document.getElementById('budget-span').style.width = `${initialBudget * 220 / getBudgetCap()}px`;
-        document.getElementById('budget-progressBar').value = initialBudget;
+        setBudgetValue(initialBudget);
 
         // Reset each selected container to initial state
         for (let i = 1; i <= 7; i++) {

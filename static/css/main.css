@@ -399,8 +399,10 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  align-items: flex-start;
   min-width: 190px;
   flex: 0 0 190px;
+  gap: 0.25rem;
 }
 
 .top-selection > section:last-child{
@@ -417,11 +419,14 @@
   font-size: 1.3rem;
   line-height: 1.6rem;
   letter-spacing: .002rem;
-  display: flex;
-  flex-direction: column;
+  display: block;
   font-family: "Formula1Bold";
   min-width: 0;
   margin-bottom: 0;
+}
+
+.budget-selection span{
+  display: block;
 }
 
 .budgetBar{
@@ -433,6 +438,7 @@
   margin-top: 0.35rem;
   width: 190px;
   border-radius: 100px;
+  align-self: flex-start;
 }
 
 .budgetBar progress{
