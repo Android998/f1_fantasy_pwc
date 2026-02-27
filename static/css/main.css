@@ -719,7 +719,7 @@
   padding: 1%; 
   display: flex; 
   justify-content: center; 
-  margin-top: 2%; 
+  margin-top: 3ch; 
   list-style-type: none;
 }
 
@@ -751,7 +751,8 @@
 }
 
 .selection-text {
-  margin-top: 5vh;
+  margin-top: 3vh;
+  margin-bottom: 3vh;
   font-weight: 800;
   font-size: 0.8rem;
   text-decoration: underline;
@@ -895,7 +896,7 @@ img {
   display: block;
   scrollbar-width: thin;
   scrollbar-color: var(--grey-20) var(--grey-70);
-  height: 26rem;
+  height: 32rem;
   padding-right: 1%;
 }
 
@@ -906,7 +907,7 @@ img {
 
 .fila-piloto{
   display:flex;
-  height: 6rem;
+  height: 7.8rem;
   width: 100%;  
   padding: 1%;
   background-color: white;
@@ -916,7 +917,7 @@ img {
 
 .fila-equipo{
   display:flex;
-  height: 6rem;
+  height: 7.8rem;
   width: 100%;  
   padding: 1%;
   background-color: white;
@@ -985,15 +986,17 @@ ul {
   text-align: left;
   text-transform: uppercase;
   font-family: "Formula1Bold";
-  font-size: 1.1rem;
-  line-height: 1.7rem;
+  font-size: 1.5rem;
+  line-height: 2rem;
   letter-spacing: .02rem;
+  margin-top: 2%;
+  margin-bottom: 2%;
 }
 
 .driver-team{
   text-align: left;
   font-family: "Formula1Regular";
-  font-size: 0.8rem;
+  font-size: 1rem;
   line-height: 1.5rem;
   letter-spacing: .02rem;
 }
@@ -1019,7 +1022,7 @@ ul {
   background-color: lightgray;
   border-radius: 4px;
   font-family: "Formula1Bold";
-  font-size: 0.65rem;
+  font-size: 0.95rem;
   padding: 1%;
   display: flex;
   justify-content: center;
