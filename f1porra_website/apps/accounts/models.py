@@ -5,16 +5,17 @@ from django.core.exceptions import ValidationError
 from f1porra_website.apps.public.models import Season
 
 class UsersTeam(models.Model):
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255)
-    color = models.CharField(max_length=7)  # Assuming hex color codes
+    color = models.CharField(max_length=7, blank=True, default='#000000')  # Optional for now
     photo = models.ImageField(upload_to='team_photos/', null=True, blank=True)
 
-    def __str__(self):
-        return self.name
+    class Meta:
+        unique_together = [['season', 'name']]
 
-    # def clean(self):
-    #     if self.userprofile_set.count() > 2:
-    #         raise ValidationError('A team can have at most 2 users.')
+    def __str__(self):
+        season_name = self.season.name if self.season else "No Season"
+        return f"{season_name} - {self.name}"
 
 class UserProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

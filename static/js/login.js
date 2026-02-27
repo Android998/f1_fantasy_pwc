@@ -6,22 +6,30 @@ function showLoginForm() {
 }
 
 function showSignupForm() {
-    console.log("Showing Signup Form");
     document.getElementById('signup-form').style.display = "block";
     document.getElementById('login-form').style.display = "none";
     document.getElementById('register-button').style.borderBottom = "3px solid red";
     document.getElementById('sign-in-button').style.borderBottom = "3px solid transparent";
 }
 
-function checkUrlParams() {
+function checkDefaultForm() {
     const params = new URLSearchParams(window.location.search);
-    const form = params.get('form');
-    
-    if (form === 'signup') {
-        showSignupForm();
-    } else {
-        showLoginForm();
+    const queryForm = params.get('form');
+
+    if (queryForm === 'signup' || queryForm === 'login') {
+        queryForm === 'signup' ? showSignupForm() : showLoginForm();
+        return;
     }
+
+    const activeFormElement = document.getElementById('active-form');
+    if (activeFormElement) {
+        const activeForm = JSON.parse(activeFormElement.textContent);
+        if (activeForm === 'signup') {
+            showSignupForm();
+            return;
+        }
+    }
+    showLoginForm();
 }
 
-window.onload = checkUrlParams;
+window.onload = checkDefaultForm;
