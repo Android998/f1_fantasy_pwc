@@ -628,6 +628,7 @@ def cancel_block_chip(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
+    current_season = get_current_season()
     now = datetime.now(pytz.UTC)
     try:
         payload = json.loads(request.body)
