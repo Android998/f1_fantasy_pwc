@@ -27,11 +27,16 @@ from collections import Counter
 
 logger = logging.getLogger(__name__)
 
-current_year = date.today().year
-try:
-    current_season = Season.objects.get(year=current_year)
-except Season.DoesNotExist:
-    current_season = None  # or handle it as appropriate
+from django.utils import timezone
+from django.db.utils import ProgrammingError, OperationalError
+
+def get_current_season():
+    year = timezone.now().year
+    try:
+        return Season.objects.filter(year=year).first()
+    except (ProgrammingError, OperationalError):
+        # BBDD aún sin tablas / migraciones
+        return None
 
 def adjust_color(hex_color, amount):
     # Convert hex to RGB
@@ -64,7 +69,7 @@ def _triple_chip_available(user, gp):
     if not gp or not gp.nround:
         return False
     return not Porra.objects.filter(
-        season=current_season,
+        season=get_current_season(),
         user=user,
         gp__nround__gt=_chip_window(gp.nround) * 12,
         gp__nround__lte=(_chip_window(gp.nround) + 1) * 12,
@@ -76,7 +81,7 @@ def _block_chip_available(user, gp):
     if not gp or not gp.nround:
         return False
     return not BlockChip.objects.filter(
-        season=current_season,
+        season=get_current_season(),
         blocker=user,
         gp__nround__gt=_chip_window(gp.nround) * 12,
         gp__nround__lte=(_chip_window(gp.nround) + 1) * 12,
@@ -92,7 +97,7 @@ def _get_incoming_block_for_user(user, gp):
     if not user or not gp:
         return None
     return BlockChip.objects.filter(
-        season=current_season,
+        season=get_current_season(),
         gp=gp,
         target=user,
     ).select_related('blocked_driver', 'blocked_team', 'blocker').first()
@@ -102,7 +107,7 @@ def _remove_blocked_asset_from_porra(user, gp, blocked_driver=None, blocked_team
     if not user or not gp:
         return
 
-    porra = Porra.objects.filter(season=current_season, user=user, gp=gp).first()
+    porra = Porra.objects.filter(season=get_current_season(), user=user, gp=gp).first()
     if not porra:
         return
 
@@ -123,14 +128,15 @@ def _remove_blocked_asset_from_porra(user, gp, blocked_driver=None, blocked_team
         porra.save(update_fields=fields_to_null)
 
 def _get_latest_gp_round_for_prices():
-    driver_round = DriverPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
-    team_round = TeamPoints.objects.filter(season=current_season).aggregate(max_nround=Max('gp__nround'))['max_nround']
+    driver_round = DriverPoints.objects.filter(season=get_current_season()).aggregate(max_nround=Max('gp__nround'))['max_nround']
+    team_round = TeamPoints.objects.filter(season=get_current_season()).aggregate(max_nround=Max('gp__nround'))['max_nround']
 
     rounds = [value for value in [driver_round, team_round] if value is not None]
     return max(rounds) if rounds else None
 
 
 def _budget_cap_for_user(user):
+    current_season = get_current_season()
     user_profile = UserProfile.objects.get(user=user, season=current_season)
     user_team = user_profile.users_team
 
@@ -152,6 +158,7 @@ def _budget_cap_for_user(user):
 
 # Create your views here.
 def home(request):
+    current_season = get_current_season()
     # Get the latest Grand Prix round number considering both drivers and constructors prices
     latest_gp = _get_latest_gp_round_for_prices()
 
@@ -187,6 +194,7 @@ def rules(request):
 
 
 def calendar_view(request):
+    current_season = get_current_season()
     gp_id = _parse_int(request.GET.get("gp"))
     season = current_season
     if season is None:
@@ -310,6 +318,7 @@ def statistics(request):
 
 
 def statistics_users(request):
+    current_season = get_current_season()
     # Fetch all Grand Prix and Drivers
     grand_prix_list = GrandPrix.objects.filter(season=current_season).order_by('nround')
     driver_list = Driver.objects.filter(season=current_season).order_by('team__name')
@@ -549,6 +558,7 @@ def _parse_int_list(values):
 
 @login_required
 def use_block_chip(request):
+    current_season = get_current_season()
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
@@ -613,6 +623,7 @@ def use_block_chip(request):
     return JsonResponse({'success': True})
 
 def standings(request):
+    current_season = get_current_season()
     default_season = current_season or Season.objects.order_by('-year').first()
     if default_season is None:
         return render(request, 'standings.html', {
@@ -749,6 +760,7 @@ def standings(request):
 
 
 def view_team(request, username, gp):
+    current_season = get_current_season()
     user = get_object_or_404(User, username=username)
 
     porra_entry = Porra.objects.filter(season=current_season, user=user, gp__country=gp).first()
@@ -802,6 +814,7 @@ def view_team(request, username, gp):
 
 @login_required
 def team(request):
+    current_season = get_current_season()
     now = datetime.now(pytz.UTC)  # Make the current time timezone-aware
     if request.method == 'POST':
         try:

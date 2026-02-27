@@ -3,39 +3,38 @@ name: Refresh DEV DB from PROD
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 3 * * 0"  # Domingo 03:00 UTC
+    - cron: "0 3 * * 0"
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    env:
+      PGHOST: ${{ secrets.AZ_PG_HOST }}
+      PGPORT: ${{ secrets.AZ_PG_PORT }}
+      PGUSER: ${{ secrets.AZ_PG_USER }}
+      PGPASSWORD: ${{ secrets.AZ_PG_PASSWORD }}
+      PGSSLMODE: require
+      PROD_DB: ${{ secrets.PROD_DB_NAME }}
+      DEV_DB: ${{ secrets.DEV_DB_NAME }}
+
     steps:
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      - name: Dump PROD (schema + data)
-        env:
-          PGPASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+      - name: Sanity check (fail fast)
         run: |
-          pg_dump \
-            -h "${{ secrets.PROD_DB_HOST }}" \
-            -p "${{ secrets.PROD_DB_PORT }}" \
-            -U "${{ secrets.PROD_DB_USER }}" \
-            -d "${{ secrets.PROD_DB_NAME }}" \
-            -Fc \
-            --no-owner --no-privileges \
-            -f prod.dump
+          test -n "$PGHOST" || (echo "Missing AZ_PG_HOST" && exit 1)
+          test -n "$PGUSER" || (echo "Missing AZ_PG_USER" && exit 1)
+          test -n "$PGPASSWORD" || (echo "Missing AZ_PG_PASSWORD" && exit 1)
+          test -n "$PROD_DB" || (echo "Missing PROD_DB_NAME" && exit 1)
+          test -n "$DEV_DB" || (echo "Missing DEV_DB_NAME" && exit 1)
+
+      - name: Dump PROD (schema + data)
+        run: |
+          pg_dump -Fc --no-owner --no-privileges -d "$PROD_DB" -f prod.dump
 
       - name: Restore into DEV (overwrite)
-        env:
-          PGPASSWORD: ${{ secrets.DEV_DB_PASSWORD }}
         run: |
-          pg_restore \
-            -h "${{ secrets.DEV_DB_HOST }}" \
-            -p "${{ secrets.DEV_DB_PORT }}" \
-            -U "${{ secrets.DEV_DB_USER }}" \
-            -d "${{ secrets.DEV_DB_NAME }}" \
-            --clean --if-exists \
-            --no-owner --no-privileges \
-            prod.dump
+          pg_restore --clean --if-exists --no-owner --no-privileges -d "$DEV_DB" prod.dump
