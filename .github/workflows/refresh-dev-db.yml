@@ -3,7 +3,7 @@ name: Refresh DEV DB from PROD
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 3 * * 0"
+    - cron: "0 3 * * 0"  # Domingo 03:00 UTC
 
 jobs:
   refresh:
@@ -23,13 +23,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      - name: Sanity check (fail fast)
+      - name: Check secrets present
         run: |
           test -n "$PGHOST" || (echo "Missing AZ_PG_HOST" && exit 1)
           test -n "$PGUSER" || (echo "Missing AZ_PG_USER" && exit 1)
           test -n "$PGPASSWORD" || (echo "Missing AZ_PG_PASSWORD" && exit 1)
           test -n "$PROD_DB" || (echo "Missing PROD_DB_NAME" && exit 1)
           test -n "$DEV_DB" || (echo "Missing DEV_DB_NAME" && exit 1)
+
+      - name: Test connection to PROD
+        run: |
+          psql -d "$PROD_DB" -c "select 1;"
 
       - name: Dump PROD (schema + data)
         run: |
