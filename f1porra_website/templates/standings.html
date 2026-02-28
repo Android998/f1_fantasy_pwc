@@ -82,6 +82,30 @@
                             <img src="{% static 'theme/assets/users/default.png' %}"  class="profile-photo" alt="Default Profile Photo">
                         {% endif %}
                         {{ user.user__first_name }}
+                        {% if user.featured_achievement %}
+                            <span class="achievement-badge-wrap">
+                                <span class="achievement-badge {{ user.featured_achievement.icon_class|default:'icon-symbol' }}">
+                                    {{ user.featured_achievement.icon }}
+                                </span>
+                                <span class="achievement-tooltip">
+                                    {% if user.achievements_list %}
+                                        <span class="achievement-tooltip-list">
+                                            {% for achievement in user.achievements_list %}
+                                                <span class="achievement-tooltip-item {% if achievement.is_featured %}is-featured{% endif %}">
+                                                    <span class="achievement-tooltip-icon {{ achievement.icon_class|default:'icon-symbol' }}">{{ achievement.icon }}</span>
+                                                    <span class="achievement-tooltip-name">{{ achievement.name }}</span>
+                                                    {% if achievement.is_featured %}
+                                                        <span class="achievement-tooltip-tag">Showing</span>
+                                                    {% endif %}
+                                                </span>
+                                            {% endfor %}
+                                        </span>
+                                    {% else %}
+                                        <span class="achievement-tooltip-empty">No achievements yet</span>
+                                    {% endif %}
+                                </span>
+                            </span>
+                        {% endif %}
                     </td>
                     <td class="team-name">
                         {% if user.team_name %}

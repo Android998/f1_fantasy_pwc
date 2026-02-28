@@ -2,7 +2,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from f1porra_website.apps.public.models import Season
+from f1porra_website.apps.public.models import Season, Achievement
 
 class UsersTeam(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, null=True, blank=True)
@@ -22,6 +22,7 @@ class UserProfile(models.Model):
     photo = models.ImageField(upload_to='user_photos/', null=True, blank=True)
     users_team = models.ForeignKey(UsersTeam, on_delete=models.SET_NULL, null=True, blank=True)
     season = models.ForeignKey(Season, on_delete=models.CASCADE, null=True, blank=True)
+    featured_achievement = models.ForeignKey(Achievement, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         unique_together = [['user', 'season']]

@@ -25,7 +25,7 @@ from f1porra_website.apps.public.models import Achievement, UserAchievement
 from django.contrib.auth.models import User
 import logging
 from django.core.exceptions import ObjectDoesNotExist
-from collections import Counter
+from collections import Counter, defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +197,11 @@ def rules(request):
 @login_required
 def achievements(request):
     sync_achievements()
+    current_season = get_current_season()
+    profile = None
+    if current_season:
+        profile = UserProfile.objects.filter(user=request.user, season=current_season).select_related('featured_achievement').first()
+    featured_id = profile.featured_achievement_id if profile else None
 
     achievements = list(Achievement.objects.order_by("sort_order", "name"))
     unlocked_map = {
@@ -224,6 +229,8 @@ def achievements(request):
                 "icon_class": achievement.icon_class,
                 "unlocked": bool(unlocked),
                 "unlocked_label": unlocked_label,
+                "is_featured": achievement.id == featured_id if featured_id else False,
+                "id": achievement.id,
             }
         )
 
@@ -270,7 +277,56 @@ def achievements(request):
         else:
             section_map["misc"].append(item)
 
-    return render(request, "achievements.html", {"sections": sections})
+    unlocked_achievements = [
+        {
+            "id": item["id"],
+            "name": item["name"],
+        }
+        for item in payload
+        if item.get("unlocked")
+    ]
+
+    return render(
+        request,
+        "achievements.html",
+        {
+            "sections": sections,
+            "unlocked_achievements": unlocked_achievements,
+            "featured_id": featured_id,
+        },
+    )
+
+
+@login_required
+def set_featured_achievement(request):
+    if request.method != "POST":
+        return redirect("public:achievements")
+
+    current_season = get_current_season()
+    if current_season is None:
+        return redirect("public:achievements")
+
+    user_profile, _ = UserProfile.objects.get_or_create(user=request.user, season=current_season)
+    achievement_id = request.POST.get("achievement_id") or None
+    if achievement_id in (None, "", "0"):
+        user_profile.featured_achievement = None
+        user_profile.save(update_fields=["featured_achievement"])
+        return redirect("public:achievements")
+
+    try:
+        achievement_id_int = int(achievement_id)
+    except (TypeError, ValueError):
+        return redirect("public:achievements")
+
+    unlocked_ids = set(
+        UserAchievement.objects.filter(user=request.user).values_list("achievement_id", flat=True)
+    )
+    if achievement_id_int not in unlocked_ids:
+        return redirect("public:achievements")
+
+    user_profile.featured_achievement_id = achievement_id_int
+    user_profile.save(update_fields=["featured_achievement"])
+    return redirect("public:achievements")
 
 
 def calendar_view(request):
@@ -776,8 +832,13 @@ def standings(request):
     user_ids = list(porra_entries.values_list('user_id', flat=True).distinct())
     season_profiles = {
         profile.user_id: profile
-        for profile in UserProfile.objects.filter(user_id__in=user_ids, season=selected_season).select_related('users_team')
+        for profile in UserProfile.objects.filter(user_id__in=user_ids, season=selected_season)
+        .select_related('users_team', 'featured_achievement')
     }
+    achievements_by_user = defaultdict(list)
+    for row in UserAchievement.objects.filter(user_id__in=user_ids).select_related('achievement'):
+        if row.achievement:
+            achievements_by_user[row.user_id].append(row.achievement)
 
     for gp in grand_prix_list:
         # Get the relevant Porra entries for this Grand Prix
@@ -837,6 +898,23 @@ def standings(request):
         team_name = profile.users_team.name if profile and profile.users_team else None
         photo = profile.photo if profile else None
         username = user['user__username']
+        user_achievements = achievements_by_user.get(user['user_id'], [])
+        featured = profile.featured_achievement if profile and profile.featured_achievement else None
+        featured_id = featured.id if featured else None
+        unique_achievements = {}
+        for achievement in user_achievements:
+            unique_achievements[achievement.id] = achievement
+        achievements_list = [
+            {
+                "id": achievement.id,
+                "name": achievement.name,
+                "icon": achievement.icon,
+                "icon_class": achievement.icon_class,
+                "is_featured": achievement.id == featured_id,
+            }
+            for achievement in unique_achievements.values()
+        ]
+        achievements_list.sort(key=lambda item: (not item["is_featured"], item["name"].lower()))
         standing_row = {
             'user__username': username,
             'user__first_name': user['user__first_name'],
@@ -846,6 +924,12 @@ def standings(request):
             'wins': wins_per_user.get(username, 0),
             'podiums': podiums_per_user.get(username, 0),
             'last_2': last_2_per_user.get(username, 0),
+            'achievements_list': achievements_list,
+            'featured_achievement': {
+                'name': featured.name,
+                'icon': featured.icon,
+                'icon_class': featured.icon_class,
+            } if featured else None,
         }
         standings_with_counts.append(standing_row)
 

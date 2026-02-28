@@ -10,6 +10,7 @@ urlpatterns = [
     path('prices/', views.prices, name="prices"),
     path('rules/', views.rules, name="rules"),
     path('achievements/', views.achievements, name="achievements"),
+    path('achievements/feature/', views.set_featured_achievement, name="set_featured_achievement"),
     path('standings/', views.standings, name="standings"),
     path('statistics/', views.statistics, name="statistics"),
     path('statistics/users/', views.statistics_users, name="statistics_users"),
