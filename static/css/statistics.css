@@ -70,6 +70,139 @@
     width: 100%;
 }
 
+.achievement-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.5rem;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #E10600;
+    color: #ffffff;
+    font-size: 0.82rem;
+    line-height: 1;
+    vertical-align: middle;
+    text-transform: uppercase;
+}
+
+.achievement-badge-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.achievement-tooltip {
+    position: absolute;
+    left: 50%;
+    top: 120%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    font-family: Formula1Regular;
+    font-size: 0.7rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 6px;
+    white-space: normal;
+    min-width: 240px;
+    max-width: 360px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 10;
+}
+
+.achievement-badge-wrap:hover .achievement-tooltip {
+    opacity: 1;
+}
+
+.statistics-page .standings-table {
+    overflow: visible;
+}
+
+.statistics-page .standings-table td.user-name {
+    overflow: visible;
+    position: relative;
+}
+
+.achievement-tooltip-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.achievement-tooltip-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.15rem 0.2rem;
+    border-radius: 6px;
+}
+
+.achievement-tooltip-item.is-featured {
+    background: rgba(225, 6, 0, 0.18);
+}
+
+.achievement-tooltip-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #E10600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 0.82rem;
+    flex: 0 0 auto;
+    line-height: 1;
+    text-align: center;
+}
+
+.achievement-tooltip-icon.icon-symbol {
+    font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    font-size: 0.98rem;
+}
+
+.achievement-tooltip-icon.icon-number {
+    font-family: Formula1Bold, sans-serif;
+    font-size: 0.44rem;
+    letter-spacing: -0.03em;
+}
+
+.achievement-tooltip-name {
+    font-family: Formula1Bold;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+}
+
+.achievement-tooltip-tag {
+    margin-left: auto;
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    background: #1b6f35;
+    color: #fff;
+    padding: 0.1rem 0.35rem;
+    border-radius: 999px;
+}
+
+.achievement-tooltip-empty {
+    font-family: Formula1Regular;
+    font-size: 0.7rem;
+}
+
+.achievement-badge.icon-symbol {
+    font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    font-size: 0.8rem;
+}
+
+.achievement-badge.icon-number {
+    font-family: Formula1Bold, sans-serif;
+    font-size: 0.44rem;
+    letter-spacing: -0.03em;
+}
+
 .stats-select,
 .stats-input {
     width: 100%;

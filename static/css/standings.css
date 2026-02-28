@@ -74,13 +74,15 @@
 .standings-table{
     table-layout: fixed;
     width: 90%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     background-color: white;
     font-size: 1vw;
-    border: 2px solid #4CAF50; /* Border color for the table */
+    border: 2px solid #ffffff; /* Border color for the table */
     border-radius: 20px;
     overflow: hidden; /* Ensures the rounded corners are applied correctly */
     justify-self: center;
+    background-clip: padding-box;
 }
 
 .standings-table thead{
@@ -110,6 +112,26 @@
 
 .standings-table tr:nth-child(even) {
     background-color: #f9f9f9; /* Alternating row colors */
+}
+
+.standings-table thead {
+    overflow: hidden;
+}
+
+.standings-table thead tr th:first-child {
+    border-top-left-radius: 18px;
+}
+
+.standings-table thead tr th:last-child {
+    border-top-right-radius: 18px;
+}
+
+.standings-table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 18px;
+}
+
+.standings-table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 18px;
 }
 
 /* Variable width styles */
@@ -170,13 +192,15 @@
 .standings-table-team{
     table-layout: fixed;
     width: 80%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     background-color: white;
     font-size: 1vw;
-    border: 2px solid #4CAF50; /* Border color for the table */
+    border: 2px solid #ffffff; /* Border color for the table */
     border-radius: 20px;
     overflow: hidden; /* Ensures the rounded corners are applied correctly */
     justify-self: center;
+    background-clip: padding-box;
 }
 
 .standings-table-team thead{
@@ -206,4 +230,24 @@
 
 .standings-table-team tr:nth-child(even) {
     background-color: #f9f9f9; /* Alternating row colors */
+}
+
+.standings-table-team thead {
+    overflow: hidden;
+}
+
+.standings-table-team thead tr th:first-child {
+    border-top-left-radius: 18px;
+}
+
+.standings-table-team thead tr th:last-child {
+    border-top-right-radius: 18px;
+}
+
+.standings-table-team tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 18px;
+}
+
+.standings-table-team tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 18px;
 }

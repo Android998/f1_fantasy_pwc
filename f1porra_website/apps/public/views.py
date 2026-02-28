@@ -20,10 +20,12 @@ from f1porra_website.apps.public.services import (
     build_teams_trends_payload,
     build_trends_payload,
 )
+from f1porra_website.apps.public.services.achievement_service import sync_achievements
+from f1porra_website.apps.public.models import Achievement, UserAchievement
 from django.contrib.auth.models import User
 import logging
 from django.core.exceptions import ObjectDoesNotExist
-from collections import Counter
+from collections import Counter, defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -192,33 +194,139 @@ def prices(request):
 def rules(request):
     return render(request, 'rules.html')
 
+@login_required
 def achievements(request):
-    achievements_list = [
-        {"name": "Big Guy", "category": "season", "icon": "3000", "icon_class": "icon-number", "description": "Consigue 3000 puntos en una misma temporada."},
-        {"name": "Hall of Fame", "category": "all_time", "icon": "♛", "icon_class": "icon-symbol", "description": "Alcanza 10000 puntos acumulados en toda tu historia en la porra."},
-        {"name": "Grand Chelem", "category": "season", "icon": "3x", "icon_class": "icon-number", "description": "Gana 3 GPs seguidos en la misma temporada."},
-        {"name": "Untouchable", "category": "season", "icon": "🛡", "icon_class": "icon-symbol", "description": "Encadena 5 GPs consecutivos terminando en top 3."},
-        {"name": "World Champion", "category": "season", "icon": "🏆", "icon_class": "icon-symbol", "description": "Termina la temporada como lider absoluto de la clasificacion general."},
-        {"name": "Constructor Legend", "category": "season", "icon": "👥", "icon_class": "icon-symbol", "description": "Tu equipo de usuarios acaba primero en la clasificacion por equipos de la temporada."},
-        {"name": "Comeback Kid", "category": "season", "icon": "↗", "icon_class": "icon-symbol", "description": "Gana un GP estando fuera del top 5 general antes de esa carrera."},
-        {"name": "Sniper", "category": "gp", "icon": "🔫", "icon_class": "icon-symbol", "description": "Clava todos los bonus en un GP: Poleman, P1, P2, P3, Fast Lap y Best Team."},
-        {"name": "Capitan General", "category": "gp", "icon": "🎖", "icon_class": "icon-symbol", "description": "Tu piloto principal suma al menos 40 puntos en un GP (sin contar el x2)."},
-        {"name": "Chip Combo", "category": "season", "icon": "⚡", "icon_class": "icon-symbol", "description": "Usa DRS Boost y Pit Stop en el mismo GP."},
-        {"name": "Cold Blood", "category": "gp", "icon": "❄", "icon_class": "icon-symbol", "description": "Gana un GP en el que otro usuario te haya aplicado un bloqueo."},
-        {"name": "Rainbow", "category": "gp", "icon": "🌈", "icon_class": "icon-symbol", "description": "5 pilotos de 5 constructores distintos + 2 constructores fuera de esos 5."},
-        {"name": "Public Enemy Number One", "category": "season", "icon": "🎯", "icon_class": "icon-symbol", "description": "Recibe 3 bloqueos en una misma temporada."},
-        {"name": "Block Master", "category": "gp", "icon": "🔒", "icon_class": "icon-symbol", "description": "Bloquea a un rival y ese rival termina en los dos ultimos puestos del GP."},
-        {"name": "Timely DRS", "category": "gp", "icon": "⏱", "icon_class": "icon-symbol", "description": "Activa DRS Boost y gana ese GP."},
-        {"name": "Latifisexual", "category": "season", "icon": "🐐", "icon_class": "icon-symbol", "description": "Encadena 3 GPs seguidos en los dos ultimos puestos."},
-        {"name": "Rock Bottom", "category": "season", "icon": "⚓", "icon_class": "icon-symbol", "description": "Termina 5 veces o mas entre los dos ultimos en una temporada."},
-        {"name": "Almost There", "category": "season", "icon": "🥈", "icon_class": "icon-symbol", "description": "Consigue al menos 3 segundos puestos en una temporada sin ganar ningun GP."},
-        {"name": "Mr. Consistency", "category": "season", "icon": "🔁", "icon_class": "icon-symbol", "description": "Encadena 8 GPs consecutivos terminando en top 5."},
-        {"name": "Zero to Hero", "category": "season", "icon": "🦸", "icon_class": "icon-symbol", "description": "Pasa de estar en los dos ultimos en un GP a ganar el siguiente."},
-        {"name": "Tacanos Extremos", "category": "gp", "icon": "135", "icon_class": "icon-number", "description": "Gana un GP gastando menos de 135.0 M de presupuesto."},
-        {"name": "Photo Finish", "category": "gp", "icon": "📸", "icon_class": "icon-symbol", "description": "Gana un GP por 1 punto de diferencia sobre el segundo."},
+    sync_achievements()
+    current_season = get_current_season()
+    profile = None
+    if current_season:
+        profile = UserProfile.objects.filter(user=request.user, season=current_season).select_related('featured_achievement').first()
+    featured_id = profile.featured_achievement_id if profile else None
+
+    achievements = list(Achievement.objects.order_by("sort_order", "name"))
+    unlocked_map = {
+        ua.achievement_id: ua
+        for ua in UserAchievement.objects.filter(user=request.user).select_related("gp", "season")
+    }
+
+    payload = []
+    for achievement in achievements:
+        unlocked = unlocked_map.get(achievement.id)
+        unlocked_label = None
+        if unlocked:
+            if unlocked.gp and unlocked.season:
+                unlocked_label = f"{unlocked.gp.country} {unlocked.season.year}"
+            elif unlocked.season:
+                unlocked_label = f"{unlocked.season.year}"
+            elif unlocked.gp:
+                unlocked_label = unlocked.gp.country
+        payload.append(
+            {
+                "slug": achievement.slug,
+                "name": achievement.name,
+                "description": achievement.description,
+                "icon": achievement.icon,
+                "icon_class": achievement.icon_class,
+                "unlocked": bool(unlocked),
+                "unlocked_label": unlocked_label,
+                "is_featured": achievement.id == featured_id if featured_id else False,
+                "id": achievement.id,
+            }
+        )
+
+    hall_of_famers = {
+        "big_guy",
+        "hall_of_fame",
+        "world_champion",
+        "constructor_legend",
+        "grand_chelem",
+    }
+    principiante = {
+        "mr_consistency",
+        "almost_there",
+        "capitan_general",
+        "untouchable",
+    }
+    cojo = {
+        "latifisexual",
+        "rock_bottom",
+        "public_enemy",
+    }
+
+    sections = [
+        {"title": "Hall of Famers", "achievements": []},
+        {"title": "Principiante", "achievements": []},
+        {"title": "Cojo", "achievements": []},
+        {"title": "Miscelaneo", "achievements": []},
+    ]
+    section_map = {
+        "hall": sections[0]["achievements"],
+        "principiante": sections[1]["achievements"],
+        "cojo": sections[2]["achievements"],
+        "misc": sections[3]["achievements"],
+    }
+
+    for item in payload:
+        slug = item.get("slug")
+        if slug in hall_of_famers:
+            section_map["hall"].append(item)
+        elif slug in principiante:
+            section_map["principiante"].append(item)
+        elif slug in cojo:
+            section_map["cojo"].append(item)
+        else:
+            section_map["misc"].append(item)
+
+    unlocked_achievements = [
+        {
+            "id": item["id"],
+            "name": item["name"],
+        }
+        for item in payload
+        if item.get("unlocked")
     ]
 
-    return render(request, "achievements.html", {"achievements": achievements_list})
+    return render(
+        request,
+        "achievements.html",
+        {
+            "sections": sections,
+            "unlocked_achievements": unlocked_achievements,
+            "featured_id": featured_id,
+        },
+    )
+
+
+@login_required
+def set_featured_achievement(request):
+    if request.method != "POST":
+        return redirect("public:achievements")
+
+    current_season = get_current_season()
+    if current_season is None:
+        return redirect("public:achievements")
+
+    user_profile, _ = UserProfile.objects.get_or_create(user=request.user, season=current_season)
+    achievement_id = request.POST.get("achievement_id") or None
+    if achievement_id in (None, "", "0"):
+        user_profile.featured_achievement = None
+        user_profile.save(update_fields=["featured_achievement"])
+        return redirect("public:achievements")
+
+    try:
+        achievement_id_int = int(achievement_id)
+    except (TypeError, ValueError):
+        return redirect("public:achievements")
+
+    unlocked_ids = set(
+        UserAchievement.objects.filter(user=request.user).values_list("achievement_id", flat=True)
+    )
+    if achievement_id_int not in unlocked_ids:
+        return redirect("public:achievements")
+
+    user_profile.featured_achievement_id = achievement_id_int
+    user_profile.save(update_fields=["featured_achievement"])
+    return redirect("public:achievements")
 
 
 def calendar_view(request):
@@ -724,8 +832,13 @@ def standings(request):
     user_ids = list(porra_entries.values_list('user_id', flat=True).distinct())
     season_profiles = {
         profile.user_id: profile
-        for profile in UserProfile.objects.filter(user_id__in=user_ids, season=selected_season).select_related('users_team')
+        for profile in UserProfile.objects.filter(user_id__in=user_ids, season=selected_season)
+        .select_related('users_team', 'featured_achievement')
     }
+    achievements_by_user = defaultdict(list)
+    for row in UserAchievement.objects.filter(user_id__in=user_ids).select_related('achievement'):
+        if row.achievement:
+            achievements_by_user[row.user_id].append(row.achievement)
 
     for gp in grand_prix_list:
         # Get the relevant Porra entries for this Grand Prix
@@ -785,6 +898,23 @@ def standings(request):
         team_name = profile.users_team.name if profile and profile.users_team else None
         photo = profile.photo if profile else None
         username = user['user__username']
+        user_achievements = achievements_by_user.get(user['user_id'], [])
+        featured = profile.featured_achievement if profile and profile.featured_achievement else None
+        featured_id = featured.id if featured else None
+        unique_achievements = {}
+        for achievement in user_achievements:
+            unique_achievements[achievement.id] = achievement
+        achievements_list = [
+            {
+                "id": achievement.id,
+                "name": achievement.name,
+                "icon": achievement.icon,
+                "icon_class": achievement.icon_class,
+                "is_featured": achievement.id == featured_id,
+            }
+            for achievement in unique_achievements.values()
+        ]
+        achievements_list.sort(key=lambda item: (not item["is_featured"], item["name"].lower()))
         standing_row = {
             'user__username': username,
             'user__first_name': user['user__first_name'],
@@ -794,6 +924,12 @@ def standings(request):
             'wins': wins_per_user.get(username, 0),
             'podiums': podiums_per_user.get(username, 0),
             'last_2': last_2_per_user.get(username, 0),
+            'achievements_list': achievements_list,
+            'featured_achievement': {
+                'name': featured.name,
+                'icon': featured.icon,
+                'icon_class': featured.icon_class,
+            } if featured else None,
         }
         standings_with_counts.append(standing_row)
 
