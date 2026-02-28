@@ -2,7 +2,8 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
-from .forms import SignupForm, LoginForm, PasswordResetForm, UserProfileForm, UserProfileExtraForm
+from django.http import JsonResponse
+from .forms import SignupForm, LoginForm, PasswordResetForm, UserProfileForm, UserProfileExtraForm, TeamAssignmentForm
 from django.contrib.auth.forms import PasswordResetForm as DjangoPasswordResetForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.base import TemplateView
@@ -12,16 +13,30 @@ from .utils import ensure_user_profile_for_active_season, get_active_season
 class ProfileView(LoginRequiredMixin, TemplateView):
     template_name = 'accounts/profile.html'
 
-    def _build_context(self, user_form, profile_form, user_profile):
+    def _build_context(self, user_form, profile_form, team_form, user_profile):
         profile_photo_url = user_profile.photo.url if user_profile.photo else None
 
         available_teams = UsersTeam.objects.filter(season=user_profile.season).order_by('name')
+        
+        # Add member count and availability info to teams
+        teams_with_info = [
+            {
+                'id': team.id,
+                'name': team.name,
+                'members': team.get_member_count(),
+                'is_full': team.is_full(),
+                'photo': team.photo.url if team.photo else None,
+            }
+            for team in available_teams
+        ]
+        
         return {
             'user_form': user_form,
             'profile_form': profile_form,
+            'team_form': team_form,
             'user_profile': user_profile,
             'profile_photo_url': profile_photo_url,
-            'available_teams': available_teams,
+            'available_teams': teams_with_info,
         }
 
     def get(self, request):
@@ -32,7 +47,9 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         user_profile, _ = UserProfile.objects.get_or_create(user=request.user, season=current_season)
         user_form = UserProfileForm(instance=request.user)
         profile_form = UserProfileExtraForm(instance=user_profile)
-        return self.render_to_response(self._build_context(user_form, profile_form, user_profile))
+        team_form = TeamAssignmentForm(season=current_season, user_profile=user_profile)
+        
+        return self.render_to_response(self._build_context(user_form, profile_form, team_form, user_profile))
 
     def post(self, request):
         current_season = get_active_season()
@@ -43,35 +60,23 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         user_profile, _ = UserProfile.objects.get_or_create(user=request.user, season=current_season)
         user_form = UserProfileForm(request.POST, instance=request.user)
         profile_form = UserProfileExtraForm(request.POST, request.FILES, instance=user_profile)
-
-        selected_team_id = request.POST.get('team_id')
-        new_team_name = (request.POST.get('new_team_name') or '').strip()
+        team_form = TeamAssignmentForm(
+            request.POST, 
+            season=current_season, 
+            user_profile=user_profile
+        )
 
         if user_form.is_valid() and profile_form.is_valid():
             profile_form.save()
             user_form.save()
 
-            assigned_team = None
-            if new_team_name:
-                existing_team = UsersTeam.objects.filter(
-                    season=current_season,
-                    name__iexact=new_team_name,
-                ).first()
-                assigned_team = existing_team
-                if assigned_team is None:
-                    assigned_team = UsersTeam.objects.create(
-                        season=current_season,
-                        name=new_team_name,
-                    )
-            elif selected_team_id:
-                assigned_team = UsersTeam.objects.filter(
-                    id=selected_team_id,
-                    season=current_season,
-                ).first()
-
-            user_profile.users_team = assigned_team
-            user_profile.save(update_fields=['users_team'])
-            messages.success(request, 'Your profile has been updated successfully!')
+            # Handle team assignment
+            if team_form.is_valid():
+                team_form.save(user_profile)
+                messages.success(request, 'Your profile has been updated successfully!')
+            else:
+                for field, errors in team_form.errors.items():
+                    messages.error(request, f'{errors[0]}')
 
         else:
             # If forms are invalid, show error messages
@@ -80,7 +85,40 @@ class ProfileView(LoginRequiredMixin, TemplateView):
                     if form[field].errors:
                         messages.error(request, f'Error in {field}: {form[field].errors.as_text()}')
 
-        return self.render_to_response(self._build_context(user_form, profile_form, user_profile))
+        return self.render_to_response(self._build_context(user_form, profile_form, team_form, user_profile))
+
+
+def search_teams(request):
+    """API endpoint to search for teams."""
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    current_season = get_active_season()
+    if current_season is None:
+        return JsonResponse({'teams': [], 'error': 'No active season'})
+    
+    query = request.GET.get('q', '').strip()
+    
+    if not query:
+        return JsonResponse({'teams': []})
+    
+    teams = UsersTeam.objects.filter(
+        season=current_season,
+        name__icontains=query
+    ).values('id', 'name', 'photo').order_by('name')[:10]
+    
+    teams_list = []
+    for team in teams:
+        member_count = UsersTeam.objects.get(id=team['id']).get_member_count()
+        teams_list.append({
+            'id': team['id'],
+            'name': team['name'],
+            'members': member_count,
+            'is_full': member_count >= UsersTeam.MAX_TEAM_MEMBERS,
+            'photo': team['photo'],
+        })
+    
+    return JsonResponse({'teams': teams_list})
 
 
 def password_reset(request):
