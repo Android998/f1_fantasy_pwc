@@ -292,6 +292,141 @@ def home(request):
     }
     return render(request, 'home.html', {'data': data})
 
+@login_required
+def achievements(request):
+    sync_achievements()
+    current_season = get_current_season()
+    profile = None
+    if current_season:
+        profile = UserProfile.objects.filter(user=request.user, season=current_season).select_related('featured_achievement').first()
+    featured_id = profile.featured_achievement_id if profile else None
+
+    achievements = list(Achievement.objects.order_by("sort_order", "name"))
+    unlocked_map = {
+        ua.achievement_id: ua
+        for ua in UserAchievement.objects.filter(user=request.user).select_related("gp", "season")
+    }
+
+    payload = []
+    for achievement in achievements:
+        unlocked = unlocked_map.get(achievement.id)
+        unlocked_label = None
+        if unlocked:
+            if unlocked.gp and unlocked.season:
+                unlocked_label = f"{unlocked.gp.country} {unlocked.season.year}"
+            elif unlocked.season:
+                unlocked_label = f"{unlocked.season.year}"
+            elif unlocked.gp:
+                unlocked_label = unlocked.gp.country
+        payload.append(
+            {
+                "slug": achievement.slug,
+                "name": achievement.name,
+                "description": achievement.description,
+                "icon": achievement.icon,
+                "icon_class": achievement.icon_class,
+                "unlocked": bool(unlocked),
+                "unlocked_label": unlocked_label,
+                "is_featured": achievement.id == featured_id if featured_id else False,
+                "id": achievement.id,
+            }
+        )
+
+    hall_of_famers = {
+        "big_guy",
+        "hall_of_fame",
+        "world_champion",
+        "constructor_legend",
+        "grand_chelem",
+    }
+    principiante = {
+        "mr_consistency",
+        "almost_there",
+        "capitan_general",
+        "untouchable",
+    }
+    cojo = {
+        "latifisexual",
+        "rock_bottom",
+        "public_enemy",
+    }
+
+    sections = [
+        {"title": "Hall of Famers", "achievements": []},
+        {"title": "Principiante", "achievements": []},
+        {"title": "Cojo", "achievements": []},
+        {"title": "Miscelaneo", "achievements": []},
+    ]
+    section_map = {
+        "hall": sections[0]["achievements"],
+        "principiante": sections[1]["achievements"],
+        "cojo": sections[2]["achievements"],
+        "misc": sections[3]["achievements"],
+    }
+
+    for item in payload:
+        slug = item.get("slug")
+        if slug in hall_of_famers:
+            section_map["hall"].append(item)
+        elif slug in principiante:
+            section_map["principiante"].append(item)
+        elif slug in cojo:
+            section_map["cojo"].append(item)
+        else:
+            section_map["misc"].append(item)
+
+    unlocked_achievements = [
+        {
+            "id": item["id"],
+            "name": item["name"],
+        }
+        for item in payload
+        if item.get("unlocked")
+    ]
+
+    return render(
+        request,
+        "achievements.html",
+        {
+            "sections": sections,
+            "unlocked_achievements": unlocked_achievements,
+            "featured_id": featured_id,
+        },
+    )
+
+
+@login_required
+@require_POST
+def set_featured_achievement(request):
+    if request.method != "POST":
+        return redirect("public:achievements")
+
+    current_season = get_current_season()
+    if current_season is None:
+        return redirect("public:achievements")
+
+    user_profile, _ = UserProfile.objects.get_or_create(user=request.user, season=current_season)
+    achievement_id = request.POST.get("achievement_id") or None
+    if achievement_id in (None, "", "0"):
+        user_profile.featured_achievement = None
+        user_profile.save(update_fields=["featured_achievement"])
+        return redirect("public:achievements")
+
+    try:
+        achievement_id_int = int(achievement_id)
+    except (TypeError, ValueError):
+        return redirect("public:achievements")
+
+    unlocked_ids = set(
+        UserAchievement.objects.filter(user=request.user).values_list("achievement_id", flat=True)
+    )
+    if achievement_id_int not in unlocked_ids:
+        return redirect("public:achievements")
+
+    user_profile.featured_achievement_id = achievement_id_int
+    user_profile.save(update_fields=["featured_achievement"])
+    return redirect("public:achievements")
+
 
 def prices(request):
     return render(request, 'prices.html')
