@@ -39,21 +39,19 @@ class SecurityHeadersMiddleware:
 
 
 class SQLInjectionProtectionMiddleware:
-    """Additional layer of SQL injection protection."""
+    """Additional layer of SQL injection protection.
     
-    # Patterns that might indicate SQL injection
+    Note: Django's ORM already provides SQL injection protection through
+    parameterized queries. This middleware only checks URL query strings
+    for obvious attack patterns, not POST body data (which would cause
+    false positives on legitimate form submissions).
+    """
+    
+    # Only check for very specific attack patterns in query strings
     SQL_PATTERNS = [
-        r"(\%27)|(\')|(\-\-)|(\%23)|(#)",
-        r"((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))",
-        r"\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))",
-        r"((\%27)|(\'))union",
+        r"((\%27)|(\'))(\s*)(union|select|insert|update|delete|drop)",
         r"exec(\s|\+)+(s|x)p\w+",
-        r"UNION\s+SELECT",
-        r"SELECT\s+.*\s+FROM",
-        r"INSERT\s+INTO",
-        r"DELETE\s+FROM",
-        r"DROP\s+TABLE",
-        r"UPDATE\s+.*\s+SET",
+        r";\s*(drop|delete|truncate)\s+",
     ]
     
     def __init__(self, get_response):
@@ -61,16 +59,11 @@ class SQLInjectionProtectionMiddleware:
         self.compiled_patterns = [re.compile(p, re.IGNORECASE) for p in self.SQL_PATTERNS]
 
     def __call__(self, request):
-        # Check query string
+        # Only check query string (URL parameters) - not POST body
+        # POST bodies are protected by CSRF and Django ORM already
         query_string = request.META.get('QUERY_STRING', '')
-        if self._contains_sql_injection(query_string):
+        if query_string and self._contains_sql_injection(query_string):
             return HttpResponseForbidden('Forbidden')
-        
-        # Check POST data
-        if request.method == 'POST':
-            body = request.body.decode('utf-8', errors='ignore')
-            if self._contains_sql_injection(body):
-                return HttpResponseForbidden('Forbidden')
         
         return self.get_response(request)
     

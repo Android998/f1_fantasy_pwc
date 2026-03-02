@@ -1,7 +1,16 @@
-*__pycache__/
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
 *.pyc
 *.pyo
 *.pyd
+
+# Logs
+logs/
+*.log
+
+#ENVs
 .env
 .venv/
 djangoapp/

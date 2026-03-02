@@ -208,19 +208,25 @@ def _get_latest_gp_round_for_prices():
 
 
 def _budget_cap_for_user(user):
-    """Get budget cap for user with validation."""
-    if not user or not user.is_authenticated:
-        return 150
-    
     current_season = get_current_season()
-    if not current_season:
-        return 150
-    
-    try:
-        profile = UserProfile.objects.get(user=user, season=current_season)
-        return 160 if profile.premium_budget else 150
-    except UserProfile.DoesNotExist:
-        return 150
+    user_profile = UserProfile.objects.get(user=user, season=current_season)
+    user_team = user_profile.users_team
+
+    users_teams = UsersTeam.objects.annotate(
+        total_points=Coalesce(
+            Sum(
+                'userprofile__user__porra__points',
+                filter=Q(
+                    userprofile__season=current_season,
+                    userprofile__user__porra__season=current_season,
+                ),
+            ),
+            Value(0),
+        )
+    ).order_by('total_points')
+    last_users_team = users_teams.first() if users_teams.exists() else None
+
+    return 160.0 if user_team == last_users_team else 150.0
 
 
 # Security: Add rate limiting decorator (simple implementation)
