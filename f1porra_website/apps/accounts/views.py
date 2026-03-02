@@ -10,33 +10,75 @@ from django.views.generic.base import TemplateView
 from .models import UserProfile, UsersTeam
 from .utils import ensure_user_profile_for_active_season, get_active_season
 
+from django.core.files.images import get_image_dimensions
+import os
+import magic
+
+# Security: File upload validation constants
+ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_IMAGE_DIMENSION = 4096  # Max width/height in pixels
+
+
+def validate_uploaded_image(file):
+    """Validate uploaded image file for security."""
+    errors = []
+    
+    # Check file size
+    if file.size > MAX_FILE_SIZE:
+        errors.append(f'File size exceeds maximum of {MAX_FILE_SIZE // (1024*1024)}MB.')
+    
+    # Check file extension
+    ext = os.path.splitext(file.name)[1].lower()
+    allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+    if ext not in allowed_extensions:
+        errors.append(f'Invalid file extension. Allowed: {", ".join(allowed_extensions)}')
+    
+    # Check actual file content (magic bytes) - prevents extension spoofing
+    try:
+        # Read first bytes to detect file type
+        file.seek(0)
+        file_header = file.read(1024)
+        file.seek(0)  # Reset file pointer
+        
+        mime = magic.from_buffer(file_header, mime=True)
+        if mime not in ALLOWED_IMAGE_TYPES:
+            errors.append('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.')
+    except Exception:
+        errors.append('Could not validate file type.')
+    
+    # Validate image dimensions
+    try:
+        width, height = get_image_dimensions(file)
+        if width and height:
+            if width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION:
+                errors.append(f'Image dimensions exceed maximum of {MAX_IMAGE_DIMENSION}x{MAX_IMAGE_DIMENSION} pixels.')
+    except Exception:
+        pass  # If we can't get dimensions, skip this check
+    
+    # Check for potentially malicious filenames
+    if file.name:
+        # Remove path traversal attempts
+        safe_name = os.path.basename(file.name)
+        if safe_name != file.name or '..' in file.name or '/' in file.name or '\\' in file.name:
+            errors.append('Invalid filename.')
+    
+    return errors
+
+
 class ProfileView(LoginRequiredMixin, TemplateView):
     template_name = 'accounts/profile.html'
-
-    def _build_context(self, user_form, profile_form, team_form, user_profile):
+    
+    def _build_context(self, user_form, profile_form, user_profile):
         profile_photo_url = user_profile.photo.url if user_profile.photo else None
 
         available_teams = UsersTeam.objects.filter(season=user_profile.season).order_by('name')
-        
-        # Add member count and availability info to teams
-        teams_with_info = [
-            {
-                'id': team.id,
-                'name': team.name,
-                'members': team.get_member_count(),
-                'is_full': team.is_full(),
-                'photo': team.photo.url if team.photo else None,
-            }
-            for team in available_teams
-        ]
-        
         return {
             'user_form': user_form,
             'profile_form': profile_form,
-            'team_form': team_form,
             'user_profile': user_profile,
             'profile_photo_url': profile_photo_url,
-            'available_teams': teams_with_info,
+            'available_teams': available_teams,
         }
 
     def get(self, request):
@@ -47,9 +89,7 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         user_profile, _ = UserProfile.objects.get_or_create(user=request.user, season=current_season)
         user_form = UserProfileForm(instance=request.user)
         profile_form = UserProfileExtraForm(instance=user_profile)
-        team_form = TeamAssignmentForm(season=current_season, user_profile=user_profile)
-        
-        return self.render_to_response(self._build_context(user_form, profile_form, team_form, user_profile))
+        return self.render_to_response(self._build_context(user_form, profile_form, user_profile))
 
     def post(self, request):
         current_season = get_active_season()
@@ -60,33 +100,59 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         user_profile, _ = UserProfile.objects.get_or_create(user=request.user, season=current_season)
         user_form = UserProfileForm(request.POST, instance=request.user)
         profile_form = UserProfileExtraForm(request.POST, request.FILES, instance=user_profile)
-        team_form = TeamAssignmentForm(
-            request.POST, 
-            season=current_season, 
-            user_profile=user_profile
-        )
+
+        # Validate uploaded file if present
+        if 'photo' in request.FILES:
+            photo_file = request.FILES['photo']
+            file_errors = validate_uploaded_image(photo_file)
+            if file_errors:
+                for error in file_errors:
+                    profile_form.add_error('photo', error)
+                return self.render_to_response(self._build_context(user_form, profile_form, user_profile))
+
+        selected_team_id = request.POST.get('team_id')
+        new_team_name = (request.POST.get('new_team_name') or '').strip()
+
+        # Sanitize team name
+        if new_team_name:
+            import re
+            # Remove potentially dangerous characters
+            new_team_name = re.sub(r'[<>"\']', '', new_team_name)[:100]
 
         if user_form.is_valid() and profile_form.is_valid():
             profile_form.save()
             user_form.save()
 
-            # Handle team assignment
-            if team_form.is_valid():
-                team_form.save(user_profile)
-                messages.success(request, 'Your profile has been updated successfully!')
-            else:
-                for field, errors in team_form.errors.items():
-                    messages.error(request, f'{errors[0]}')
+            assigned_team = None
+            if new_team_name:
+                existing_team = UsersTeam.objects.filter(
+                    season=current_season,
+                    name__iexact=new_team_name,
+                ).first()
+                assigned_team = existing_team
+                if assigned_team is None:
+                    assigned_team = UsersTeam.objects.create(
+                        season=current_season,
+                        name=new_team_name,
+                    )
+            elif selected_team_id:
+                try:
+                    team_id = int(selected_team_id)
+                    assigned_team = UsersTeam.objects.filter(
+                        id=team_id,
+                        season=current_season
+                    ).first()
+                except (ValueError, TypeError):
+                    pass
 
-        else:
-            # If forms are invalid, show error messages
-            for form in [user_form, profile_form]:
-                for field in form:
-                    if form[field].errors:
-                        messages.error(request, f'Error in {field}: {form[field].errors.as_text()}')
+            if assigned_team:
+                user_profile.users_team = assigned_team
+                user_profile.save(update_fields=['users_team'])
 
-        return self.render_to_response(self._build_context(user_form, profile_form, team_form, user_profile))
+            return render(request, 'accounts/profile.html', 
+                         self._build_context(user_form, profile_form, user_profile))
 
+        return self.render_to_response(self._build_context(user_form, profile_form, user_profile))
 
 def search_teams(request):
     """API endpoint to search for teams."""
