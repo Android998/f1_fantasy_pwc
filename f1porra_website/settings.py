@@ -33,10 +33,40 @@ PROJECT_DIR = Path.joinpath(BASE_DIR, "f1porra_website")
 SECRET_KEY = env('SECRET_KEY', default=os.getenv('SECRET_KEY'))
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool('DEBUG', default=os.getenv('DEBUG'))
+DEBUG = env.bool('DEBUG', default=False)  # Default to False for safety
 
 # Allowed hosts
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
+
+# Security settings for production
+if not DEBUG:
+    # HTTPS settings
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    # Session security
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_AGE = 3600  # 1 hour session timeout
+    
+    # CSRF security
+    CSRF_COOKIE_SECURE = True
+    CSRF_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    
+    # Additional security headers
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+else:
+    # Development settings
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_SSL_REDIRECT = False
 
 
 PORT=8000
@@ -106,6 +136,10 @@ DATABASES = {
         'PASSWORD': env('DB_PWD', default=os.getenv('DB_PWD')),
         'HOST': env('DB_HOST', default=os.getenv('DB_HOST')),
         'PORT': '5432',
+        'CONN_MAX_AGE': 600,  # Connection pooling
+        'OPTIONS': {
+            'connect_timeout': 10,
+        },
     }
 }
 
@@ -128,6 +162,15 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Login security
+LOGIN_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = 'public:home'
+LOGOUT_REDIRECT_URL = 'public:home'
+
+# Rate limiting for login attempts (requires django-axes or similar)
+# AXES_FAILURE_LIMIT = 5
+# AXES_COOLOFF_TIME = 1  # 1 hour lockout
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -145,8 +188,6 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGOUT_REDIRECT_URL = "public:home"
-
 # Email settings
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
@@ -158,6 +199,9 @@ DEFAULT_FROM_EMAIL = "porraf1pwcofficial@gmail.com"
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 
+# Static files storage with compression
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 # Static and media files
 if DEBUG:
     MEDIA_URL = '/media/'
@@ -165,6 +209,10 @@ if DEBUG:
 else:
     MEDIA_URL = '/media/'
     MEDIA_ROOT = '/home/site/wwwroot/media'
+
+# File upload settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB max
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB max
 
 csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 if csrf_env:
@@ -175,8 +223,51 @@ else:
 CSRF_TRUSTED_ORIGINS = CSRF_TRUSTED_ORIGINS or [
     "https://f1-fantasy-webapp-dev-gxazcsbngxb0bagv.francecentral-01.azurewebsites.net",
     "https://f1-fantasy-webapp-prod-cqaahnfxg5hkbxhd.francecentral-01.azurewebsites.net",
-    'http://127.0.0.1',
     'https://f1fantasypwcofficial.com'
 ]
 
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.append('http://127.0.0.1')
+    CSRF_TRUSTED_ORIGINS.append('http://localhost')
+
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Logging configuration - avoid logging sensitive data
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'WARNING',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
+            'formatter': 'verbose',
+        },
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file', 'console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['file', 'console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}
