@@ -290,26 +290,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Función para manejar la eliminación desde la tabla
     function handleTableRemoval(button, type) {
-        const row = button.closest(`.fila-${type}`);
+        const row = button.closest(`.fila-${escapeHtml(type)}`);
         console.log(row);
         if (isRowBlocked(row)) {
             return;
         }
 
         // Obtener presupuesto disponible actual
-        const price = row.querySelector(`.driver-price span:first-child`).innerText;
-        const BudgetEle = document.getElementById('available-budget').querySelector('span:last-child')
-        let availableBudget = parseFloat(BudgetEle.innerText.replace('M', '').replace('$', ''));
+        const priceElement = row.querySelector(`.driver-price span:first-child`);
+        if (!priceElement) return;
+        
+        const price = priceElement.innerText;
+        const BudgetEle = document.getElementById('available-budget').querySelector('span:last-child');
+        if (!BudgetEle) return;
+        
+        let availableBudget = validateNumber(BudgetEle.innerText.replace('M', '').replace('$', ''), 0, 1000);
+        if (availableBudget === null) return;
 
         // Calcular el presupuesto después de añadir el piloto/equipo
-        const newBudget = availableBudget + parseFloat(price.replace('M', '').replace('$', ''));
+        const priceValue = validateNumber(price.replace('M', '').replace('$', ''), 0, 100);
+        if (priceValue === null) return;
+        
+        const newBudget = availableBudget + priceValue;
 
         // Actualizar presupuesto disponible en el HTML
         setBudgetValue(newBudget);
 
         // Encontrar el contenedor de selección asociado
         const selectedContainerIndex = parseInt(row.dataset.selectedContainer, 10);
-        document.getElementById(`span-${type}${selectedContainerIndex}`).style.backgroundColor = "lightgray";
+        if (isNaN(selectedContainerIndex)) return;
+        
+        const spanElement = document.getElementById(`span-${escapeHtml(type)}${selectedContainerIndex}`);
+        if (spanElement) {
+            spanElement.style.backgroundColor = "lightgray";
+        }
+
         const adjustedContainerIndex = type === 'equipo' ? selectedContainerIndex + 5 : selectedContainerIndex;
 
         if (selectedContainerIndex) {
@@ -498,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function saveTeamSelection() {
-        // Get data from dropdowns
+        // Get data from dropdowns with validation
         const poleman = getDropdownData("poleman-dropdown");
         const first_pos = getDropdownData("first-pos-dropdown");
         const second_pos = getDropdownData("second-pos-dropdown");
@@ -514,7 +529,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const driver5 = getDriverData("selection5");
         const team1 = getDriverData("selection6");
         const team2 = getDriverData("selection7");
-        console.log(driver1, driver2, driver3, driver4, driver5, team1, team2);
 
         const requiredFields = [
             { label: 'Poleman', value: poleman },
@@ -534,28 +548,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const missing = requiredFields.filter((field) => !field.value).map((field) => field.label);
         if (missing.length > 0) {
-            const podiumStatus = `Poleman: ${poleman || '❌'} | 1st: ${first_pos || '❌'} | 2nd: ${second_pos || '❌'} | 3rd: ${third_pos || '❌'}`;
-            alert(`Team incomplete. Please complete all selections before saving. Missing: - ${missing.join('- ')} Podium selections status:${podiumStatus}`);
+            alert(`Faltan los siguientes campos: ${missing.join(', ')}`);
             return;
         }
 
         const csrfToken = getCSRFToken();
-        const gpId = document.querySelector('meta[name="gp-id"]').getAttribute('content');
-        const triplePointsChip = document.getElementById('triple-points-chip')?.checked || false;
+        if (!csrfToken) {
+            alert('Error de seguridad. Recarga la página.');
+            return;
+        }
 
-        // Disable the button to prevent multiple submissions
-        const saveButton = document.getElementById("save-team-button");
-        saveButton.disabled = true;
-        saveButton.classList.add("button-save-active");
+        const gpIdMeta = document.querySelector('meta[name="gp-id"]');
+        if (!gpIdMeta) {
+            alert('Error: GP ID not found');
+            return;
+        }
 
-        fetch('/team/', {  // Asegúrate de que esta URL coincida con la que usarás en tu vista
+        const tripleChipCheckbox = document.getElementById('triple-points-chip');
+
+        fetch('/team/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': csrfToken,
             },
             body: JSON.stringify({
-                gp_id: gpId,
+                gp_id: gpIdMeta.getAttribute('content'),
                 poleman_name: poleman,
                 first_pos_name: first_pos,
                 second_pos_name: second_pos,
@@ -569,27 +587,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 driver5: driver5,
                 team1: team1,
                 team2: team2,
-                triple_points_chip: triplePointsChip
-            })
+                triple_points_chip: tripleChipCheckbox ? tripleChipCheckbox.checked : false,
+            }),
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Show notification
-                console.log('Team saved succesfully!');
-                showModal();
-    
-                // Re-enable the button or refresh the page
-                saveButton.innerHTML = 'Team Saved';
-                setTimeout(() => {
-                    location.reload();
-                }, 500);
+                alert('Equipo guardado correctamente.');
+                window.location.reload();
             } else {
-                console.log('Error saving the team.');
+                alert(data.error || 'Error al guardar el equipo.');
             }
         })
         .catch(error => {
             console.error('Error:', error);
+            alert('Error de conexión. Inténtalo de nuevo.');
         });
     }
 
@@ -781,55 +793,67 @@ document.addEventListener('DOMContentLoaded', function() {
         const driverSelect = document.getElementById('block-driver-id');
         const teamSelect = document.getElementById('block-team-id');
         const disclaimer = document.querySelector('#block-chip-modal .chip-disclaimer');
-        const gpId = document.querySelector('meta[name="gp-id"]').getAttribute('content');
+        const gpIdMeta = document.querySelector('meta[name="gp-id"]');
 
-        if (!btn || !targetUserEl || !assetTypeEl || !driverSelect || !teamSelect) return;
+        if (!btn || !targetUserEl || !assetTypeEl || !driverSelect || !teamSelect || !gpIdMeta) return;
 
+        const gpId = gpIdMeta.getAttribute('content');
         const assetType = assetTypeEl.value;
         const blockedAssetId = assetType === 'team' ? teamSelect.value : driverSelect.value;
         const targetUserId = targetUserEl.value;
 
+        // Validate inputs
         if (!targetUserId || !blockedAssetId) {
             alert('Selecciona usuario y activo a bloquear.');
             return;
         }
 
-        const confirmationMsg = disclaimer ? `${disclaimer.textContent.trim()}
-
-¿Confirmas que quieres usar el chip ahora?` : '¿Confirmas que quieres usar el chip de bloqueo ahora?';
-        const confirmed = await showConfirmActionModal(confirmationMsg, 'Chip de Bloqueo');
-        if (!confirmed) {
+        // Validate that IDs are numeric
+        if (!/^\d+$/.test(targetUserId) || !/^\d+$/.test(blockedAssetId)) {
+            alert('Parámetros inválidos.');
             return;
         }
 
+        const csrfToken = getCSRFToken();
+        if (!csrfToken) {
+            alert('Error de seguridad. Recarga la página.');
+            return;
+        }
+
+        const confirmationMsg = disclaimer ? `${disclaimer.textContent.trim()}\n\n¿Deseas continuar?` : '¿Deseas continuar?';
+        if (!confirm(confirmationMsg)) return;
+
         btn.disabled = true;
 
-        fetch('/team/block-chip/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken(),
-            },
-            body: JSON.stringify({
-                gp_id: gpId,
-                target_user_id: targetUserId,
-                asset_type: assetType,
-                blocked_asset_id: blockedAssetId,
-            }),
-        })
-            .then((response) => response.json())
-            .then((data) => {
-                if (data.success) {
-                    location.reload();
-                    return;
-                }
-                btn.disabled = false;
-                alert(data.error || 'No se pudo guardar el bloqueo.');
-            })
-            .catch(() => {
-                btn.disabled = false;
-                alert('Error al guardar el bloqueo.');
+        try {
+            const response = await fetch('/team/block-chip/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    gp_id: gpId,
+                    target_user_id: parseInt(targetUserId, 10),
+                    asset_type: assetType,
+                    blocked_asset_id: parseInt(blockedAssetId, 10),
+                }),
             });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('Bloqueo aplicado correctamente.');
+                window.location.reload();
+            } else {
+                alert(data.error || 'Error al aplicar el bloqueo.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error de conexión. Inténtalo de nuevo.');
+        } finally {
+            btn.disabled = false;
+        }
     }
 
     const saveBtn = document.querySelector('.button-save-team');
@@ -945,6 +969,53 @@ function updateAddButtonVisibility() {
         }
     });
 
+}
+
+// Security: Enhanced HTML escaping function
+function escapeHtml(unsafe) {
+    if (unsafe === null || unsafe === undefined) {
+        return '';
+    }
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;")
+        .replace(/\//g, "&#x2F;")
+        .replace(/`/g, "&#x60;")
+        .replace(/=/g, "&#x3D;");
+}
+
+// Security: Sanitize data before using in DOM
+function sanitizeForDom(value) {
+    if (typeof value !== 'string') {
+        value = String(value || '');
+    }
+    // Remove any script tags
+    value = value.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    // Remove event handlers
+    value = value.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
+    return escapeHtml(value);
+}
+
+// Security: Validate numeric input
+function validateNumber(value, min = null, max = null) {
+    const num = parseFloat(value);
+    if (isNaN(num)) return null;
+    if (min !== null && num < min) return null;
+    if (max !== null && num > max) return null;
+    return num;
+}
+
+// Security: Get CSRF token safely
+function getCSRFToken() {
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
+    if (!metaTag) {
+        console.error('CSRF token not found');
+        return null;
+    }
+    return metaTag.getAttribute('content');
 }
 
 
