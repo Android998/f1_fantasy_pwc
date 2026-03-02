@@ -6,10 +6,6 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Logs
-logs/
-*.log
-
 #ENVs
 .env
 .venv/
