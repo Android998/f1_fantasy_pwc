@@ -16,7 +16,7 @@
             </div>
         {% endif %}
 
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" id="profileForm">
             {% csrf_token %}
             
             <!-- Profile photo section -->
@@ -33,64 +33,120 @@
             
             <div class="form-group">
                 <label for="id_username">Username</label>
-                <input type="text" id="id_username" name="username" value="{{ user_form.username.value|default:'' }}">
+                <input type="text" id="id_username" name="username" value="{{ user_form.username.value|default:'' }}" class="form-input">
                 {% if user_form.username.errors %}
-                    {{ user_form.username.errors }}
+                    <small class="error-text">{{ user_form.username.errors }}</small>
                 {% endif %}
             </div>
             <div class="form-group">
                 <label for="id_first_name">First Name</label>
-                <input type="text" id="id_first_name" name="first_name" value="{{ user_form.first_name.value|default:'' }}">
+                <input type="text" id="id_first_name" name="first_name" value="{{ user_form.first_name.value|default:'' }}" class="form-input">
                 {% if user_form.first_name.errors %}
-                    {{ user_form.first_name.errors }}
+                    <small class="error-text">{{ user_form.first_name.errors }}</small>
                 {% endif %}
             </div>
             <div class="form-group">
                 <label for="id_last_name">Last Name</label>
-                <input type="text" id="id_last_name" name="last_name" value="{{ user_form.last_name.value|default:'' }}">
+                <input type="text" id="id_last_name" name="last_name" value="{{ user_form.last_name.value|default:'' }}" class="form-input">
                 {% if user_form.last_name.errors %}
-                    {{ user_form.last_name.errors }}
+                    <small class="error-text">{{ user_form.last_name.errors }}</small>
                 {% endif %}
             </div>
             <div class="form-group">
                 <label for="id_email">Email</label>
-                <input type="email" id="id_email" name="email" value="{{ user_form.email.value|default:'' }}">
+                <input type="email" id="id_email" name="email" value="{{ user_form.email.value|default:'' }}" class="form-input">
                 {% if user_form.email.errors %}
-                    {{ user_form.email.errors }}
+                    <small class="error-text">{{ user_form.email.errors }}</small>
                 {% endif %}
             </div>
         
-            <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase; margin-bottom: 5%;">Team Information</h1>
+            <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase; margin-bottom: 5%; margin-top: 8%;">Team Assignment</h1>
             <hr class="gray-line"></hr>
-            <div class="profile-photo-container">
-                {% if user_profile.users_team.photo %}
-                    <img src="{{ user_profile.users_team.photo.url }}" alt="Team Photo" class="profile-photo" style="border-radius: 50%;">
-                {% else %}
-                    <img src="" alt="Team Photo" class="profile-photo" style="border-radius: 50%;">
-                {% endif %}
+            
+            <!-- Current Team Display -->
+            <div class="form-group">
+                <label>Current Team</label>
+                <div class="current-team-box">
+                    {% if user_profile.users_team %}
+                        <div class="current-team-content">
+                            {% if user_profile.users_team.photo %}
+                                <img src="{{ user_profile.users_team.photo.url }}" alt="Team Photo" class="current-team-photo">
+                            {% else %}
+                                <div class="current-team-placeholder">{{ user_profile.users_team.name }}</div>
+                            {% endif %}
+                            <div class="current-team-info">
+                                <strong>{{ user_profile.users_team.name }}</strong>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="current-team-content">
+                            <div class="current-team-empty">No team assigned</div>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="team_id">Select Existing Team</label>
-                <select id="team_id" name="team_id">
-                    <option value="">No team</option>
-                    {% for team in available_teams %}
-                        <option value="{{ team.id }}" {% if user_profile.users_team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
-                    {% endfor %}
-                </select>
+            <!-- Team Action Selection (Button Style) -->
+            <div class="team-action-buttons-group">
+                <div class="team-action-button" data-action="none">
+                    <span class="button-label">No Team</span>
+                    <span class="button-underline"></span>
+                </div>
+                <div class="team-action-button" data-action="select">
+                    <span class="button-label">Join Team</span>
+                    <span class="button-underline"></span>
+                </div>
+                <div class="team-action-button" data-action="create">
+                    <span class="button-label">Create Team</span>
+                    <span class="button-underline"></span>
+                </div>
+                <!-- Hidden input to track selection -->
+                <input type="hidden" name="team_action" id="teamActionInput" value="none">
             </div>
 
-            <div class="form-group">
-                <label for="new_team_name">Or create a new team</label>
-                <input type="text" id="new_team_name" name="new_team_name" placeholder="My new team">
-                <small>If you type a name here, it will be created (or reused if it already exists this season).</small>
+            <!-- Team Selection Dropdown (Hidden by default) -->
+            <div class="team-action-content" id="teamSelectContent" style="display: none;">
+                <div class="form-group">
+                    <label for="team_id">Select a Team</label>
+                    <select id="team_id" name="team_id" class="form-input team-select">
+                        <option value="">-- Search or select a team --</option>
+                        {% for team in available_teams %}
+                            <option value="{{ team.id }}" {% if user_profile.users_team_id == team.id %}selected{% endif %} data-full="{% if team.is_full %}true{% else %}false{% endif %}">
+                                {{ team.name }} ({{ team.members }}/2)
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Team Creation Input (Hidden by default) -->
+            <div class="team-action-content" id="teamCreateContent" style="display: none;">
+                <div class="form-group">
+                    <label for="team_name">Team Name</label>
+                    <input type="text" id="team_name" name="team_name" placeholder="Enter your team name" maxlength="255" class="form-input">
+                    <small class="form-help">Choose a unique name for your team</small>
+                </div>
+                <div id="teamCreateConfirmation" class="team-confirmation-message" style="display: none;">
+                    <p>✓ Team "<span id="teamNameConfirm"></span>" will be created</p>
+                </div>
+            </div>
+
+            <!-- Team Rename Section (Shows when team selected) -->
+            <div class="team-action-content" id="teamRenameContent" style="display: none;">
+                <div class="form-group">
+                    <label for="rename_team_name">Rename Team</label>
+                    <input type="text" id="rename_team_name" name="rename_team_name" placeholder="New team name" maxlength="255" class="form-input">
+                    <small class="form-help">Change your team name</small>
+                </div>
             </div>
 
             <div class="actions">
-                <button class="submit-button" type="submit" name="update_team">Save</button>
+                <button class="submit-button" type="submit" name="update_profile">Save Profile</button>
             </div>
         </form>
     </div>
 </div>
 <script src="{% static 'js/user.js' %}"></script>
+<link href="{% static 'css/user.css' %}?v=2" rel="stylesheet" />
+<script src="{% static 'js/team-assignment.js' %}?v=2"></script>
 {% endblock %}

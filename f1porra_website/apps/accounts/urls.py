@@ -11,6 +11,7 @@ urlpatterns = [
     path('login/', views.user_login, name='login'),
     path("logout", auth_views.LogoutView.as_view(), name="logout"),
     path('profile/', views.ProfileView.as_view(), name='profile'),
+    path('api/search-teams/', views.search_teams, name='search_teams'),
 
     # Password reset
     path('password_reset/', views.password_reset, name='password_reset'),

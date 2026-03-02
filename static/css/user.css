@@ -66,7 +66,9 @@
     margin-bottom: 3%;
 }
 
-.form-group input{
+.form-group input,
+.form-input,
+.form-group select {
     font-family: "Formula1Regular";
     font-size: 15px;
     color: #15151e;
@@ -76,11 +78,35 @@
     display: block;
     width: 100%;
     padding: 15px 10px;
+    box-sizing: border-box;
 }
 
+.form-group select,
+.team-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 1.5em 1.5em;
+    padding-right: 40px;
+}
+
+.form-group input:focus,
+.form-input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #e00;
+    box-shadow: 0 0 0 3px rgba(238, 0, 0, 0.1);
+}
+
+.form-input.focused {
+    border-color: #e00;
+    box-shadow: 0 0 0 3px rgba(238, 0, 0, 0.1);
+}
 
 .submit-button{
-    width:25%;
+    width: auto;
+    min-width: 120px;
     margin-left: 0;
     margin-top: 15px;
     color: white;
@@ -100,17 +126,261 @@
     letter-spacing: .5px;
     font-weight: 500;
     padding: 12px 15px;
+    transition: background-color 0.3s ease;
 }
 
-.profile-photo-container {
-    text-align: center;
+.submit-button:hover {
+    background-color: #cc0000;
+}
+
+.submit-button:active {
+    background-color: #990000;
+}
+
+.error-text {
+    color: #e00;
+    font-family: "Formula1Regular";
+    font-size: 13px;
+    margin-top: 5px;
+    display: block;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
     margin-bottom: 20px;
+    font-family: "Formula1Regular";
 }
 
-.user-photo {
-    width: 150px; /* Set the width of the photo */
-    height: 150px; /* Set the height of the photo */
-    border-radius: 50%; /* Make the photo circular */
-    object-fit: cover; /* Ensure the photo covers the area */
-    border: 2px solid #ccc; /* Optional: add a border around the photo */
+.alert-danger {
+    background-color: #ffe8e8;
+    border: 2px solid #e00;
+    color: #cc0000;
+}
+
+.alert p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.actions {
+    margin-top: 30px;
+    display: flex;
+    gap: 10px;
+}
+
+.form-help {
+    display: block;
+    margin-top: 8px;
+    font-family: "Formula1Regular";
+    font-size: 13px;
+    color: #666;
+}
+
+.user-photo,
+.profile-photo {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #15151e;
+}
+
+.profile-photo-placeholder {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e00 0%, #cc0000 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-family: "Formula1Bold";
+    font-size: 14px;
+    font-weight: bold;
+    margin: 0 auto;
+    border: 3px solid #15151e;
+    word-wrap: break-word;
+    padding: 10px;
+    text-align: center;
+}
+
+.clickable-photo {
+    cursor: pointer;
+    display: inline-block;
+}
+
+.clickable-photo:hover img {
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+/* Current Team Display */
+.current-team-box {
+    background: #f7f4f1;
+    border: solid 2px #15151e;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    min-height: 60px;
+}
+
+.current-team-content {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 20px;
+}
+
+.current-team-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #15151e;
+    flex-shrink: 0;
+}
+
+.current-team-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e00 0%, #cc0000 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-family: "Formula1Bold";
+    font-size: 12px;
+    font-weight: bold;
+    border: 2px solid #15151e;
+    flex-shrink: 0;
+    word-wrap: break-word;
+    padding: 10px;
+    text-align: center;
+}
+
+.current-team-empty {
+    font-family: "Formula1Regular";
+    font-size: 15px;
+    color: #666;
+    font-style: italic;
+}
+
+.current-team-info {
+    font-family: "Formula1Bold";
+    font-size: 16px;
+    color: #15151e;
+}
+
+/* Team Action Buttons Group */
+.team-action-buttons-group {
+    display: flex;
+    flex-direction: row;
+    margin: 30px 0;
+    background-color: #e8e5e2;
+    border: 2px solid #15151e;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.team-action-button {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 15px;
+    cursor: pointer;
+    background-color: #e8e5e2;
+    border-right: 1px solid #d0cdc8;
+    transition: background-color 0.3s ease;
+    min-height: 60px;
+}
+
+.team-action-button:last-child {
+    border-right: none;
+}
+
+.team-action-button:hover {
+    background-color: #d9d6d1;
+}
+
+.team-action-button.active {
+    background-color: #f7f4f1;
+}
+
+.button-label {
+    font-family: "Formula1Bold";
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #15151e;
+    text-align: center;
+    width: 100%;
+}
+
+.button-underline {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 0;
+    height: 3px;
+    background-color: transparent;
+    transition: background-color 0.3s ease;
+}
+
+.team-action-button.active .button-underline {
+    background-color: #e00;
+}
+
+/* Team Action Content Sections */
+.team-action-content {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f7f4f1;
+    border-radius: 8px;
+    border-left: 4px solid #e00;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 500px;
+    }
+}
+
+.team-action-content .form-group {
+    margin-bottom: 15px;
+}
+
+.team-action-content .form-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Team Confirmation Message */
+.team-confirmation-message {
+    background-color: #e8f5e9;
+    border: 2px solid #4caf50;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+    color: #2e7d32;
+    font-family: "Formula1Regular";
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideDown 0.3s ease;
+}
+
+.team-confirmation-message p {
+    margin: 0;
+    font-weight: 600;
 }

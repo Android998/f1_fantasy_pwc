@@ -6,20 +6,42 @@
 
 <div class="main-standings achievements-page">
     <div class="user-standings achievements-panel">
-        <h1 class="achievements-title">Achievements</h1>
-        <hr class="gray-line">
-        <p class="achievements-subtitle">Logros desbloqueables para darle mas picante a la porra.</p>
+        <div class="achievements-header">
+            <div class="achievements-heading">
+                <h1 class="achievements-title">Achievements</h1>
+                <hr class="gray-line">
+                <p class="achievements-subtitle">Logros desbloqueables para darle mas picante a la porra.</p>
+            </div>
+            <div class="achievements-featured">
+                <form method="post" action="{% url 'public:set_featured_achievement' %}" class="achievements-featured-form">
+                    {% csrf_token %}
+                    <label class="achievements-featured-label" for="featured-achievement">Display badge</label>
+                    <div class="achievements-featured-controls">
+                        <select id="featured-achievement" name="achievement_id" class="achievements-featured-select">
+                            <option value="">None</option>
+                            {% for achievement in unlocked_achievements %}
+                                <option value="{{ achievement.id }}" {% if featured_id == achievement.id %}selected{% endif %}>{{ achievement.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="achievements-featured-btn">Apply</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         {% for section in sections %}
         <section class="achievements-section">
             <h2 class="achievements-section-title">{{ section.title }}</h2>
             <div class="achievements-stack">
                 {% for achievement in section.achievements %}
-                <article class="achievement-card {% if not achievement.unlocked %}locked{% endif %}">
+                <article class="achievement-card {% if not achievement.unlocked %}locked{% endif %} {% if achievement.is_featured %}featured{% endif %}">
                     <div class="achievement-content">
                         <div class="achievement-text">
                             <div class="achievement-header">
                                 <h2 class="achievement-name">{{ achievement.name }}</h2>
+                                {% if achievement.is_featured %}
+                                    <span class="achievement-featured">Selected</span>
+                                {% endif %}
                             </div>
                             <p class="achievement-description {% if not achievement.unlocked %}is-blurred{% endif %}">{{ achievement.description }}</p>
                             <div class="achievement-meta">
@@ -30,8 +52,10 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <div class="achievement-icon-wrap" aria-hidden="true">
-                            <span class="achievement-icon {{ achievement.icon_class|default:'icon-symbol' }}">{{ achievement.icon }}</span>
+                        <div class="achievement-side">
+                            <div class="achievement-icon-wrap" aria-hidden="true">
+                                <span class="achievement-icon {{ achievement.icon_class|default:'icon-symbol' }}">{{ achievement.icon }}</span>
+                            </div>
                         </div>
                     </div>
                 </article>
