@@ -18,12 +18,15 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
+import os
+
+# Security: Use environment variable for admin URL
+ADMIN_URL = os.getenv('DJANGO_ADMIN_URL', 'admin/')
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path(ADMIN_URL, admin.site.urls),  # Use custom admin URL
     path('', include("f1porra_website.apps.public.urls")),
     path('accounts/', include("f1porra_website.apps.accounts.urls")),
-    path('accounts/', include('django.contrib.auth.urls')),  # Add this line
 ]
 
 if settings.DEBUG:

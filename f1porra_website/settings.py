@@ -88,6 +88,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'f1porra_website.middleware.security.SecurityHeadersMiddleware',  
+    'f1porra_website.middleware.security.SQLInjectionProtectionMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
