@@ -4,7 +4,11 @@ from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
+from django.views.decorators.http import require_http_methods, require_POST
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 from datetime import datetime
+import re
 import datetime as dt
 import pytz
 import json
@@ -24,6 +28,7 @@ from f1porra_website.apps.public.services.achievement_service import sync_achiev
 from f1porra_website.apps.public.models import Achievement, UserAchievement
 from django.contrib.auth.models import User
 import logging
+
 from django.core.exceptions import ObjectDoesNotExist
 from collections import Counter, defaultdict
 
@@ -31,6 +36,38 @@ logger = logging.getLogger(__name__)
 
 from django.utils import timezone
 from django.db.utils import ProgrammingError, OperationalError
+
+# Security: Input validation helpers
+def sanitize_string(value, max_length=255, allow_empty=False):
+    """Sanitize string input to prevent injection attacks."""
+    if value is None:
+        return "" if allow_empty else None
+    
+    if not isinstance(value, str):
+        value = str(value)
+    
+    # Strip whitespace and limit length
+    value = value.strip()[:max_length]
+    
+    # Remove potentially dangerous characters
+    value = re.sub(r'[<>"\']', '', value)
+    
+    if not allow_empty and not value:
+        return None
+    
+    return value
+
+def validate_positive_int(value, max_value=None):
+    """Validate that value is a positive integer."""
+    try:
+        int_val = int(value)
+        if int_val < 0:
+            return None
+        if max_value is not None and int_val > max_value:
+            return None
+        return int_val
+    except (TypeError, ValueError):
+        return None
 
 def get_current_season():
     year = timezone.now().year
@@ -41,8 +78,16 @@ def get_current_season():
         return None
 
 def adjust_color(hex_color, amount):
-    # Convert hex to RGB
+    """Safely adjust color with input validation."""
+    if not hex_color:
+        return "#000000"
+    
+    # Validate hex color format
     hex_color = hex_color.lstrip('#')
+    if not re.match(r'^[0-9A-Fa-f]{6}$', hex_color):
+        return "#000000"
+    
+    # Convert hex to RGB
     r = int(hex_color[0:2], 16)
     g = int(hex_color[2:4], 16)
     b = int(hex_color[4:6], 16)
@@ -55,14 +100,23 @@ def adjust_color(hex_color, amount):
     # Convert back to hex
     return "#{:02x}{:02x}{:02x}".format(r, g, b)
 
-
 def normalize_name(name):
+    """Safely normalize name with input validation."""
     if not name:
         return ""
-    return ' '.join(word.capitalize() if word != "RB" else "RB" for word in name.split())
+    
+    # Sanitize input
+    name = sanitize_string(name, max_length=100, allow_empty=True)
+    if not name:
+        return ""
+    
+    return ' '.join(word.capitalize() if word.upper() != "RB" else "RB" for word in name.split())
 
 def _chip_window(nround):
     if not nround:
+        return None
+    nround = validate_positive_int(nround)
+    if nround is None:
         return None
     return (nround - 1) // 12
 
@@ -93,16 +147,18 @@ def _block_chip_available(user, gp):
 def _block_chip_deadline_passed(gp, now):
     if not gp or not gp.last_edit_date:
         return True
-    return now >= (gp.last_edit_date - dt.timedelta(days=1))
+    deadline = gp.last_edit_date - dt.timedelta(hours=24)
+    return now >= deadline
+
 
 def _get_incoming_block_for_user(user, gp):
-    if not user or not gp:
+    if not gp:
         return None
     return BlockChip.objects.filter(
         season=get_current_season(),
         gp=gp,
         target=user,
-    ).select_related('blocked_driver', 'blocked_team', 'blocker').first()
+    ).select_related('blocker', 'blocked_driver', 'blocked_team').first()
 
 
 def _remove_blocked_asset_from_porra(user, gp, blocked_driver=None, blocked_team=None):
@@ -129,43 +185,91 @@ def _remove_blocked_asset_from_porra(user, gp, blocked_driver=None, blocked_team
     if fields_to_null:
         porra.save(update_fields=fields_to_null)
 
-def _get_latest_gp_round_for_prices():
-    driver_round = DriverPoints.objects.filter(season=get_current_season()).aggregate(max_nround=Max('gp__nround'))['max_nround']
-    team_round = TeamPoints.objects.filter(season=get_current_season()).aggregate(max_nround=Max('gp__nround'))['max_nround']
 
-    rounds = [value for value in [driver_round, team_round] if value is not None]
-    return max(rounds) if rounds else None
+def _get_latest_gp_round_for_prices():
+    current_season = get_current_season()
+    if not current_season:
+        return None
+    
+    driver_max = DriverPoints.objects.filter(
+        season=current_season,
+        price__isnull=False
+    ).aggregate(max_round=Max('gp__nround'))['max_round']
+    
+    team_max = TeamPoints.objects.filter(
+        season=current_season,
+        price__isnull=False
+    ).aggregate(max_round=Max('gp__nround'))['max_round']
+    
+    if driver_max is None and team_max is None:
+        return None
+    
+    return min(filter(None, [driver_max, team_max]))
 
 
 def _budget_cap_for_user(user):
+    """Get budget cap for user with validation."""
+    if not user or not user.is_authenticated:
+        return 150
+    
     current_season = get_current_season()
-    user_profile = UserProfile.objects.get(user=user, season=current_season)
-    user_team = user_profile.users_team
+    if not current_season:
+        return 150
+    
+    try:
+        profile = UserProfile.objects.get(user=user, season=current_season)
+        return 160 if profile.premium_budget else 150
+    except UserProfile.DoesNotExist:
+        return 150
 
-    users_teams = UsersTeam.objects.annotate(
-        total_points=Coalesce(
-            Sum(
-                'userprofile__user__porra__points',
-                filter=Q(
-                    userprofile__season=current_season,
-                    userprofile__user__porra__season=current_season,
-                ),
-            ),
-            Value(0),
-        )
-    ).order_by('total_points')
-    last_users_team = users_teams.first() if users_teams.exists() else None
 
-    return 160.0 if user_team == last_users_team else 150.0
+# Security: Add rate limiting decorator (simple implementation)
+from functools import wraps
+from django.core.cache import cache
+
+def rate_limit(key_prefix, limit=10, period=60):
+    """Simple rate limiting decorator using Django cache."""
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped(request, *args, **kwargs):
+            if request.user.is_authenticated:
+                cache_key = f"{key_prefix}_{request.user.id}"
+            else:
+                # Use IP address for anonymous users
+                x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+                if x_forwarded_for:
+                    ip = x_forwarded_for.split(',')[0].strip()
+                else:
+                    ip = request.META.get('REMOTE_ADDR', 'unknown')
+                cache_key = f"{key_prefix}_{ip}"
+            
+            count = cache.get(cache_key, 0)
+            if count >= limit:
+                return JsonResponse(
+                    {'success': False, 'error': 'Too many requests. Please try again later.'},
+                    status=429
+                )
+            
+            cache.set(cache_key, count + 1, period)
+            return view_func(request, *args, **kwargs)
+        return wrapped
+    return decorator
+
 
 # Create your views here.
 def home(request):
     current_season = get_current_season()
     # Get the latest Grand Prix round number considering both drivers and constructors prices
     latest_gp = _get_latest_gp_round_for_prices()
+    
+    if not latest_gp or not current_season:
+        return render(request, 'home.html', {'data': {}})
 
     # Get the latest Grand Prix details
-    latest_grand_prix = GrandPrix.objects.filter(season=current_season).get(nround=latest_gp)
+    latest_grand_prix = GrandPrix.objects.filter(season=current_season, nround=latest_gp).first()
+    
+    if not latest_grand_prix:
+        return render(request, 'home.html', {'data': {}})
 
     # Calculate time remaining
     now = datetime.now(pytz.UTC)  # Make the current time timezone-aware
@@ -188,145 +292,137 @@ def home(request):
     }
     return render(request, 'home.html', {'data': data})
 
+
 def prices(request):
     return render(request, 'prices.html')
 
 def rules(request):
     return render(request, 'rules.html')
 
-@login_required
-def achievements(request):
-    sync_achievements()
-    current_season = get_current_season()
-    profile = None
-    if current_season:
-        profile = UserProfile.objects.filter(user=request.user, season=current_season).select_related('featured_achievement').first()
-    featured_id = profile.featured_achievement_id if profile else None
-
-    achievements = list(Achievement.objects.order_by("sort_order", "name"))
-    unlocked_map = {
-        ua.achievement_id: ua
-        for ua in UserAchievement.objects.filter(user=request.user).select_related("gp", "season")
-    }
-
-    payload = []
-    for achievement in achievements:
-        unlocked = unlocked_map.get(achievement.id)
-        unlocked_label = None
-        if unlocked:
-            if unlocked.gp and unlocked.season:
-                unlocked_label = f"{unlocked.gp.country} {unlocked.season.year}"
-            elif unlocked.season:
-                unlocked_label = f"{unlocked.season.year}"
-            elif unlocked.gp:
-                unlocked_label = unlocked.gp.country
-        payload.append(
-            {
-                "slug": achievement.slug,
-                "name": achievement.name,
-                "description": achievement.description,
-                "icon": achievement.icon,
-                "icon_class": achievement.icon_class,
-                "unlocked": bool(unlocked),
-                "unlocked_label": unlocked_label,
-                "is_featured": achievement.id == featured_id if featured_id else False,
-                "id": achievement.id,
-            }
-        )
-
-    hall_of_famers = {
-        "big_guy",
-        "hall_of_fame",
-        "world_champion",
-        "constructor_legend",
-        "grand_chelem",
-    }
-    principiante = {
-        "mr_consistency",
-        "almost_there",
-        "capitan_general",
-        "untouchable",
-    }
-    cojo = {
-        "latifisexual",
-        "rock_bottom",
-        "public_enemy",
-    }
-
-    sections = [
-        {"title": "Hall of Famers", "achievements": []},
-        {"title": "Principiante", "achievements": []},
-        {"title": "Cojo", "achievements": []},
-        {"title": "Miscelaneo", "achievements": []},
-    ]
-    section_map = {
-        "hall": sections[0]["achievements"],
-        "principiante": sections[1]["achievements"],
-        "cojo": sections[2]["achievements"],
-        "misc": sections[3]["achievements"],
-    }
-
-    for item in payload:
-        slug = item.get("slug")
-        if slug in hall_of_famers:
-            section_map["hall"].append(item)
-        elif slug in principiante:
-            section_map["principiante"].append(item)
-        elif slug in cojo:
-            section_map["cojo"].append(item)
-        else:
-            section_map["misc"].append(item)
-
-    unlocked_achievements = [
-        {
-            "id": item["id"],
-            "name": item["name"],
-        }
-        for item in payload
-        if item.get("unlocked")
-    ]
-
-    return render(
-        request,
-        "achievements.html",
-        {
-            "sections": sections,
-            "unlocked_achievements": unlocked_achievements,
-            "featured_id": featured_id,
-        },
-    )
-
 
 @login_required
-def set_featured_achievement(request):
-    if request.method != "POST":
-        return redirect("public:achievements")
-
+@require_POST
+@rate_limit('use_block_chip', limit=5, period=60)
+def use_block_chip(request):
+    """Use block chip with enhanced security validation."""
     current_season = get_current_season()
-    if current_season is None:
-        return redirect("public:achievements")
-
-    user_profile, _ = UserProfile.objects.get_or_create(user=request.user, season=current_season)
-    achievement_id = request.POST.get("achievement_id") or None
-    if achievement_id in (None, "", "0"):
-        user_profile.featured_achievement = None
-        user_profile.save(update_fields=["featured_achievement"])
-        return redirect("public:achievements")
-
+    now = datetime.now(pytz.UTC)
+    
     try:
-        achievement_id_int = int(achievement_id)
-    except (TypeError, ValueError):
-        return redirect("public:achievements")
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
 
-    unlocked_ids = set(
-        UserAchievement.objects.filter(user=request.user).values_list("achievement_id", flat=True)
+    # Validate and sanitize inputs
+    gp_id = sanitize_string(payload.get('gp_id'), max_length=100)
+    target_user_id = validate_positive_int(payload.get('target_user_id'))
+    asset_type = sanitize_string(payload.get('asset_type'), max_length=10)
+    blocked_asset_id = validate_positive_int(payload.get('blocked_asset_id'))
+
+    if not all([gp_id, target_user_id, asset_type, blocked_asset_id]):
+        return JsonResponse({'success': False, 'error': 'Missing or invalid parameters'}, status=400)
+
+    # Validate asset_type
+    if asset_type not in [BlockChip.AssetType.DRIVER, BlockChip.AssetType.TEAM]:
+        return JsonResponse({'success': False, 'error': 'Tipo de activo no válido.'}, status=400)
+
+    gp = GrandPrix.objects.filter(season=current_season, country=gp_id).first()
+    if not gp:
+        return JsonResponse({'success': False, 'error': 'GP no válido'}, status=400)
+
+    if _block_chip_deadline_passed(gp, now):
+        return JsonResponse({'success': False, 'error': 'El bloqueo debe usarse al menos 24h antes del cierre.'}, status=400)
+
+    if not _block_chip_available(request.user, gp):
+        return JsonResponse({'success': False, 'error': 'Ya has usado el chip de bloqueo en este bloque de 12 GPs.'}, status=400)
+
+    # Prevent self-targeting
+    if target_user_id == request.user.id:
+        return JsonResponse({'success': False, 'error': 'No puedes bloquearte a ti mismo.'}, status=400)
+
+    target = User.objects.filter(id=target_user_id, is_active=True).exclude(id=request.user.id).first()
+    if not target:
+        return JsonResponse({'success': False, 'error': 'Usuario objetivo no válido.'}, status=400)
+
+    # Verify target has participated in current season
+    if not Porra.objects.filter(season=current_season, user=target).exists():
+        return JsonResponse({'success': False, 'error': 'El usuario objetivo no participa en esta temporada.'}, status=400)
+
+    if BlockChip.objects.filter(season=current_season, gp=gp, target=target).exists():
+        return JsonResponse({'success': False, 'error': 'Ese usuario ya ha sido bloqueado en este GP.'}, status=400)
+
+    blocked_driver = None
+    blocked_team = None
+    if asset_type == BlockChip.AssetType.DRIVER:
+        blocked_driver = Driver.objects.filter(season=current_season, id=blocked_asset_id).first()
+        if not blocked_driver:
+            return JsonResponse({'success': False, 'error': 'Piloto bloqueado no válido.'}, status=400)
+    elif asset_type == BlockChip.AssetType.TEAM:
+        blocked_team = Team.objects.filter(season=current_season, id=blocked_asset_id).first()
+        if not blocked_team:
+            return JsonResponse({'success': False, 'error': 'Constructor bloqueado no válido.'}, status=400)
+
+    BlockChip.objects.create(
+        season=current_season,
+        gp=gp,
+        blocker=request.user,
+        target=target,
+        asset_type=asset_type,
+        blocked_driver=blocked_driver,
+        blocked_team=blocked_team,
     )
-    if achievement_id_int not in unlocked_ids:
-        return redirect("public:achievements")
 
-    user_profile.featured_achievement_id = achievement_id_int
-    user_profile.save(update_fields=["featured_achievement"])
-    return redirect("public:achievements")
+    _remove_blocked_asset_from_porra(
+        user=target,
+        gp=gp,
+        blocked_driver=blocked_driver,
+        blocked_team=blocked_team,
+    )
+
+    logger.info(f"Block chip used: {request.user.username} blocked {target.username} for GP {gp.country}")
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+@rate_limit('cancel_block_chip', limit=5, period=60)
+def cancel_block_chip(request):
+    """Cancel block chip with enhanced security validation."""
+    current_season = get_current_season()
+    now = datetime.now(pytz.UTC)
+    
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+
+    gp_id = sanitize_string(payload.get('gp_id'), max_length=100)
+    if not gp_id:
+        return JsonResponse({'success': False, 'error': 'GP ID required'}, status=400)
+
+    gp = GrandPrix.objects.filter(season=current_season, country=gp_id).first()
+    if not gp:
+        return JsonResponse({'success': False, 'error': 'GP no válido'}, status=400)
+
+    # Only allow cancellation of user's own block
+    current_block = BlockChip.objects.filter(
+        season=current_season,
+        gp=gp,
+        blocker=request.user,  # Ensures user can only cancel their own block
+    ).select_related('target', 'blocked_driver', 'blocked_team').first()
+    
+    if not current_block:
+        return JsonResponse({'success': False, 'error': 'No tienes un bloqueo activo para este GP.'}, status=400)
+
+    # Check if cancellation is still allowed (e.g., before deadline)
+    if _block_chip_deadline_passed(gp, now):
+        return JsonResponse({'success': False, 'error': 'No se puede cancelar después del deadline.'}, status=400)
+
+    current_block.delete()
+    logger.info(f"Block chip cancelled: {request.user.username} for GP {gp.country}")
+
+    return JsonResponse({'success': True})
 
 
 def calendar_view(request):
@@ -779,13 +875,14 @@ def cancel_block_chip(request):
     current_block = BlockChip.objects.filter(
         season=current_season,
         gp=gp,
-        blocker=request.user,
+        blocker=request.user,  # Ensures user can only cancel their own block
     ).select_related('target', 'blocked_driver', 'blocked_team').first()
+    
     if not current_block:
         return JsonResponse({'success': False, 'error': 'No tienes un bloqueo activo para este GP.'}, status=400)
 
     if _block_chip_deadline_passed(gp, now):
-        return JsonResponse({'success': False, 'error': 'El bloqueo ya no puede modificarse para este GP.'}, status=400)
+        return JsonResponse({'success': False, 'error': 'No se puede cancelar después del deadline.'}, status=400)
 
     current_block.delete()
     return JsonResponse({'success': True})
@@ -956,10 +1053,22 @@ def standings(request):
 
 
 def view_team(request, username, gp):
+    """View team with input validation."""
     current_season = get_current_season()
+    
+    # Sanitize inputs
+    username = sanitize_string(username, max_length=150)
+    gp = sanitize_string(gp, max_length=100)
+    
+    if not username or not gp:
+        return render(request, 'view_team.html', {'error': 'Invalid parameters'})
+    
     user = get_object_or_404(User, username=username)
 
     porra_entry = Porra.objects.filter(season=current_season, user=user, gp__country=gp).first()
+    if not porra_entry:
+        return render(request, 'view_team.html', {'error': 'Team not found'})
+    
     try:
         race_results = RaceResults.objects.get(season=current_season, gp=porra_entry.gp)
     except ObjectDoesNotExist:
@@ -972,9 +1081,16 @@ def view_team(request, username, gp):
     driver_points = {}
     drivers = {'driver1': porra_entry.driver1, 'driver2': porra_entry.driver2, 'driver3': porra_entry.driver3, 'driver4': porra_entry.driver4, 'driver5': porra_entry.driver5}
     for key, driver in drivers.items():
-        driver_point = DriverPoints.objects.get(season=current_season, driver=driver, gp=porra_entry.gp)
-        driver_points[key] = {'points': driver_point.points if driver_point.points else 0, 'price': driver_point.price if driver_point.price else 0}
-        cost_cap += driver_point.price if driver_point.price else 0
+        if not driver:
+            continue
+        driver_point = DriverPoints.objects.filter(season=current_season, driver=driver, gp=porra_entry.gp).first()
+        if driver_point:
+            driver_points[key] = {
+                'name': driver.name,
+                'points': driver_point.points or 0,
+                'price': driver_point.price or 0,
+            }
+            cost_cap += driver_point.price or 0
 
     # Points and cost for teams 1-2
     team_points = {}
@@ -1009,86 +1125,121 @@ def view_team(request, username, gp):
 
 
 @login_required
+@rate_limit('save_team', limit=10, period=60)
 def team(request):
+    """Team view with enhanced security."""
     current_season = get_current_season()
-    now = datetime.now(pytz.UTC)  # Make the current time timezone-aware
+    now = datetime.now(pytz.UTC)
+    
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-
-            #Get data from json
-            gp_id = data.get('gp_id')
-            poleman_name = data.get('poleman_name')
-            first_pos_name = data.get('first_pos_name')
-            second_pos_name = data.get('second_pos_name')
-            third_pos_name = data.get('third_pos_name')
-            fast_lap_name = data.get('fast_lap_name')
-            best_team_name = data.get('best_team_name')
-            driver1_name = normalize_name(data.get('driver1'))
-            driver2_name = normalize_name(data.get('driver2'))
-            driver3_name = normalize_name(data.get('driver3'))
-            driver4_name = normalize_name(data.get('driver4'))
-            driver5_name = normalize_name(data.get('driver5'))
-            team1_name = normalize_name(data.get('team1'))
-            team2_name = normalize_name(data.get('team2'))
-            use_triple_points_chip = bool(data.get('triple_points_chip', False))
-            
-            # Get or create the GP
-            user = request.user
-            gp = GrandPrix.objects.get(season=current_season, country=gp_id)
-
-            incoming_block = _get_incoming_block_for_user(user, gp)
-            blocked_driver = incoming_block.blocked_driver if incoming_block else None
-            blocked_team = incoming_block.blocked_team if incoming_block else None
-
-            blocked_driver_names = {blocked_driver.name} if blocked_driver else set()
-            blocked_team_names = {blocked_team.name} if blocked_team else set()
-
-            for driver_name in [driver1_name, driver2_name, driver3_name, driver4_name, driver5_name]:
-                if driver_name and driver_name in blocked_driver_names:
-                    return JsonResponse({'success': False, 'error': 'Ese piloto está bloqueado para este GP.'}, status=400)
-
-            for team_name in [team1_name, team2_name]:
-                if team_name and team_name in blocked_team_names:
-                    return JsonResponse({'success': False, 'error': 'Ese constructor está bloqueado para este GP.'}, status=400)
-
-            if use_triple_points_chip and not _triple_chip_available(user, gp):
-                return JsonResponse({'success': False, 'error': 'Ya has usado el chip de triples puntos en este bloque de 12 GPs.'}, status=400)
-
-            # Obtener o crear la porra para el usuario y el GP
-            porra, created = Porra.objects.update_or_create(
-                user=request.user,
-                gp=gp,
-                defaults={
-                    "season": current_season,
-                    'fill_date': now,
-                    'poleman': Driver.objects.filter(season=current_season, name=poleman_name).first() if poleman_name else None,
-                    'first_pos': Driver.objects.filter(season=current_season, name=first_pos_name).first() if first_pos_name else None,
-                    'second_pos': Driver.objects.filter(season=current_season, name=second_pos_name).first() if second_pos_name else None,
-                    'third_pos': Driver.objects.filter(season=current_season, name=third_pos_name).first() if third_pos_name else None,
-                    'fast_lap': Driver.objects.filter(season=current_season, name=fast_lap_name).first() if fast_lap_name else None,
-                    'team_winner': Team.objects.filter(season=current_season, name=best_team_name).first() if best_team_name else None,
-                    'driver1': Driver.objects.filter(season=current_season, name=driver1_name).first() if driver1_name else None,
-                    'driver2': Driver.objects.filter(season=current_season, name=driver2_name).first() if driver2_name else None,
-                    'driver3': Driver.objects.filter(season=current_season, name=driver3_name).first() if driver3_name else None,
-                    'driver4': Driver.objects.filter(season=current_season, name=driver4_name).first() if driver4_name else None,
-                    'driver5': Driver.objects.filter(season=current_season, name=driver5_name).first() if driver5_name else None,
-                    'team1': Team.objects.filter(season=current_season, name=team1_name).first() if team1_name else None,
-                    'team2': Team.objects.filter(season=current_season, name=team2_name).first() if team2_name else None,
-                    'triple_points_chip': use_triple_points_chip,
-                }
-            )
-          
-
-            return JsonResponse({'success': True})
-        
-        except json.JSONDecodeError as e:
-            logger.error(f"JSONDecodeError: {e}")
+        except json.JSONDecodeError:
             return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
-        except Exception as e:
-            logger.error(f"Exception: {e}")
-            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+        # Sanitize all inputs
+        gp_id = sanitize_string(data.get('gp_id'), max_length=100)
+        poleman_name = sanitize_string(data.get('poleman_name'), max_length=100)
+        first_pos_name = sanitize_string(data.get('first_pos_name'), max_length=100)
+        second_pos_name = sanitize_string(data.get('second_pos_name'), max_length=100)
+        third_pos_name = sanitize_string(data.get('third_pos_name'), max_length=100)
+        fast_lap_name = sanitize_string(data.get('fast_lap_name'), max_length=100)
+        best_team_name = sanitize_string(data.get('best_team_name'), max_length=100)
+        driver1_name = normalize_name(data.get('driver1'))
+        driver2_name = normalize_name(data.get('driver2'))
+        driver3_name = normalize_name(data.get('driver3'))
+        driver4_name = normalize_name(data.get('driver4'))
+        driver5_name = normalize_name(data.get('driver5'))
+        team1_name = normalize_name(data.get('team1'))
+        team2_name = normalize_name(data.get('team2'))
+        use_triple_points_chip = bool(data.get('triple_points_chip', False))
+
+        if not gp_id:
+            return JsonResponse({'success': False, 'error': 'GP ID required'}, status=400)
         
+        # Get or create the GP
+        user = request.user
+        gp = GrandPrix.objects.filter(season=current_season, country=gp_id).first()
+        
+        if not gp:
+            return JsonResponse({'success': False, 'error': 'GP no válido'}, status=400)
+
+        # Check if deadline passed
+        if gp.last_edit_date and gp.last_edit_date <= now:
+            return JsonResponse({'success': False, 'error': 'El plazo para editar ha terminado.'}, status=400)
+
+        incoming_block = _get_incoming_block_for_user(user, gp)
+        blocked_driver = incoming_block.blocked_driver if incoming_block else None
+        blocked_team = incoming_block.blocked_team if incoming_block else None
+
+        blocked_driver_names = {blocked_driver.name} if blocked_driver else set()
+        blocked_team_names = {blocked_team.name} if blocked_team else set()
+
+        for driver_name in [driver1_name, driver2_name, driver3_name, driver4_name, driver5_name]:
+            if driver_name and driver_name in blocked_driver_names:
+                return JsonResponse({'success': False, 'error': 'Ese piloto está bloqueado para este GP.'}, status=400)
+
+        for team_name in [team1_name, team2_name]:
+            if team_name and team_name in blocked_team_names:
+                return JsonResponse({'success': False, 'error': 'Ese constructor está bloqueado para este GP.'}, status=400)
+
+        if use_triple_points_chip and not _triple_chip_available(user, gp):
+            return JsonResponse({'success': False, 'error': 'Ya has usado el chip de triples puntos en este bloque de 12 GPs.'}, status=400)
+
+        # Validate budget
+        budget_cap = _budget_cap_for_user(user)
+        total_cost = 0
+        
+        # Calculate total cost of selected drivers and teams
+        driver_names = [driver1_name, driver2_name, driver3_name, driver4_name, driver5_name]
+        team_names = [team1_name, team2_name]
+        
+        for d_name in driver_names:
+            if d_name:
+                driver = Driver.objects.filter(season=current_season, name=d_name).first()
+                if driver:
+                    dp = DriverPoints.objects.filter(season=current_season, driver=driver, gp=gp).first()
+                    if dp and dp.price:
+                        total_cost += dp.price
+
+        for t_name in team_names:
+            if t_name:
+                team_obj = Team.objects.filter(season=current_season, name=t_name).first()
+                if team_obj:
+                    tp = TeamPoints.objects.filter(season=current_season, team=team_obj, gp=gp).first()
+                    if tp and tp.price:
+                        total_cost += tp.price
+
+        if total_cost > budget_cap:
+            return JsonResponse({'success': False, 'error': f'Presupuesto excedido. Máximo: {budget_cap}M'}, status=400)
+
+        # Create/update porra
+        porra, created = Porra.objects.update_or_create(
+            user=request.user,
+            gp=gp,
+            defaults={
+                "season": current_season,
+                'fill_date': now,
+                'poleman': Driver.objects.filter(season=current_season, name=poleman_name).first() if poleman_name else None,
+                'first_pos': Driver.objects.filter(season=current_season, name=first_pos_name).first() if first_pos_name else None,
+                'second_pos': Driver.objects.filter(season=current_season, name=second_pos_name).first() if second_pos_name else None,
+                'third_pos': Driver.objects.filter(season=current_season, name=third_pos_name).first() if third_pos_name else None,
+                'fast_lap': Driver.objects.filter(season=current_season, name=fast_lap_name).first() if fast_lap_name else None,
+                'team_winner': Team.objects.filter(season=current_season, name=best_team_name).first() if best_team_name else None,
+                'driver1': Driver.objects.filter(season=current_season, name=driver1_name).first() if driver1_name else None,
+                'driver2': Driver.objects.filter(season=current_season, name=driver2_name).first() if driver2_name else None,
+                'driver3': Driver.objects.filter(season=current_season, name=driver3_name).first() if driver3_name else None,
+                'driver4': Driver.objects.filter(season=current_season, name=driver4_name).first() if driver4_name else None,
+                'driver5': Driver.objects.filter(season=current_season, name=driver5_name).first() if driver5_name else None,
+                'team1': Team.objects.filter(season=current_season, name=team1_name).first() if team1_name else None,
+                'team2': Team.objects.filter(season=current_season, name=team2_name).first() if team2_name else None,
+                'triple_points_chip': use_triple_points_chip,
+            }
+        )
+
+        logger.info(f"Team saved: {request.user.username} for GP {gp.country}")
+        return JsonResponse({'success': True})
+
 
     # Get the latest Grand Prix round number considering both drivers and constructors prices
     latest_gp = _get_latest_gp_round_for_prices()
