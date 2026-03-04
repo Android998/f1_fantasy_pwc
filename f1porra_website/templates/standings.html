@@ -148,7 +148,7 @@
                 {% for team in team_standings %}
                 <tr>
                     <td class="rank">{{ forloop.counter }}</td>
-                    <<td class="team-name">{{ team.user__userprofile__users_team__name }}</td>
+                    <td class="team-name">{{ team.team_name }}</td>
                     <td class="points">{{ team.total_points }}</td>
                     <td class="wins">{{ team.wins }}</td>
                 </tr>

@@ -18,7 +18,7 @@ class SecurityHeadersMiddleware:
         if not settings.DEBUG:
             response['Content-Security-Policy'] = (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://use.fontawesome.com https://cdn.startbootstrap.com; "
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://use.fontawesome.com https://cdn.startbootstrap.com https://code.highcharts.com; "
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "font-src 'self' https://fonts.gstatic.com https://use.fontawesome.com; "
                 "img-src 'self' data: https:; "
