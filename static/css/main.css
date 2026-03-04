@@ -1397,3 +1397,434 @@ ul {
 .incoming-block-info{
   margin-top: 0.6rem;
 }
+
+
+/* ==========================================================
+   RESPONSIVE OVERRIDES – Team page (mobile / small screens)
+   Desktop layout is kept exactly as-is; these rules only
+   activate below the given breakpoints.
+   ========================================================== */
+
+/* ── Global guard: prevent horizontal overflow ────────── */
+.container-home,
+.main-team {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* ── ≤ 1100px  – first compression tier ──────────────── */
+@media (max-width: 1100px) {
+
+  /* GP header: let the 3 columns wrap */
+  .subcontainer-home {
+    flex-wrap: wrap;
+  }
+
+  .left-home {
+    width: 100%;
+    max-height: 220px;
+    overflow: hidden;
+  }
+
+  .image-gp-home-left {
+    object-fit: cover;
+    height: 220px;
+  }
+
+  .center-home {
+    width: 65%;
+  }
+
+  .right-home {
+    width: 35%;
+  }
+
+  /* General selections: 3 per row */
+  .general-selections {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .section {
+    width: 30%;
+    min-width: 130px;
+  }
+
+  /* Fantasy team two-panel → stack */
+  .fantasy-team {
+    flex-direction: column;
+  }
+
+  .team-selections {
+    width: 100%;
+  }
+
+  .selectable-list {
+    width: 100%;
+  }
+
+  /* Top selection bar: allow wrapping */
+  .top-selection {
+    flex-wrap: wrap;
+  }
+
+  .top-selection > section:first-child {
+    max-width: 100%;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+
+  .top-selection > section:last-child {
+    min-width: auto;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    margin-top: 0.5rem;
+  }
+}
+
+/* ── ≤ 768px  – typical phone landscape ──────────────── */
+@media (max-width: 768px) {
+
+  .mastmain {
+    padding-top: 8rem;
+  }
+
+  /* GP header: hide left track image, full-width center & right */
+  .left-home {
+    display: none;
+  }
+
+  .center-home {
+    width: 100% !important;
+  }
+
+  .center-home section:first-child {
+    width: 100% !important;
+    font-size: 3.5vw !important;   /* override inline 2vw */
+  }
+
+  .center-home section:last-child {
+    width: 35% !important;
+  }
+
+  .right-home {
+    width: 100%;
+  }
+
+  .timer-title {
+    font-size: 2.8vw;
+  }
+
+  .timer-main {
+    font-size: 5.5vw;
+  }
+
+  /* General selections: 2 per row */
+  .section {
+    width: 45%;
+  }
+
+  /* Driver selected cards: 2 per row */
+  .driver-selected-li {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .driver-selected-li li {
+    width: 45%;
+  }
+
+  /* Smaller driver photos in table */
+  .fila-piloto,
+  .fila-equipo {
+    height: auto;
+    min-height: 5.5rem;
+    flex-wrap: nowrap;
+  }
+
+  .foto-piloto {
+    width: 28%;
+    min-width: 80px;
+  }
+
+  .data-piloto {
+    width: 62%;
+  }
+
+  .driver-name {
+    font-size: 1.05rem;
+    line-height: 1.3rem;
+  }
+
+  .driver-team {
+    font-size: 0.8rem;
+    line-height: 1rem;
+  }
+
+  .driver-price {
+    font-size: 0.95rem;
+    line-height: 1.1rem;
+  }
+
+  .driver-stats li {
+    font-size: 0.7rem;
+    padding: 2px 4px;
+  }
+
+  /* Chip buttons: allow wrap */
+  .chip-buttons-wrap {
+    flex-wrap: wrap;
+  }
+
+  .chip-action-btn {
+    width: auto;
+    min-width: 110px;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.45rem;
+  }
+
+  /* Budget bar */
+  .budget-block {
+    min-width: 150px;
+    flex: 0 0 auto;
+  }
+
+  .budgetBar {
+    width: 150px;
+  }
+
+  /* Buttons */
+  .button-reset-team,
+  .button-save-team,
+  .button-save-deactivated {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+  }
+
+  /* Team selected cards: side by side instead of 80% */
+  .team-selected-li {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .team-selected-li li {
+    width: 45%;
+  }
+
+  /* Footer font */
+  .mastmain > div:last-child a:last-child {
+    font-size: 2vw !important;
+  }
+}
+
+/* ── ≤ 576px  – phone portrait ───────────────────────── */
+@media (max-width: 576px) {
+
+  .mastmain {
+    padding-top: 6.5rem;
+  }
+
+  /* GP title sizing */
+  .title-home {
+    font-size: 1.1em;
+    line-height: 1.3em;
+  }
+
+  .subtitle-home {
+    font-size: 0.8rem;
+  }
+
+  .image-gp-home-flag {
+    width: 2.2rem;
+    margin-right: 10px;
+  }
+
+  .center-home section:first-child {
+    font-size: 5vw !important;
+  }
+
+  .center-home section:last-child {
+    width: 30% !important;
+  }
+
+  /* Timer */
+  .timer-title {
+    font-size: 3.5vw;
+  }
+
+  .timer-main {
+    font-size: 7vw;
+  }
+
+  /* General selections: 1 per row */
+  .section {
+    width: 100%;
+  }
+
+  .dropdown {
+    padding: 2%;
+  }
+
+  .dropbtn {
+    padding: 10px;
+    font-size: 0.85rem;
+  }
+
+  /* Top selection bar: full stack */
+  .top-selection > section:last-child {
+    flex: 1 1 100%;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  /* Driver cards: 1 per row */
+  .driver-selected-li {
+    flex-direction: column;
+    align-items: center;
+    margin-top: 1.5ch;
+  }
+
+  .driver-selected-li li {
+    width: 85%;
+  }
+
+  .team-selected-li li {
+    width: 85%;
+  }
+
+  /* Selection div margin fix */
+  .selection-div {
+    margin-left: 2vh;
+    margin-right: 2vh;
+  }
+
+  /* Driver/team table rows */
+  .foto-piloto {
+    width: 30%;
+    min-width: 65px;
+  }
+
+  .foto-piloto-inside img {
+    height: 80px;
+  }
+
+  .data-piloto {
+    width: 55%;
+  }
+
+  .selectable-piloto,
+  .no-selectable-piloto {
+    width: 14%;
+  }
+
+  .driver-name {
+    font-size: 0.85rem;
+    line-height: 1.1rem;
+  }
+
+  .driver-team {
+    font-size: 0.65rem;
+  }
+
+  .driver-price {
+    font-size: 0.8rem;
+    line-height: 1rem;
+  }
+
+  .driver-stats li {
+    font-size: 0.6rem;
+    width: auto;
+    margin: 1%;
+  }
+
+  /* Table scroll height */
+  .tabla {
+    height: 28rem;
+  }
+
+  /* Tabs */
+  .team-driver-selectable {
+    height: auto;
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+
+  /* Budget */
+  .budget-selection {
+    font-size: 1rem;
+    line-height: 1.2rem;
+  }
+
+  /* Chips */
+  .chip-action-btn {
+    min-width: 90px;
+    min-height: 34px;
+    font-size: 0.7rem;
+    gap: 0.3rem;
+  }
+
+  .chip-action-btn img {
+    width: 20%;
+  }
+
+  /* Navbar top pane */
+  .top-pane {
+    height: 40px;
+  }
+
+  .top-right-buttons .btn {
+    width: auto;
+    min-width: 60px;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
+
+  /* Footer */
+  .mastmain > div:last-child a:last-child {
+    font-size: 2.5vw !important;
+  }
+}
+
+/* ── ≤ 400px  – very small phones ────────────────────── */
+@media (max-width: 400px) {
+
+  .center-home {
+    flex-direction: column;
+  }
+
+  .center-home section:last-child {
+    width: 50% !important;
+    justify-content: flex-start !important;
+    margin-top: 0.5rem;
+  }
+
+  .timer-container-home {
+    width: 100%;
+  }
+
+  .chip-buttons-wrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chip-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .drs-chip-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Budget block full width */
+  .budget-block {
+    min-width: 100%;
+  }
+
+  .budgetBar {
+    width: 100%;
+  }
+}
