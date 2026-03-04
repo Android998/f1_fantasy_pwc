@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'storages',
     'f1porra_website.apps.public',
     'f1porra_website.apps.accounts',
     'psycopg2'
@@ -110,6 +111,7 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
+                'django.template.context_processors.media',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'f1porra_website.apps.accounts.context_processors.current_user_profile',
@@ -202,17 +204,40 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 
-# Static files storage with compression
-if not DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# Static and media files
+# Media files configuration
 if DEBUG:
+    # Local development - use local filesystem
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 else:
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = '/home/site/wwwroot/media'
+    # Production - use Azure Blob Storage for persistent media storage
+    # This ensures uploaded files (user_photos/, team_photos/) persist across deployments
+    AZURE_ACCOUNT_NAME = env('AZURE_STORAGE_ACCOUNT_NAME', default=os.getenv('AZURE_STORAGE_ACCOUNT_NAME', ''))
+    AZURE_ACCOUNT_KEY = env('AZURE_STORAGE_ACCOUNT_KEY', default=os.getenv('AZURE_STORAGE_ACCOUNT_KEY', ''))
+    AZURE_CONTAINER = env('AZURE_STORAGE_CONTAINER', default=os.getenv('AZURE_STORAGE_CONTAINER', 'media'))
+    
+    if AZURE_ACCOUNT_NAME and AZURE_ACCOUNT_KEY:
+        # Azure Blob Storage is configured - use STORAGES (Django 4.2+)
+        STORAGES = {
+            'default': {
+                'BACKEND': 'storages.backends.azure_storage.AzureStorage',
+                'OPTIONS': {
+                    'account_name': AZURE_ACCOUNT_NAME,
+                    'account_key': AZURE_ACCOUNT_KEY,
+                    'azure_container': AZURE_CONTAINER,
+                    'expiration_secs': None,  # No expiration for public access
+                },
+            },
+            'staticfiles': {
+                'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+            },
+        }
+        MEDIA_URL = f'https://{AZURE_ACCOUNT_NAME}.blob.core.windows.net/{AZURE_CONTAINER}/'
+    else:
+        # Fallback to local storage if Azure not configured
+        STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+        MEDIA_URL = '/media/'
+        MEDIA_ROOT = '/home/site/wwwroot/media'
 
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB max

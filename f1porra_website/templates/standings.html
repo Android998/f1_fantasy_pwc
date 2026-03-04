@@ -77,7 +77,7 @@
                     <td class="rank">{{ forloop.counter }}</td>
                     <td class="user-name">
                         {% if user.profile_photo %}
-                            <img src="/media/{{ user.profile_photo }}" class="profile-photo" alt="Profile Photo">
+                            <img src="{{ MEDIA_URL }}{{ user.profile_photo }}" class="profile-photo" alt="Profile Photo">
                         {% else %}
                             <img src="{% static 'theme/assets/users/default.png' %}"  class="profile-photo" alt="Default Profile Photo">
                         {% endif %}
