@@ -179,7 +179,7 @@
     <div class="fantasy-team">
         <div class="team-selections">
             <div class="top-selection">
-                <section>
+                <section class="top-selection-budget">
                     <div class="budget-block">
                         <label id="available-budget" class="budget-selection">
                             <span style="font-family: Formula1Regular; font-weight: 100;font-size: 1rem;">Límite de coste:</span>
@@ -190,32 +190,6 @@
                         <span id="budget-span" style="width: {{bar_length}}px;"></span>
                     </div>
                     </div>
-                    <div class="chip-buttons-wrap">
-                        <input id="triple-points-chip" type="checkbox" class="chip-hidden-input" {% if user_porra.triple_points_chip %}checked{% endif %} {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
-
-                        <div class="drs-chip-row">
-                            <button id="drs-chip-button" class="chip-action-btn chip-action-drs {% if user_porra.triple_points_chip %}active{% endif %}" type="button" data-confirm-message="{{ drs_chip_reset_message }}" {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
-                                <img src="{% static 'theme/assets/icons/drsboost.png' %}" alt="DRS Boost" onerror="this.style.display='none'">
-                                <span>DRS Boost</span>
-                            </button>
-                            <span id="drs-chip-status" class="chip-status {% if user_porra.triple_points_chip %}active{% endif %}">
-                                {% if user_porra.triple_points_chip %}Active{% endif %}
-                            </span>
-                        </div>
-
-                        <button id="pitstop-chip-button"
-                            class="chip-action-btn chip-action-pit"
-                            type="button"
-                            data-has-block="{% if current_block %}true{% else %}false{% endif %}"
-                            data-block-target="{% if current_block and current_block.target %}{{ current_block.target.username|escape }}{% endif %}"
-                            data-block-asset-type="{% if current_block %}{{ current_block.asset_type|escape }}{% endif %}"
-                            data-block-driver="{% if current_block and current_block.blocked_driver %}{{ current_block.blocked_driver.name|escape }}{% endif %}"
-                            data-block-team="{% if current_block and current_block.blocked_team %}{{ current_block.blocked_team.name|escape }}{% endif %}"
-                            {% if block_chip_deadline_passed or not current_block and not block_chip_available %}disabled{% endif %}>
-                            <img src="{% static 'theme/assets/icons/pitstop.png' %}" alt="Pit Stop" onerror="this.style.display='none'">
-                            <span>Pit Stop</span>
-                        </button>
-                    </div>
                     {% if incoming_block %}
                     <p class="chip-current-info incoming-block-info">
                         Estás bloqueado por <strong>{{ incoming_block.blocker.username }}</strong>
@@ -224,7 +198,29 @@
                     </p>
                     {% endif %}
                 </section>
-                <section>
+                <section class="top-selection-actions">
+                    <input id="triple-points-chip" type="checkbox" class="chip-hidden-input" {% if user_porra.triple_points_chip %}checked{% endif %} {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
+                    <div class="drs-chip-row">
+                        <button id="drs-chip-button" class="btn chip-action-btn chip-action-drs {% if user_porra.triple_points_chip %}active{% endif %}" type="button" data-confirm-message="{{ drs_chip_reset_message }}" {% if not triple_chip_available and not user_porra.triple_points_chip %}disabled{% endif %}>
+                            <img src="{% static 'theme/assets/icons/drsboost.png' %}" alt="DRS Boost" onerror="this.style.display='none'">
+                            <span>DRS Boost</span>
+                        </button>
+                        <span id="drs-chip-status" class="chip-status {% if user_porra.triple_points_chip %}active{% endif %}">
+                            {% if user_porra.triple_points_chip %}Active{% endif %}
+                        </span>
+                    </div>
+                    <button id="pitstop-chip-button"
+                        class="btn chip-action-btn chip-action-pit"
+                        type="button"
+                        data-has-block="{% if current_block %}true{% else %}false{% endif %}"
+                        data-block-target="{% if current_block and current_block.target %}{{ current_block.target.username|escape }}{% endif %}"
+                        data-block-asset-type="{% if current_block %}{{ current_block.asset_type|escape }}{% endif %}"
+                        data-block-driver="{% if current_block and current_block.blocked_driver %}{{ current_block.blocked_driver.name|escape }}{% endif %}"
+                        data-block-team="{% if current_block and current_block.blocked_team %}{{ current_block.blocked_team.name|escape }}{% endif %}"
+                        {% if block_chip_deadline_passed or not current_block and not block_chip_available %}disabled{% endif %}>
+                        <img src="{% static 'theme/assets/icons/pitstop.png' %}" alt="Pit Stop" onerror="this.style.display='none'">
+                        <span>Pit Stop</span>
+                    </button>
                     <button class="btn button-reset-team" type="button">
                         <span>Reset Team</span>
                     </button>
@@ -242,7 +238,7 @@
                             <span class="close-button" onclick="closeModal()">&times;</span>
                             <p>Team saved successfully!</p>
                         </div>
-                    </div>                    
+                    </div>
                 </section>
             </div>
             <div id="block-chip-modal" class="modal" style="display:none;">
@@ -871,7 +867,7 @@
         </div>
     </div>
 </div>
-<script src="{% static 'js/teams.js' %}?v=2"></script>
+<script src="{% static 'js/teams.js' %}?v=3"></script>
 
 <meta name="csrf-token" content="{{ csrf_token }}">
 <meta name="gp-id" content="{{data.name}}">
