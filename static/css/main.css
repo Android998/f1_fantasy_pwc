@@ -1567,13 +1567,20 @@ ul {
     height: 15px;
   }
 
-  /* Remove button: center on mobile (team logo overlaps X) */
+  /* Keep X button above team logo on mobile */
   .remove-selected {
-    position: static;
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    padding: 4px 0;
+    z-index: 5;
+  }
+
+  /* Team card logo: center on mobile so it doesn't overlap X */
+  .team-photo-stack .team-logo-ring {
+    right: auto;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 2.2rem;
+    height: 2.2rem;
+    padding: 0.2rem;
   }
 
   /* Driver table: logo & number scale down */
@@ -1792,6 +1799,17 @@ ul {
     padding: 0.15rem;
   }
 
+  /* Team card logo: stay centered */
+  .team-photo-stack .team-logo-ring {
+    right: auto;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 1.8rem;
+    height: 1.8rem;
+    padding: 0.15rem;
+  }
+
   .driver-team-number {
     right: 0.35rem;
     bottom: 0.2rem;
@@ -1862,6 +1880,17 @@ ul {
     height: 1.5rem;
     right: 0.25rem;
     top: 0.25rem;
+    padding: 0.12rem;
+  }
+
+  /* Team card logo: stay centered */
+  .team-photo-stack .team-logo-ring {
+    right: auto;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 1.5rem;
+    height: 1.5rem;
     padding: 0.12rem;
   }
 
