@@ -7,7 +7,7 @@
     <div class="view-team-gp">
         <div class="main-title-team">
             {% if user_profile.photo %}
-                <img src="/media/{{ user_profile.photo }}" alt="User Photo" class="profile-photo-large">
+                <img src="{{ MEDIA_URL }}{{ user_profile.photo }}" alt="User Photo" class="profile-photo-large">
             {% else %}
                 <img src="{% static 'theme/assets/users/default.png' %}" alt="Default Profile Photo" class="profile-photo-large">
             {% endif %}
