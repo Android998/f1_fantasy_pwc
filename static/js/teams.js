@@ -939,6 +939,22 @@ window.onclick = function(event) {
 
 
 function updateAddButtonVisibility() {
+    // Count how many driver and team slots are currently filled
+    let filledDrivers = 0;
+    let filledTeams = 0;
+
+    for (let i = 1; i <= 5; i++) {
+        const sel = document.getElementById(`selection${i}`);
+        if (sel && sel.style.display !== 'none') filledDrivers++;
+    }
+    for (let i = 6; i <= 7; i++) {
+        const sel = document.getElementById(`selection${i}`);
+        if (sel && sel.style.display !== 'none') filledTeams++;
+    }
+
+    const allDriversFull = filledDrivers >= 5;
+    const allTeamsFull   = filledTeams >= 2;
+
     const rows = document.querySelectorAll('.fila-piloto, .fila-equipo');
 
     rows.forEach(row => {
@@ -950,6 +966,17 @@ function updateAddButtonVisibility() {
             return;
         }
         if (row.querySelector('.no-selectable-piloto').style.display === 'none') {
+            // Determine if this row is a driver or team
+            const isDriver = row.classList.contains('fila-piloto');
+            const isTeam   = row.classList.contains('fila-equipo');
+
+            // If all slots for this type are full, disable the button
+            if ((isDriver && allDriversFull) || (isTeam && allTeamsFull)) {
+                row.style.opacity = '0.5';
+                addButton.disabled = true;
+                return;
+            }
+
             // Obtener el precio del piloto/equipo
             const price = row.querySelector(`.driver-price span:first-child`).innerText;
             const cost = parseFloat(price.replace('M', '').replace('$', ''));

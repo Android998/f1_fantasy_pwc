@@ -66,6 +66,7 @@
                     <th class="wins">Wins</th>
                     <th class="podiums">Podiums</th>
                     <th class="last-2">Last 2</th>
+                    <th class="chips">Chips</th>
                     {% if selected_gp != 'overall' %}
                     <th class="view-team">Picked Team</th>
                     {% endif %}
@@ -118,6 +119,16 @@
                     <td class="wins">{{ user.wins }}</td>
                     <td class="podiums">{{ user.podiums }}</td>
                     <td class="last-2">{{ user.last_2 }}</td>
+                    <td class="chips">
+                        <div class="chip-icons">
+                            <span class="chip-icon chip-drs {% if user.chips.drs_available %}available{% else %}used{% endif %}" title="DRS">
+                                <img src="{% static 'theme/assets/icons/drsboost.png' %}" alt="DRS">
+                            </span>
+                            <span class="chip-icon chip-pit {% if user.chips.pit_available %}available{% else %}used{% endif %}" title="Pit Stop">
+                                <img src="{% static 'theme/assets/icons/pitstop.png' %}" alt="Pit Stop">
+                            </span>
+                        </div>
+                    </td>
                     {% if selected_gp != 'overall' %}
                     <td style="font-size: 0.8em;" class="view-team">
                         <a href="{% url 'public:view_team' user.user__username selected_gp %}">View team</a>
@@ -126,7 +137,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="{% if selected_gp == 'overall' %}7{% else %}8{% endif %}">No standings available.</td>
+                    <td colspan="{% if selected_gp == 'overall' %}8{% else %}9{% endif %}">No standings available.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -148,7 +159,7 @@
                 {% for team in team_standings %}
                 <tr>
                     <td class="rank">{{ forloop.counter }}</td>
-                    <<td class="team-name">{{ team.user__userprofile__users_team__name }}</td>
+                    <td class="team-name">{{ team.team_name }}</td>
                     <td class="points">{{ team.total_points }}</td>
                     <td class="wins">{{ team.wins }}</td>
                 </tr>

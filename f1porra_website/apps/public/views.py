@@ -1044,6 +1044,7 @@ def standings(request):
     selected_season_year = request.GET.get('season', str(default_season.year))
     selected_season = Season.objects.filter(year=int(selected_season_year)).first() or default_season
     selected_gp = request.GET.get('gp', 'overall')
+    now = timezone.now()
 
     # Get all completed Grand Prixes (those with points) for the selected season
     grand_prix_with_points = Porra.objects.filter(points__gt=0, season=selected_season).values_list('gp', flat=True).distinct()
@@ -1059,6 +1060,45 @@ def standings(request):
         # Filter standings by the selected Grand Prix
         porra_entries = Porra.objects.filter(season=selected_season, gp__country=selected_gp)
 
+    selected_gp_obj = None
+    if selected_gp != 'overall':
+        selected_gp_obj = GrandPrix.objects.filter(season=selected_season, country=selected_gp).first()
+
+    closed_gps = GrandPrix.objects.filter(season=selected_season, last_edit_date__lte=now).order_by('nround')
+    max_closed_gp = closed_gps.last() if closed_gps.exists() else None
+
+    if selected_gp == 'overall':
+        reference_round = max_closed_gp.nround if max_closed_gp else None
+    else:
+        if selected_gp_obj and selected_gp_obj.last_edit_date and selected_gp_obj.last_edit_date <= now:
+            reference_round = selected_gp_obj.nround
+        else:
+            reference_gp = closed_gps.filter(nround__lte=selected_gp_obj.nround).last() if selected_gp_obj else max_closed_gp
+            reference_round = reference_gp.nround if reference_gp else None
+
+    drs_used_by_user = set()
+    pit_used_by_user = set()
+    if reference_round:
+        window = _chip_window(reference_round)
+        window_start = window * 12
+        window_end = min((window + 1) * 12, reference_round)
+        drs_used_by_user = set(
+            Porra.objects.filter(
+                season=selected_season,
+                gp__nround__gt=window_start,
+                gp__nround__lte=window_end,
+                gp__last_edit_date__lte=now,
+                triple_points_chip=True,
+            ).values_list('user_id', flat=True)
+        )
+        pit_used_by_user = set(
+            BlockChip.objects.filter(
+                season=selected_season,
+                gp__nround__gt=window_start,
+                gp__nround__lte=window_end,
+                gp__last_edit_date__lte=now,
+            ).values_list('blocker_id', flat=True)
+        )
     # Get all users for the selected season who have porras
     all_users = porra_entries.values('user__username').distinct()
     wins_per_user = {user['user__username']: 0 for user in all_users}
@@ -1153,6 +1193,8 @@ def standings(request):
             for achievement in unique_achievements.values()
         ]
         achievements_list.sort(key=lambda item: (not item["is_featured"], item["name"].lower()))
+        drs_available = user['user_id'] not in drs_used_by_user
+        pit_available = user['user_id'] not in pit_used_by_user
         standing_row = {
             'user__username': username,
             'user__first_name': user['user__first_name'],
@@ -1163,6 +1205,10 @@ def standings(request):
             'podiums': podiums_per_user.get(username, 0),
             'last_2': last_2_per_user.get(username, 0),
             'achievements_list': achievements_list,
+            'chips': {
+                'drs_available': drs_available,
+                'pit_available': pit_available,
+            },
             'featured_achievement': {
                 'name': featured.name,
                 'icon': featured.icon,

@@ -86,8 +86,8 @@
 }
 
 .standings-table thead{
-    font-family: "Formula1Black";
-    font-size: 1.2em;
+    font-family: "Formula1Regular";
+    font-size: 1.05em;
 }
 
 .standings-table tbody{
@@ -150,6 +150,11 @@
     text-align: center; /* Center align all data in table cells */
 }
 
+.chips{
+    width: 10%;
+    text-align: center;
+}
+
 .view-team{
     width: 9%; /* Narrower for numeric columns */
     text-align: center; /* Center align all data in table cells */
@@ -178,6 +183,53 @@
     margin-right: 5px; /* Space between image and text */
 }
 
+.chip-icons{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.chip-icon{
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #9a9a9a;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.chip-icon img{
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    transform: scale(2.1);
+}
+
+.chip-icon.available{
+    background-color: #E10600;
+}
+
+.chip-icon.chip-drs.available{
+    background-color: #8d1598;
+}
+
+.chip-icon.chip-pit.available{
+    background-color: #1d7c32;
+}
+
+.chip-icon.used{
+    background-color: #9a9a9a;
+}
+
+.chip-icon.used img{
+    filter: grayscale(1) brightness(0.7);
+    opacity: 0.85;
+}
+
 
 
 /* Team Standings */
@@ -204,8 +256,8 @@
 }
 
 .standings-table-team thead{
-    font-family: "Formula1Black";
-    font-size: 1.2em;
+    font-family: "Formula1Regular";
+    font-size: 1.05em;
 }
 
 .standings-table-team tbody{

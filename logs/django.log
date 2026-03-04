@@ -1580,3 +1580,111 @@ ERROR 2026-03-04 09:38:23,474 basehttp You're accessing the development server o
 ERROR 2026-03-04 09:38:23,478 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
 ERROR 2026-03-04 09:38:23,479 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
 ERROR 2026-03-04 09:38:23,480 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-04 18:35:07,286 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-04 18:35:07,291 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-04 18:42:00,859 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-04 18:42:00,861 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+WARNING 2026-03-04 18:42:29,981 log Not Found: /favicon.ico
+WARNING 2026-03-04 18:42:29,983 basehttp "GET /favicon.ico HTTP/1.1" 404 5922
+WARNING 2026-03-04 19:17:06,371 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:17:06,373 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:17:14,071 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:17:14,072 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:19:42,155 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:19:42,157 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:19:48,123 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:19:48,124 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:20:35,383 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:20:35,384 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:20:35,473 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:20:35,476 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:23:49,077 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:23:49,078 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:23:49,229 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:23:49,230 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:29:09,832 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:29:09,833 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:29:14,793 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:29:14,794 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:29:36,651 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:29:36,651 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:29:37,346 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:29:37,347 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:30:51,677 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:30:51,681 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:32:20,420 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:32:20,421 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:38:02,251 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:38:02,252 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:38:09,382 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:38:09,384 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:38:19,297 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:38:19,300 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:39:35,083 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:39:35,085 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:39:44,543 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:39:44,544 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:42:01,193 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:42:01,195 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:42:01,259 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:42:01,260 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:42:09,682 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:42:09,683 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:42:10,299 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:42:10,301 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:43:56,875 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:43:56,877 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:43:57,070 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:43:57,074 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:46:09,218 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:46:09,218 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:46:09,431 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:46:09,433 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:50:04,020 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:50:04,021 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:50:04,276 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:50:04,279 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:50:47,909 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:50:47,914 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:50:48,192 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:50:48,193 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:53:01,566 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:53:01,566 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:53:01,797 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:53:01,799 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:54:39,313 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:54:39,313 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:54:39,537 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:54:39,540 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 19:59:16,259 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 19:59:16,261 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:00:09,011 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:00:09,012 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:00:09,144 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:00:09,146 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:01:58,078 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:01:58,079 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:01:58,721 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:01:58,723 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:02:01,876 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:02:01,877 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:02:05,204 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:02:05,210 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:02:24,910 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:02:24,911 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:02:38,114 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:02:38,115 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:02:44,494 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:02:44,495 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:02:44,525 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:02:44,525 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:04:54,760 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:04:54,761 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:04:55,073 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:04:55,074 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:05:02,603 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:05:02,604 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:05:08,302 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:05:08,303 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
+WARNING 2026-03-04 20:05:11,624 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-04 20:05:11,625 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6271
