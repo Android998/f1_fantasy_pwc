@@ -1580,3 +1580,9 @@ ERROR 2026-03-04 09:38:23,474 basehttp You're accessing the development server o
 ERROR 2026-03-04 09:38:23,478 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
 ERROR 2026-03-04 09:38:23,479 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
 ERROR 2026-03-04 09:38:23,480 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-04 18:35:07,286 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-04 18:35:07,291 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-04 18:42:00,859 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-04 18:42:00,861 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+WARNING 2026-03-04 18:42:29,981 log Not Found: /favicon.ico
+WARNING 2026-03-04 18:42:29,983 basehttp "GET /favicon.ico HTTP/1.1" 404 5922
