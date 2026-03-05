@@ -112,6 +112,34 @@ def normalize_name(name):
     
     return ' '.join(word.capitalize() if word.upper() != "RB" else "RB" for word in name.split())
 
+
+def _madrid_tz():
+    return pytz.timezone('Europe/Madrid')
+
+
+def _ensure_aware_utc(dt):
+    if dt is None:
+        return None
+    if timezone.is_naive(dt):
+        # assume stored in UTC when naive
+        dt = timezone.make_aware(dt, pytz.UTC)
+    return dt.astimezone(pytz.UTC)
+
+
+def _gp_in_madrid(dt):
+    utc_dt = _ensure_aware_utc(dt)
+    if utc_dt is None:
+        return None
+    return utc_dt.astimezone(_madrid_tz())
+
+
+def _now_madrid():
+    return datetime.now(pytz.UTC).astimezone(_madrid_tz())
+
+
+def _now_utc_from_madrid():
+    return _now_madrid().astimezone(pytz.UTC)
+
 def _chip_window(nround):
     if not nround:
         return None
@@ -147,8 +175,24 @@ def _block_chip_available(user, gp):
 def _block_chip_deadline_passed(gp, now):
     if not gp or not gp.last_edit_date:
         return True
-    deadline = gp.last_edit_date - dt.timedelta(hours=24)
-    return now >= deadline
+
+    gp_madrid = _gp_in_madrid(gp.last_edit_date)
+    if gp_madrid is None:
+        return True
+
+    # Deadline is 24 hours before GP close in Madrid timezone
+    deadline_madrid = gp_madrid - dt.timedelta(days=1)
+    deadline_utc = deadline_madrid.astimezone(pytz.UTC)
+
+    # Normalize `now` to aware UTC
+    if now is None:
+        now = _now_utc_from_madrid()
+    if timezone.is_naive(now):
+        now = timezone.make_aware(now, pytz.UTC)
+    else:
+        now = now.astimezone(pytz.UTC)
+
+    return now >= deadline_utc
 
 
 def _get_incoming_block_for_user(user, gp):
@@ -277,10 +321,13 @@ def home(request):
     if not latest_grand_prix:
         return render(request, 'home.html', {'data': {}})
 
-    # Calculate time remaining
-    now = datetime.now(pytz.UTC)  # Make the current time timezone-aware
-    time_remaining = latest_grand_prix.last_edit_date - now # Calculate time remaining
-    due_date = latest_grand_prix.last_edit_date <= now
+    # Calculate time remaining (relative to Spain timezone)
+    now_madrid = _now_madrid()
+    gp_madrid = _gp_in_madrid(latest_grand_prix.last_edit_date)
+    if gp_madrid is None:
+        return render(request, 'home.html', {'data': {}})
+    time_remaining = gp_madrid - now_madrid
+    due_date = gp_madrid <= now_madrid
     days = max(time_remaining.days, 0)
     hours = time_remaining.seconds//3600 if not due_date else 0
     minutes = (time_remaining.seconds//60)%60 if not due_date else 0
@@ -447,7 +494,7 @@ def rules(request):
 def use_block_chip(request):
     """Use block chip with enhanced security validation."""
     current_season = get_current_season()
-    now = datetime.now(pytz.UTC)
+    now = _now_utc_from_madrid()
     
     try:
         payload = json.loads(request.body)
@@ -531,7 +578,7 @@ def use_block_chip(request):
 def cancel_block_chip(request):
     """Cancel block chip with enhanced security validation."""
     current_season = get_current_season()
-    now = datetime.now(pytz.UTC)
+    now = _now_utc_from_madrid()
     
     try:
         payload = json.loads(request.body)
@@ -584,7 +631,9 @@ def calendar_view(request):
             },
         )
 
-    now_utc = datetime.now(pytz.UTC)
+    # Use Madrid as authoritative timezone; convert to UTC for DB queries
+    now_madrid = _now_madrid()
+    now_utc = now_madrid.astimezone(pytz.UTC)
     gps = list(GrandPrix.objects.filter(season=season).order_by("nround", "id"))
     scored_gp_ids = set(
         Porra.objects.filter(season=season, points__isnull=False).values_list("gp_id", flat=True).distinct()
@@ -612,7 +661,11 @@ def calendar_view(request):
         if not reference_dt:
             continue
 
-        race_day = reference_dt.date()
+        # Compute race day and locked/past status relative to Spain timezone
+        reference_dt_madrid = _gp_in_madrid(reference_dt)
+        if reference_dt_madrid is None:
+            continue
+        race_day = reference_dt_madrid.date()
         is_past = gp.id in scored_gp_ids or (gp.gp_end_date is not None and gp.gp_end_date <= now_utc)
         is_locked = (gp.last_edit_date is not None and gp.last_edit_date <= now_utc and not is_past)
 
@@ -935,7 +988,7 @@ def use_block_chip(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
-    now = datetime.now(pytz.UTC)
+    now = _now_utc_from_madrid()
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError:
@@ -1002,7 +1055,7 @@ def cancel_block_chip(request):
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     current_season = get_current_season()
-    now = datetime.now(pytz.UTC)
+    now = _now_utc_from_madrid()
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError:
@@ -1044,7 +1097,7 @@ def standings(request):
     selected_season_year = request.GET.get('season', str(default_season.year))
     selected_season = Season.objects.filter(year=int(selected_season_year)).first() or default_season
     selected_gp = request.GET.get('gp', 'overall')
-    now = timezone.now()
+    now = _now_utc_from_madrid()
 
     # Get all completed Grand Prixes (those with points) for the selected season
     grand_prix_with_points = Porra.objects.filter(points__gt=0, season=selected_season).values_list('gp', flat=True).distinct()
@@ -1316,7 +1369,7 @@ def view_team(request, username, gp):
 def team(request):
     """Team view with enhanced security."""
     current_season = get_current_season()
-    now = datetime.now(pytz.UTC)
+    now = _now_utc_from_madrid()
     
     if request.method == 'POST':
         try:
@@ -1351,8 +1404,10 @@ def team(request):
         if not gp:
             return JsonResponse({'success': False, 'error': 'GP no válido'}, status=400)
 
-        # Check if deadline passed
-        if gp.last_edit_date and gp.last_edit_date <= now:
+        # Check if deadline passed (Spain timezone)
+        gp_madrid = _gp_in_madrid(gp.last_edit_date)
+        now_madrid = _now_madrid()
+        if gp_madrid and gp_madrid <= now_madrid:
             return JsonResponse({'success': False, 'error': 'El plazo para editar ha terminado.'}, status=400)
 
         incoming_block = _get_incoming_block_for_user(user, gp)
@@ -1448,8 +1503,24 @@ def team(request):
 
     # Calculate time remaining only when latest GP and its date exist
     if latest_grand_prix and latest_grand_prix.last_edit_date:
-        time_remaining = latest_grand_prix.last_edit_date - now
-        due_date = latest_grand_prix.last_edit_date <= now
+        now_madrid = _now_madrid()
+        gp_madrid = _gp_in_madrid(latest_grand_prix.last_edit_date)
+        if gp_madrid is None:
+            data = {
+                'round': latest_gp,
+                'name': '',
+                'official_name': '',
+                'photo_link': '',
+                'country_link': '',
+                'gp_photo': '',
+                'hours': 0,
+                'minutes': 0,
+                'days': 0,
+                'due_date': True
+            }
+        else:
+            time_remaining = gp_madrid - now_madrid
+            due_date = gp_madrid <= now_madrid
         days = max(time_remaining.days, 0)
         hours = time_remaining.seconds // 3600 if not due_date else 0
         minutes = (time_remaining.seconds // 60) % 60 if not due_date else 0
