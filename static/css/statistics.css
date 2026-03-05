@@ -897,3 +897,50 @@
     border-color: #E10600;
     color: #7f0000;
 }
+
+/* Standings chips + zoom stability (scoped to statistics page) */
+.statistics-page .user-standings {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.statistics-page .standings-table {
+    width: 100%;
+    min-width: 980px;
+    table-layout: fixed;
+}
+
+.statistics-page .standings-table th,
+.statistics-page .standings-table td {
+    white-space: nowrap;
+}
+
+.statistics-page .chip-icons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.statistics-page .chip-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 2.75rem;
+}
+
+.statistics-page .chip-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    transform: scale(2.6);
+}
+
+/* Fine centering per icon asset (both PNGs have asymmetric whitespace) */
+.statistics-page .chip-icon.chip-drs img {
+    transform: translateX(1px) scale(2.6);
+}
+
+.statistics-page .chip-icon.chip-pit img {
+    transform: translateX(2px) scale(2.6);
+}
