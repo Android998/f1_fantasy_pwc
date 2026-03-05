@@ -9,6 +9,7 @@ urlpatterns = [
     path('calendar/', views.calendar_view, name="calendar"),
     path('prices/', views.prices, name="prices"),
     path('rules/', views.rules, name="rules"),
+    path('bote/', views.bote, name="bote"),
     path('achievements/', views.achievements, name="achievements"),
     path('achievements/feature/', views.set_featured_achievement, name="set_featured_achievement"),
     path('standings/', views.standings, name="standings"),

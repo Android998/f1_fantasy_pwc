@@ -488,6 +488,150 @@ def rules(request):
     return render(request, 'rules.html')
 
 
+def bote(request):
+    current_season = get_current_season()
+    season = current_season or Season.objects.order_by('-year').first()
+
+    if season is None:
+        return render(
+            request,
+            "bote.html",
+            {
+                "season": None,
+                "rows": [],
+                "total_pool": 0.0,
+                "gps_counted": 0,
+            },
+        )
+
+    now = _now_utc_from_madrid()
+    scored_gp_ids = (
+        Porra.objects.filter(
+            season=season,
+            points__isnull=False,
+            gp__last_edit_date__lte=now,
+        )
+        .values_list("gp_id", flat=True)
+        .distinct()
+    )
+    gps = list(GrandPrix.objects.filter(id__in=scored_gp_ids).order_by("nround", "id"))
+
+    season_profiles = (
+        UserProfile.objects.filter(season=season)
+        .select_related("user", "users_team")
+    )
+    profile_by_user_id = {profile.user_id: profile for profile in season_profiles}
+
+    participant_ids = set(profile_by_user_id.keys())
+    porra_user_ids = set(
+        Porra.objects.filter(season=season, gp_id__in=[gp.id for gp in gps]).values_list("user_id", flat=True)
+    )
+    participant_ids.update(porra_user_ids)
+
+    penalties = {
+        user_id: {"last2": 0.0, "last_team": 0.0}
+        for user_id in participant_ids
+    }
+
+    team_member_ids = defaultdict(list)
+    for profile in season_profiles:
+        if profile.users_team_id:
+            team_member_ids[profile.users_team_id].append(profile.user_id)
+
+    cumulative_team_points = {team_id: 0.0 for team_id in team_member_ids.keys()}
+
+    for gp in gps:
+        gp_entries = list(
+            Porra.objects.filter(season=season, gp=gp, points__isnull=False)
+            .values("user_id", "points")
+        )
+        if not gp_entries:
+            continue
+
+        # LAST 2 penalties:
+        # - Last position: each tied user pays 3€
+        # - Penultimate position tie: tied users split 3€ (3/N each)
+        unique_scores = sorted({float(entry["points"] or 0.0) for entry in gp_entries})
+        worst_score = unique_scores[0]
+        worst_users = [entry["user_id"] for entry in gp_entries if float(entry["points"] or 0.0) == worst_score]
+        for user_id in worst_users:
+            penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
+            penalties[user_id]["last2"] += 3.0
+
+        if len(unique_scores) > 1:
+            penultimate_score = unique_scores[1]
+            penultimate_users = [
+                entry["user_id"]
+                for entry in gp_entries
+                if float(entry["points"] or 0.0) == penultimate_score
+            ]
+            if penultimate_users:
+                split_penalty = 3.0 / len(penultimate_users)
+                for user_id in penultimate_users:
+                    penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
+                    penalties[user_id]["last2"] += split_penalty
+
+        # LAST TEAM penalties (accumulated standings after each GP):
+        # penalize all members of the team that is last in cumulative team points.
+        gp_team_points = defaultdict(float)
+        for entry in gp_entries:
+            user_id = entry["user_id"]
+            profile = profile_by_user_id.get(user_id)
+            if profile and profile.users_team_id:
+                gp_team_points[profile.users_team_id] += float(entry["points"] or 0.0)
+
+        for team_id in cumulative_team_points.keys():
+            cumulative_team_points[team_id] += gp_team_points.get(team_id, 0.0)
+
+        if cumulative_team_points:
+            min_total = min(cumulative_team_points.values())
+            last_team_ids = [
+                team_id
+                for team_id, total in cumulative_team_points.items()
+                if total == min_total
+            ]
+            for team_id in last_team_ids:
+                for user_id in team_member_ids.get(team_id, []):
+                    penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
+                    penalties[user_id]["last_team"] += 3.0
+
+    users_map = {user.id: user for user in User.objects.filter(id__in=participant_ids)}
+    rows = []
+    for user_id in participant_ids:
+        user_obj = users_map.get(user_id)
+        if not user_obj:
+            continue
+        profile = profile_by_user_id.get(user_id)
+        team_name = profile.users_team.name if profile and profile.users_team else "No Team"
+        last2 = round(penalties.get(user_id, {}).get("last2", 0.0), 2)
+        last_team = round(penalties.get(user_id, {}).get("last_team", 0.0), 2)
+        total = round(last2 + last_team, 2)
+        rows.append(
+            {
+                "username": user_obj.username,
+                "name": user_obj.first_name or user_obj.username,
+                "team_name": team_name,
+                "last2_penalty": last2,
+                "last_team_penalty": last_team,
+                "total_penalty": total,
+            }
+        )
+
+    rows.sort(key=lambda row: (-row["total_penalty"], row["name"].lower()))
+    total_pool = round(sum(row["total_penalty"] for row in rows), 2)
+
+    return render(
+        request,
+        "bote.html",
+        {
+            "season": season,
+            "rows": rows,
+            "total_pool": total_pool,
+            "gps_counted": len(gps),
+        },
+    )
+
+
 @login_required
 @require_POST
 @rate_limit('use_block_chip', limit=5, period=60)
