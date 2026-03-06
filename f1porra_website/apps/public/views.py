@@ -110,7 +110,42 @@ def normalize_name(name):
     if not name:
         return ""
     
-    return ' '.join(word.capitalize() if word.upper() != "RB" else "RB" for word in name.split())
+    def fix_mc(word):
+        if word.upper() == "RB":
+            return "RB"
+        if word.lower().startswith("mc") and len(word) > 2:
+            # Special case for McLaren and similar names
+            return "Mc" + word[2].upper() + word[3:]
+        return word.capitalize()
+    return ' '.join(fix_mc(word) for word in name.split())
+
+
+def _madrid_tz():
+    return pytz.timezone('Europe/Madrid')
+
+
+def _ensure_aware_utc(dt):
+    if dt is None:
+        return None
+    if timezone.is_naive(dt):
+        # assume stored in UTC when naive
+        dt = timezone.make_aware(dt, pytz.UTC)
+    return dt.astimezone(pytz.UTC)
+
+
+def _gp_in_madrid(dt):
+    utc_dt = _ensure_aware_utc(dt)
+    if utc_dt is None:
+        return None
+    return utc_dt.astimezone(_madrid_tz())
+
+
+def _now_madrid():
+    return datetime.now(pytz.UTC).astimezone(_madrid_tz())
+
+
+def _now_utc_from_madrid():
+    return _now_madrid().astimezone(pytz.UTC)
 
 def _chip_window(nround):
     if not nround:
@@ -147,8 +182,24 @@ def _block_chip_available(user, gp):
 def _block_chip_deadline_passed(gp, now):
     if not gp or not gp.last_edit_date:
         return True
-    deadline = gp.last_edit_date - dt.timedelta(hours=24)
-    return now >= deadline
+
+    gp_madrid = _gp_in_madrid(gp.last_edit_date)
+    if gp_madrid is None:
+        return True
+
+    # Deadline is 24 hours before GP close in Madrid timezone
+    deadline_madrid = gp_madrid - dt.timedelta(days=1)
+    deadline_utc = deadline_madrid.astimezone(pytz.UTC)
+
+    # Normalize `now` to aware UTC
+    if now is None:
+        now = _now_utc_from_madrid()
+    if timezone.is_naive(now):
+        now = timezone.make_aware(now, pytz.UTC)
+    else:
+        now = now.astimezone(pytz.UTC)
+
+    return now >= deadline_utc
 
 
 def _get_incoming_block_for_user(user, gp):
@@ -277,10 +328,13 @@ def home(request):
     if not latest_grand_prix:
         return render(request, 'home.html', {'data': {}})
 
-    # Calculate time remaining
-    now = datetime.now(pytz.UTC)  # Make the current time timezone-aware
-    time_remaining = latest_grand_prix.last_edit_date - now # Calculate time remaining
-    due_date = latest_grand_prix.last_edit_date <= now
+    # Calculate time remaining (relative to Spain timezone)
+    now_madrid = _now_madrid()
+    gp_madrid = _gp_in_madrid(latest_grand_prix.last_edit_date)
+    if gp_madrid is None:
+        return render(request, 'home.html', {'data': {}})
+    time_remaining = gp_madrid - now_madrid
+    due_date = gp_madrid <= now_madrid
     days = max(time_remaining.days, 0)
     hours = time_remaining.seconds//3600 if not due_date else 0
     minutes = (time_remaining.seconds//60)%60 if not due_date else 0
@@ -441,13 +495,165 @@ def rules(request):
     return render(request, 'rules.html')
 
 
+def bote(request):
+    current_season = get_current_season()
+    season = current_season or Season.objects.order_by('-year').first()
+
+    if season is None:
+        return render(
+            request,
+            "bote.html",
+            {
+                "season": None,
+                "rows": [],
+                "total_pool": 0.0,
+                "gps_counted": 0,
+            },
+        )
+
+    now = _now_utc_from_madrid()
+    scored_gp_ids = (
+        Porra.objects.filter(
+            season=season,
+            points__isnull=False,
+            gp__last_edit_date__lte=now,
+        )
+        .values_list("gp_id", flat=True)
+        .distinct()
+    )
+    gps = list(GrandPrix.objects.filter(id__in=scored_gp_ids).order_by("nround", "id"))
+
+    season_profiles = (
+        UserProfile.objects.filter(season=season)
+        .select_related("user", "users_team")
+    )
+    profile_by_user_id = {profile.user_id: profile for profile in season_profiles}
+
+    participant_ids = set(profile_by_user_id.keys())
+    porra_user_ids = set(
+        Porra.objects.filter(season=season, gp_id__in=[gp.id for gp in gps]).values_list("user_id", flat=True)
+    )
+    participant_ids.update(porra_user_ids)
+
+    penalties = {
+        user_id: {"last2": 0.0, "last_team": 0.0}
+        for user_id in participant_ids
+    }
+
+    team_member_ids = defaultdict(list)
+    for profile in season_profiles:
+        if profile.users_team_id:
+            team_member_ids[profile.users_team_id].append(profile.user_id)
+
+    cumulative_team_points = {team_id: 0.0 for team_id in team_member_ids.keys()}
+
+    for gp in gps:
+        gp_entries = list(
+            Porra.objects.filter(season=season, gp=gp, points__isnull=False)
+            .values("user_id", "points")
+        )
+        if not gp_entries:
+            continue
+
+        # LAST 2 penalties:
+        # - Last position: each tied user pays 3€
+        # - Penultimate position tie: tied users split 3€ (3/N each)
+        unique_scores = sorted({float(entry["points"] or 0.0) for entry in gp_entries})
+        worst_score = unique_scores[0]
+        worst_users = [entry["user_id"] for entry in gp_entries if float(entry["points"] or 0.0) == worst_score]
+        if len(worst_users) > 1:
+            split_last_penalty = 6.0 / len(worst_users)
+            for user_id in worst_users:
+                penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
+                penalties[user_id]["last2"] += split_last_penalty
+        else:
+            worst_user_id = worst_users[0]
+            penalties.setdefault(worst_user_id, {"last2": 0.0, "last_team": 0.0})
+            penalties[worst_user_id]["last2"] += 3.0
+
+            if len(unique_scores) > 1:
+                penultimate_score = unique_scores[1]
+                penultimate_users = [
+                    entry["user_id"]
+                    for entry in gp_entries
+                    if float(entry["points"] or 0.0) == penultimate_score
+                ]
+                if penultimate_users:
+                    split_penalty = 3.0 / len(penultimate_users)
+                    for user_id in penultimate_users:
+                        penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
+                        penalties[user_id]["last2"] += split_penalty
+            else:
+                penalties[worst_user_id]["last2"] += 3.0
+
+        # LAST TEAM penalties (accumulated standings after each GP):
+        # penalize all members of the team that is last in cumulative team points.
+        gp_team_points = defaultdict(float)
+        for entry in gp_entries:
+            user_id = entry["user_id"]
+            profile = profile_by_user_id.get(user_id)
+            if profile and profile.users_team_id:
+                gp_team_points[profile.users_team_id] += float(entry["points"] or 0.0)
+
+        for team_id in cumulative_team_points.keys():
+            cumulative_team_points[team_id] += gp_team_points.get(team_id, 0.0)
+
+        if cumulative_team_points:
+            min_total = min(cumulative_team_points.values())
+            last_team_ids = [
+                team_id
+                for team_id, total in cumulative_team_points.items()
+                if total == min_total
+            ]
+            for team_id in last_team_ids:
+                for user_id in team_member_ids.get(team_id, []):
+                    penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
+                    penalties[user_id]["last_team"] += 3.0
+
+    users_map = {user.id: user for user in User.objects.filter(id__in=participant_ids)}
+    rows = []
+    for user_id in participant_ids:
+        user_obj = users_map.get(user_id)
+        if not user_obj:
+            continue
+        profile = profile_by_user_id.get(user_id)
+        team_name = profile.users_team.name if profile and profile.users_team else "No Team"
+        last2 = round(penalties.get(user_id, {}).get("last2", 0.0), 2)
+        last_team = round(penalties.get(user_id, {}).get("last_team", 0.0), 2)
+        total = round(last2 + last_team, 2)
+        rows.append(
+            {
+                "username": user_obj.username,
+                "name": user_obj.first_name or user_obj.username,
+                "team_name": team_name,
+                "last2_penalty": last2,
+                "last_team_penalty": last_team,
+                "total_penalty": total,
+            }
+        )
+
+    rows.sort(key=lambda row: (-row["total_penalty"], row["name"].lower()))
+    total_pool = round(sum(row["total_penalty"] for row in rows), 2)
+
+    return render(
+        request,
+        "bote.html",
+        {
+            "season": season,
+            "rows": rows,
+            "total_pool": total_pool,
+            "gps_counted": len(gps),
+        },
+    )
+
+
 @login_required
 @require_POST
 @rate_limit('use_block_chip', limit=5, period=60)
 def use_block_chip(request):
     """Use block chip with enhanced security validation."""
     current_season = get_current_season()
-    now = datetime.now(pytz.UTC)
+    now = _now_utc_from_madrid()
     
     try:
         payload = json.loads(request.body)
@@ -531,7 +737,7 @@ def use_block_chip(request):
 def cancel_block_chip(request):
     """Cancel block chip with enhanced security validation."""
     current_season = get_current_season()
-    now = datetime.now(pytz.UTC)
+    now = _now_utc_from_madrid()
     
     try:
         payload = json.loads(request.body)
@@ -584,7 +790,9 @@ def calendar_view(request):
             },
         )
 
-    now_utc = datetime.now(pytz.UTC)
+    # Use Madrid as authoritative timezone; convert to UTC for DB queries
+    now_madrid = _now_madrid()
+    now_utc = now_madrid.astimezone(pytz.UTC)
     gps = list(GrandPrix.objects.filter(season=season).order_by("nround", "id"))
     scored_gp_ids = set(
         Porra.objects.filter(season=season, points__isnull=False).values_list("gp_id", flat=True).distinct()
@@ -612,7 +820,11 @@ def calendar_view(request):
         if not reference_dt:
             continue
 
-        race_day = reference_dt.date()
+        # Compute race day and locked/past status relative to Spain timezone
+        reference_dt_madrid = _gp_in_madrid(reference_dt)
+        if reference_dt_madrid is None:
+            continue
+        race_day = reference_dt_madrid.date()
         is_past = gp.id in scored_gp_ids or (gp.gp_end_date is not None and gp.gp_end_date <= now_utc)
         is_locked = (gp.last_edit_date is not None and gp.last_edit_date <= now_utc and not is_past)
 
@@ -935,7 +1147,7 @@ def use_block_chip(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
-    now = datetime.now(pytz.UTC)
+    now = _now_utc_from_madrid()
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError:
@@ -1002,7 +1214,7 @@ def cancel_block_chip(request):
         return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
     current_season = get_current_season()
-    now = datetime.now(pytz.UTC)
+    now = _now_utc_from_madrid()
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError:
@@ -1044,7 +1256,7 @@ def standings(request):
     selected_season_year = request.GET.get('season', str(default_season.year))
     selected_season = Season.objects.filter(year=int(selected_season_year)).first() or default_season
     selected_gp = request.GET.get('gp', 'overall')
-    now = timezone.now()
+    now = _now_utc_from_madrid()
 
     # Get all completed Grand Prixes (those with points) for the selected season
     grand_prix_with_points = Porra.objects.filter(points__gt=0, season=selected_season).values_list('gp', flat=True).distinct()
@@ -1316,7 +1528,7 @@ def view_team(request, username, gp):
 def team(request):
     """Team view with enhanced security."""
     current_season = get_current_season()
-    now = datetime.now(pytz.UTC)
+    now = _now_utc_from_madrid()
     
     if request.method == 'POST':
         try:
@@ -1351,8 +1563,10 @@ def team(request):
         if not gp:
             return JsonResponse({'success': False, 'error': 'GP no válido'}, status=400)
 
-        # Check if deadline passed
-        if gp.last_edit_date and gp.last_edit_date <= now:
+        # Check if deadline passed (Spain timezone)
+        gp_madrid = _gp_in_madrid(gp.last_edit_date)
+        now_madrid = _now_madrid()
+        if gp_madrid and gp_madrid <= now_madrid:
             return JsonResponse({'success': False, 'error': 'El plazo para editar ha terminado.'}, status=400)
 
         incoming_block = _get_incoming_block_for_user(user, gp)
@@ -1391,7 +1605,7 @@ def team(request):
 
         for t_name in team_names:
             if t_name:
-                team_obj = Team.objects.filter(season=current_season, name=t_name).first()
+                team_obj = Team.objects.filter(season=current_season, name__iexact=t_name).first()
                 if team_obj:
                     tp = TeamPoints.objects.filter(season=current_season, team=team_obj, gp=gp).first()
                     if tp and tp.price:
@@ -1412,14 +1626,14 @@ def team(request):
                 'second_pos': Driver.objects.filter(season=current_season, name=second_pos_name).first() if second_pos_name else None,
                 'third_pos': Driver.objects.filter(season=current_season, name=third_pos_name).first() if third_pos_name else None,
                 'fast_lap': Driver.objects.filter(season=current_season, name=fast_lap_name).first() if fast_lap_name else None,
-                'team_winner': Team.objects.filter(season=current_season, name=best_team_name).first() if best_team_name else None,
+                'team_winner': Team.objects.filter(season=current_season, name__iexact=best_team_name).first() if best_team_name else None,
                 'driver1': Driver.objects.filter(season=current_season, name=driver1_name).first() if driver1_name else None,
                 'driver2': Driver.objects.filter(season=current_season, name=driver2_name).first() if driver2_name else None,
                 'driver3': Driver.objects.filter(season=current_season, name=driver3_name).first() if driver3_name else None,
                 'driver4': Driver.objects.filter(season=current_season, name=driver4_name).first() if driver4_name else None,
                 'driver5': Driver.objects.filter(season=current_season, name=driver5_name).first() if driver5_name else None,
-                'team1': Team.objects.filter(season=current_season, name=team1_name).first() if team1_name else None,
-                'team2': Team.objects.filter(season=current_season, name=team2_name).first() if team2_name else None,
+                'team1': Team.objects.filter(season=current_season, name__iexact=team1_name).first() if team1_name else None,
+                'team2': Team.objects.filter(season=current_season, name__iexact=team2_name).first() if team2_name else None,
                 'triple_points_chip': use_triple_points_chip,
             }
         )
@@ -1448,8 +1662,24 @@ def team(request):
 
     # Calculate time remaining only when latest GP and its date exist
     if latest_grand_prix and latest_grand_prix.last_edit_date:
-        time_remaining = latest_grand_prix.last_edit_date - now
-        due_date = latest_grand_prix.last_edit_date <= now
+        now_madrid = _now_madrid()
+        gp_madrid = _gp_in_madrid(latest_grand_prix.last_edit_date)
+        if gp_madrid is None:
+            data = {
+                'round': latest_gp,
+                'name': '',
+                'official_name': '',
+                'photo_link': '',
+                'country_link': '',
+                'gp_photo': '',
+                'hours': 0,
+                'minutes': 0,
+                'days': 0,
+                'due_date': True
+            }
+        else:
+            time_remaining = gp_madrid - now_madrid
+            due_date = gp_madrid <= now_madrid
         days = max(time_remaining.days, 0)
         hours = time_remaining.seconds // 3600 if not due_date else 0
         minutes = (time_remaining.seconds // 60) % 60 if not due_date else 0

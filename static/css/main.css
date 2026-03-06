@@ -405,6 +405,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
+  justify-content: space-between;
 }
 
 .budget-selection{
@@ -1394,6 +1395,27 @@ ul {
   margin-top: 0.6rem;
 }
 
+/* Make DRS Boost and Pit Stop buttons same width */
+.chip-action-fixedwidth {
+    min-width: 130px;
+    max-width: 130px;
+    justify-content: center;
+    text-align: center;
+}
+
+/* Align Save/Reset buttons to right on desktop */
+.team-save-reset-btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+    .team-save-reset-btns {
+        justify-content: center;
+    }
+}
 
 /* ==========================================================
    RESPONSIVE OVERRIDES – Team page (mobile / small screens)
@@ -1912,3 +1934,4 @@ ul {
     width: 100%;
   }
 }
+
