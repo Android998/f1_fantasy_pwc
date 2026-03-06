@@ -5,53 +5,48 @@
 <link href="{% static 'css/statistics.css' %}?v=2" rel="stylesheet">
 
 <div class="main-standings statistics-page">
-    <div class="top-filters stats-top-filters">
-        <h1 class="stats-title">Bote</h1>
-        <hr class="gray-line-top"></hr>
-        <div style="padding: 0.9rem 0.4rem 0.3rem; text-align: center;">
-            <div style="font-family: Formula1Regular; font-size: 0.9rem; text-transform: uppercase;">
+    <div class="top-filters stats-top-filters bote-single-panel">
+        <div class="bote-kpi-wrap">
+            <div class="bote-kpi-meta">
                 Temporada {% if season %}{{ season.year }}{% else %}N/A{% endif %} · {{ gps_counted }} GPs cerrados
             </div>
-            <div style="font-family: Formula1Bold; font-size: 2.4rem; line-height: 1.05; margin-top: 0.35rem;">
+            <div class="bote-kpi-total">
                 {{ total_pool|floatformat:2 }} €
             </div>
-            <div style="font-family: Formula1Regular; font-size: 0.86rem; margin-top: 0.2rem;">
+            <div class="bote-kpi-caption">
                 Total recaudado por castigos
             </div>
         </div>
-    </div>
-
-    <div class="user-standings">
-        <h1 style="font-family: Formula1Bold; font-size: 2rem; text-transform: uppercase; margin-bottom: 2%;">Desglose de castigos</h1>
-        <hr class="gray-line"></hr>
-        <table class="standings-table">
-            <thead>
-                <tr>
-                    <th class="rank">#</th>
-                    <th class="user-name">Usuario</th>
-                    <th class="team-name">Equipo</th>
-                    <th class="points">Castigo Last 2</th>
-                    <th class="points">Castigo Last Team</th>
-                    <th class="points">Castigo Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in rows %}
-                <tr>
-                    <td class="rank">{{ forloop.counter }}</td>
-                    <td class="user-name">{{ row.name }}</td>
-                    <td class="team-name">{{ row.team_name }}</td>
-                    <td class="points">{{ row.last2_penalty|floatformat:2 }} €</td>
-                    <td class="points">{{ row.last_team_penalty|floatformat:2 }} €</td>
-                    <td class="points"><strong>{{ row.total_penalty|floatformat:2 }} €</strong></td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6">No hay datos de castigos todavía.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="bote-table-wrap">
+            <table class="standings-table bote-table">
+                <thead>
+                    <tr>
+                        <th class="bote-col-rank">#</th>
+                        <th class="bote-col-user">Usuario</th>
+                        <th class="bote-col-team">Equipo</th>
+                        <th class="bote-col-money">Castigo Last 2</th>
+                        <th class="bote-col-money">Castigo Last Team</th>
+                        <th class="bote-col-money">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td class="rank">{{ forloop.counter }}</td>
+                        <td class="user-name">{{ row.name }}</td>
+                        <td class="team-name">{{ row.team_name }}</td>
+                        <td class="points">{{ row.last2_penalty|floatformat:2 }} €</td>
+                        <td class="points">{{ row.last_team_penalty|floatformat:2 }} €</td>
+                        <td class="points"><strong>{{ row.total_penalty|floatformat:2 }} €</strong></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">No hay datos de castigos todavía.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}

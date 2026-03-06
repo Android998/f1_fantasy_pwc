@@ -944,3 +944,98 @@
 .statistics-page .chip-icon.chip-pit img {
     transform: translateX(2px) scale(2.6);
 }
+
+/* -------------------------------------
+   Bote Page
+------------------------------------- */
+.bote-top-panel {
+    min-height: 260px;
+    display: flex;
+    flex-direction: column;
+}
+
+.bote-single-panel {
+    padding: 1.2rem 1.15rem 2rem;
+}
+
+.bote-kpi-wrap {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 0;
+    margin: 0;
+}
+
+.bote-kpi-meta {
+    font-family: Formula1Regular;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+}
+
+.bote-kpi-total {
+    font-family: Formula1Bold;
+    font-size: 3rem;
+    line-height: 1.05;
+    margin-top: 0.35rem;
+}
+
+.bote-kpi-caption {
+    font-family: Formula1Regular;
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+.bote-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 1180px;
+}
+
+.bote-table th,
+.bote-table td {
+    white-space: nowrap;
+}
+
+.bote-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-top: 1.5rem;
+}
+
+.bote-col-rank {
+    width: 5%;
+    text-align: center;
+}
+
+.bote-col-user {
+    width: 28%;
+    text-align: left;
+}
+
+.bote-col-team {
+    width: 25%;
+    text-align: left;
+}
+
+.bote-col-money {
+    width: 14%;
+    min-width: 170px;
+    text-align: center;
+}
+
+.bote-table thead th {
+    padding-left: 1.2rem;
+    padding-right: 1.2rem;
+    font-size: 1.22rem;
+    line-height: 1.15;
+    text-align: center;
+}
+
+.bote-table thead th.bote-col-user,
+.bote-table thead th.bote-col-team {
+    text-align: left;
+}
