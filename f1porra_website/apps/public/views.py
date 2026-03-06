@@ -561,22 +561,30 @@ def bote(request):
         unique_scores = sorted({float(entry["points"] or 0.0) for entry in gp_entries})
         worst_score = unique_scores[0]
         worst_users = [entry["user_id"] for entry in gp_entries if float(entry["points"] or 0.0) == worst_score]
-        for user_id in worst_users:
-            penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
-            penalties[user_id]["last2"] += 3.0
+        if len(worst_users) > 1:
+            split_last_penalty = 6.0 / len(worst_users)
+            for user_id in worst_users:
+                penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
+                penalties[user_id]["last2"] += split_last_penalty
+        else:
+            worst_user_id = worst_users[0]
+            penalties.setdefault(worst_user_id, {"last2": 0.0, "last_team": 0.0})
+            penalties[worst_user_id]["last2"] += 3.0
 
-        if len(unique_scores) > 1:
-            penultimate_score = unique_scores[1]
-            penultimate_users = [
-                entry["user_id"]
-                for entry in gp_entries
-                if float(entry["points"] or 0.0) == penultimate_score
-            ]
-            if penultimate_users:
-                split_penalty = 3.0 / len(penultimate_users)
-                for user_id in penultimate_users:
-                    penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
-                    penalties[user_id]["last2"] += split_penalty
+            if len(unique_scores) > 1:
+                penultimate_score = unique_scores[1]
+                penultimate_users = [
+                    entry["user_id"]
+                    for entry in gp_entries
+                    if float(entry["points"] or 0.0) == penultimate_score
+                ]
+                if penultimate_users:
+                    split_penalty = 3.0 / len(penultimate_users)
+                    for user_id in penultimate_users:
+                        penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
+                        penalties[user_id]["last2"] += split_penalty
+            else:
+                penalties[worst_user_id]["last2"] += 3.0
 
         # LAST TEAM penalties (accumulated standings after each GP):
         # penalize all members of the team that is last in cumulative team points.
