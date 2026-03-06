@@ -110,7 +110,14 @@ def normalize_name(name):
     if not name:
         return ""
     
-    return ' '.join(word.capitalize() if word.upper() != "RB" else "RB" for word in name.split())
+    def fix_mc(word):
+        if word.upper() == "RB":
+            return "RB"
+        if word.lower().startswith("mc") and len(word) > 2:
+            # Special case for McLaren and similar names
+            return "Mc" + word[2].upper() + word[3:]
+        return word.capitalize()
+    return ' '.join(fix_mc(word) for word in name.split())
 
 
 def _madrid_tz():
@@ -1590,7 +1597,7 @@ def team(request):
 
         for t_name in team_names:
             if t_name:
-                team_obj = Team.objects.filter(season=current_season, name=t_name).first()
+                team_obj = Team.objects.filter(season=current_season, name__iexact=t_name).first()
                 if team_obj:
                     tp = TeamPoints.objects.filter(season=current_season, team=team_obj, gp=gp).first()
                     if tp and tp.price:
@@ -1611,14 +1618,14 @@ def team(request):
                 'second_pos': Driver.objects.filter(season=current_season, name=second_pos_name).first() if second_pos_name else None,
                 'third_pos': Driver.objects.filter(season=current_season, name=third_pos_name).first() if third_pos_name else None,
                 'fast_lap': Driver.objects.filter(season=current_season, name=fast_lap_name).first() if fast_lap_name else None,
-                'team_winner': Team.objects.filter(season=current_season, name=best_team_name).first() if best_team_name else None,
+                'team_winner': Team.objects.filter(season=current_season, name__iexact=best_team_name).first() if best_team_name else None,
                 'driver1': Driver.objects.filter(season=current_season, name=driver1_name).first() if driver1_name else None,
                 'driver2': Driver.objects.filter(season=current_season, name=driver2_name).first() if driver2_name else None,
                 'driver3': Driver.objects.filter(season=current_season, name=driver3_name).first() if driver3_name else None,
                 'driver4': Driver.objects.filter(season=current_season, name=driver4_name).first() if driver4_name else None,
                 'driver5': Driver.objects.filter(season=current_season, name=driver5_name).first() if driver5_name else None,
-                'team1': Team.objects.filter(season=current_season, name=team1_name).first() if team1_name else None,
-                'team2': Team.objects.filter(season=current_season, name=team2_name).first() if team2_name else None,
+                'team1': Team.objects.filter(season=current_season, name__iexact=team1_name).first() if team1_name else None,
+                'team2': Team.objects.filter(season=current_season, name__iexact=team2_name).first() if team2_name else None,
                 'triple_points_chip': use_triple_points_chip,
             }
         )

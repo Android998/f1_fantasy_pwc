@@ -1718,3 +1718,5 @@ WARNING 2026-03-05 18:56:29,849 log Not Found: /media/user_photos/Screenshot_202
 WARNING 2026-03-05 18:56:29,850 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6448
 WARNING 2026-03-05 18:56:32,276 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
 WARNING 2026-03-05 18:56:32,277 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6448
+ERROR 2026-03-06 09:55:16,533 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-06 09:55:16,537 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
