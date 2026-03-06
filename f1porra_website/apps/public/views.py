@@ -512,6 +512,14 @@ def bote(request):
         )
 
     now = _now_utc_from_madrid()
+    
+    # Get all users who have submitted at least one porra this season (like standings)
+    porra_user_ids = set(
+        Porra.objects.filter(season=season)
+        .values_list("user_id", flat=True)
+    )
+    
+    # Get only the GPs that have scored points (for penalty calculations)
     scored_gp_ids = (
         Porra.objects.filter(
             season=season,
@@ -523,17 +531,14 @@ def bote(request):
     )
     gps = list(GrandPrix.objects.filter(id__in=scored_gp_ids).order_by("nround", "id"))
 
+    # fetch profiles only for active users (needed for team penalties)
     season_profiles = (
-        UserProfile.objects.filter(season=season)
+        UserProfile.objects.filter(season=season, user_id__in=porra_user_ids)
         .select_related("user", "users_team")
     )
     profile_by_user_id = {profile.user_id: profile for profile in season_profiles}
 
-    participant_ids = set(profile_by_user_id.keys())
-    porra_user_ids = set(
-        Porra.objects.filter(season=season, gp_id__in=[gp.id for gp in gps]).values_list("user_id", flat=True)
-    )
-    participant_ids.update(porra_user_ids)
+    participant_ids = set(porra_user_ids)
 
     penalties = {
         user_id: {"last2": 0.0, "last_team": 0.0}
