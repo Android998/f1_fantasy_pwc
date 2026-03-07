@@ -1263,12 +1263,24 @@ def standings(request):
     selected_gp = request.GET.get('gp', 'overall')
     now = _now_utc_from_madrid()
 
+
     # Get all completed Grand Prixes (those with points) for the selected season
     grand_prix_with_points = Porra.objects.filter(points__gt=0, season=selected_season).values_list('gp', flat=True).distinct()
-    grand_prix_list = GrandPrix.objects.filter(id__in=grand_prix_with_points).order_by('nround')
-    available_gp_countries = set(grand_prix_list.values_list('country', flat=True))
+    grand_prix_list = list(GrandPrix.objects.filter(id__in=grand_prix_with_points).order_by('nround'))
+    available_gp_countries = set(gp.country for gp in grand_prix_list)
+
+    selected_gp_obj = None
+    if selected_gp != 'overall':
+        selected_gp_obj = GrandPrix.objects.filter(season=selected_season, country=selected_gp).first()
+        # If the selected GP is closed but not in grand_prix_list, add it
+        if selected_gp_obj and selected_gp_obj.last_edit_date and selected_gp_obj.last_edit_date <= now and selected_gp not in available_gp_countries:
+            grand_prix_list.append(selected_gp_obj)
+            available_gp_countries.add(selected_gp)
+    
+    # If the selected GP is not valid, reset to overall
     if selected_gp != 'overall' and selected_gp not in available_gp_countries:
         selected_gp = 'overall'
+        selected_gp_obj = None
 
     if selected_gp == 'overall':
         # Overall standings: no filtering by Grand Prix
@@ -1277,9 +1289,8 @@ def standings(request):
         # Filter standings by the selected Grand Prix
         porra_entries = Porra.objects.filter(season=selected_season, gp__country=selected_gp)
 
-    selected_gp_obj = None
-    if selected_gp != 'overall':
-        selected_gp_obj = GrandPrix.objects.filter(season=selected_season, country=selected_gp).first()
+    # Sort grand_prix_list by nround again in case we appended
+    grand_prix_list = sorted(grand_prix_list, key=lambda gp: gp.nround)
 
     closed_gps = GrandPrix.objects.filter(season=selected_season, last_edit_date__lte=now).order_by('nround')
     max_closed_gp = closed_gps.last() if closed_gps.exists() else None
