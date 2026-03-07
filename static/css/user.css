@@ -1,31 +1,27 @@
-.mastmain {
-    /* Default padding */
-    padding-top: 11rem;
-  }
-  
-  @font-face {
-    font-family: 'Formula1Black';
-    src: local('Formula1Black'),
-         url('../fonts/Formula1-Black.ttf') format("truetype");
-  }
-  
-  @font-face {
-    font-family: 'Formula1Wide';
-    src: local('Formula1Wide'),
-         url('../fonts/Formula1-Wide.ttf') format("truetype");
-  }
-  
-  @font-face {
-    font-family: 'Formula1Bold';
-    src: local('Formula1Bold'),
-         url('../fonts/Formula1-Bold.ttf') format("truetype");
-  }
-  
-  @font-face {
-    font-family: 'Formula1Regular';
-    src: local('Formula1Regular'),
-         url('../fonts/Formula1-Regular.ttf') format("truetype");
-  }
+
+@font-face {
+font-family: 'Formula1Black';
+src: local('Formula1Black'),
+        url('../fonts/Formula1-Black.ttf') format("truetype");
+}
+
+@font-face {
+font-family: 'Formula1Wide';
+src: local('Formula1Wide'),
+        url('../fonts/Formula1-Wide.ttf') format("truetype");
+}
+
+@font-face {
+font-family: 'Formula1Bold';
+src: local('Formula1Bold'),
+        url('../fonts/Formula1-Bold.ttf') format("truetype");
+}
+
+@font-face {
+font-family: 'Formula1Regular';
+src: local('Formula1Regular'),
+        url('../fonts/Formula1-Regular.ttf') format("truetype");
+}
 
 
 .main-user{

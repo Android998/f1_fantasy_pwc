@@ -1525,6 +1525,15 @@ def view_team(request, username, gp):
         'team_winner': 5 if race_results and porra_entry.team_winner == race_results.team_winner else 0,
     }
 
+    # Chip usage info
+    drs_used = porra_entry.triple_points_chip
+    pit_stop_used = BlockChip.objects.filter(
+        season=current_season, blocker=user, gp=porra_entry.gp
+    ).exists()
+
+    # User profile for photo
+    user_profile = UserProfile.objects.filter(user=user, season=current_season).first()
+
     # Prepare the context
     context = {
         'teamuser': user,
@@ -1534,6 +1543,9 @@ def view_team(request, username, gp):
         'bonus_points': bonus_points,
         'cost_cap': cost_cap,
         'gp': gp,
+        'drs_used': drs_used,
+        'pit_stop_used': pit_stop_used,
+        'user_profile': user_profile,
     }
 
     return render(request, 'view_team.html', context)
