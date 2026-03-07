@@ -22,28 +22,38 @@
         url('../fonts/Formula1-Regular.ttf') format("truetype");
 }
 
-.main-view-team{
-    background-color: hsl(240, 2%, 91%);
-    height:auto;
+/* =========================================
+   BASE LAYOUT
+========================================= */
+.main-view-team {
+    background-color: hsl(240, 2%, 64%);
+    height: auto;
     width: 100%;
-    padding: 2% 1% 2% 1%;
+    padding: 2% 1%;
 }
 
-/* Top title */
-.view-team-gp{
-    background-color: hsl(240, 2%, 64%);
-    margin: 0% 1% 2% 1%;
-    padding: 1%;
+.view-team-gp {
+    background-color: lightgrey;
+    margin: 0 1% 2% 1%;
+    padding: 1.5% 2%;
     border-radius: 10px;
 }
 
-.main-title-team{
+/* ---- Header ---- */
+.main-title-team {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     margin-left: 1%;
     margin-bottom: 1%;
     text-transform: uppercase;
+}
+
+.vt-title {
+    font-family: Formula1Bold;
+    font-size: 2rem;
+    margin-left: 2%;
+    margin-bottom: 0;
 }
 
 .profile-photo-large {
@@ -53,8 +63,7 @@
     object-fit: cover;
 }
 
-
-.gray-line-top{
+.gray-line-top {
     border: none;
     height: 1px;
     background-color: hsl(240, 8%, 19%);
@@ -62,12 +71,11 @@
     margin-bottom: 2%;
 }
 
-
-/* Selected gp container */
-.subcontainer-gp{
+/* ---- GP Banner ---- */
+.subcontainer-gp {
     width: 100%;
     border-radius: 15px;
-    background-color: lightgrey;
+    background-color: hsl(0, 0%, 78%);
     display: flex;
     margin-bottom: 2%;
 }
@@ -87,15 +95,15 @@
 }
 
 .center-gp {
-    width: 55%; 
+    width: 55%;
     padding: 1%;
     text-transform: uppercase;
-    margin-left: 1%; 
-    font-size: 2vw;
+    margin-left: 1%;
+    font-size: clamp(0.7rem, 2vw, 2rem);
     align-self: center;
 }
 
-.round-gp{
+.round-gp {
     font-family: "Formula1Black";
     font-size: 1em;
     line-height: 1.5em;
@@ -103,28 +111,28 @@
 
 .title-gp {
     align-items: center;
-    display: flex;  
+    display: flex;
     font-family: "Formula1Bold";
     font-size: 1.2em;
     line-height: 1.2em;
     letter-spacing: 0;
 }
-  
+
 .subtitle-gp {
     font-family: "Formula1Regular";
     margin-top: 10px;
     font-size: 0.7em;
 }
-  
+
 .image-gp-flag {
     width: 2em;
     margin-right: 20px;
 }
 
-.right-gp{
+.right-gp {
     width: 20%;
     padding: 1%;
-    display: dlex;
+    display: flex;
     align-items: center;
     justify-content: center;
 }
@@ -135,197 +143,582 @@
     border-radius: 15px;
 }
 
-
-
-/* Actual porra display */
-.main-view-porra{
-    width: 100%;
-    border-radius: 15px;
-    background-color: lightgrey;
+/* =========================================
+   TWO-COLUMN CONTENT LAYOUT
+========================================= */
+.vt-content-layout {
     display: flex;
-    margin-bottom: 2%;
+    gap: 1.5%;
+    align-items: flex-start;
 }
 
-.left-view-porra{
-    width:25%;
-    padding: 2%;
+.vt-left-panel {
+    flex: 0 0 28%;
+    max-width: 28%;
+}
+
+.vt-right-panel {
+    flex: 1;
+    min-width: 0;
+}
+
+/* =========================================
+   TOP BAR — Chips + Cost/Points
+========================================= */
+.vt-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    background-color: hsl(0, 0%, 78%);
+    border-radius: 10px;
+    padding: 0.75rem 1.2rem;
+    margin-bottom: 1.5%;
+}
+
+.vt-chips {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.vt-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    font-family: "Formula1Bold";
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.vt-chip img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+}
+
+/* Inactive (grey) */
+.vt-chip.inactive {
+    background-color: #9a9a9a;
+    color: #ddd;
+    border-color: #888;
+}
+
+.vt-chip.inactive img {
+    filter: grayscale(1) brightness(0.7);
+    opacity: 0.7;
+}
+
+/* Active DRS */
+.vt-chip.vt-chip-drs.active {
+    background-color: #8d1598;
+    color: #fff;
+    border-color: #a829b5;
+}
+
+/* Active Pit Stop */
+.vt-chip.vt-chip-pit.active {
+    background-color: #1d7c32;
+    color: #fff;
+    border-color: #28a745;
+}
+
+.vt-stats {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.vt-stat {
     display: flex;
     flex-direction: column;
-    font-size: 1vw;
+    align-items: flex-end;
+}
+
+.vt-stat-label {
+    font-family: "Formula1Regular";
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    color: #333;
+}
+
+.vt-stat-value {
+    font-family: "Formula1Bold";
+    font-size: 1rem;
+}
+
+/* =========================================
+   BONUS PICKS GRID
+========================================= */
+.vt-bonus-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    margin-bottom: 0;
+}
+
+.vt-bonus-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.vt-bonus-label {
+    font-family: "Formula1Bold";
+    font-size: clamp(0.55rem, 1vw, 0.8rem);
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    margin-bottom: 0.3rem;
+    margin-left: 0.2rem;
+    border-left: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+    border-radius: 3px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.pole-label   { border-color: gray; }
+.first-label  { border-color: gold; }
+.second-label { border-color: silver; }
+.third-label  { border-color: hsla(30, 61%, 50%, 1); }
+.fast-label   { border-color: hsl(300, 100%, 50%); }
+.team-label   { border-color: hsla(90, 100%, 32%, 1); }
+
+.vt-bonus-body {
+    display: flex;
+    border: 3px solid #ccc;
+    border-radius: 5px;
+    background-color: white;
+    overflow: hidden;
+    height: 100%;
+}
+
+.vt-bonus-photo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2%;
+    min-width: 4rem;
+    max-width: 5rem;
+}
+
+.vt-bonus-photo img {
+    width: 100%;
+    max-width: 4.5em;
+    height: auto;
+}
+
+.vt-bonus-info {
+    flex: 1;
+    padding: 0.3rem 0.4rem;
+    font-family: "Formula1Bold";
+    display: flex;
+    flex-direction: column;
     justify-content: center;
 }
 
-.right-view-porra{
-    width: 70%;
-    padding: 2%;  
+.vt-bonus-name {
+    text-transform: uppercase;
+    font-size: clamp(0.5rem, 0.9vw, 0.85rem);
+    padding: 0.15rem 0;
 }
 
-.driver-selected-data-team{
-    width: 100%;
-    height: 40%;
-    font-family: "Formula1Bold";
-    font-size: 1vw;
-    padding: 2%;
+.vt-bonus-pts {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: clamp(0.45rem, 0.8vw, 0.75rem);
+    padding: 0.15rem 0;
+}
+
+/* =========================================
+   DRIVER / TEAM CARDS
+========================================= */
+.vt-cards-section {
+    background-color: hsl(0, 0%, 78%);
+    border-radius: 10px;
+    padding: 1.5% 2%;
+}
+
+.vt-cards-row {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    list-style: none;
+    padding: 0;
+}
+
+.vt-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     background-color: white;
-}
-
-.driver-selected-points{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1%;
-    font-size: 0.9em;
-    padding-right: 2%;
- }
-
-.section-team{
-    width:100%;
-    padding: 0.5%;
-    font-family: "Formula1Bold";
-    font-size: 1em;
-    margin-bottom: 4%;
-}
-
-.section-name-team{
-    padding: 1% 3%;
-    margin-bottom: 1%;
-    margin-left: 1%;
-}
-
-.view-selection-basic{
-    display: flex;
-    margin-bottom: 2%;
-}
-
-
-.pole-position-team > div:first-child{
-    border-left: 3px solid gray;
-    border-bottom: 3px solid gray;
     border-radius: 5px;
-}
-
-.first-place-team > div:first-child{
-    border-left: 3px solid gold;
-    border-bottom: 3px solid gold;
-    border-radius: 3px;
-}
-
-.second-place-team > div:first-child{
-    border-left: 3px solid silver;
-    border-bottom: 3px solid silver;
-    border-radius: 5px;
-}
-
-.third-place-team > div:first-child{
-    border-left: 3px solid hsla(30, 61%, 50%, 1);
-    border-bottom: 3px solid hsla(30, 61%, 50%, 1);
-    border-radius: 5px;
-}
-
-.fastest-lap-team > div:first-child{
-    border-left: 3px solid hsl(300, 100%, 50%);
-    border-bottom: 3px solid hsl(300, 100%, 50%);
-    border-radius: 5px;
-}
-
-.best-team-team > div:first-child{
-    border-left: 3px solid hsla(90, 100%, 32%, 1);
-    border-bottom: 3px solid hsla(90, 100%, 32%, 1);
-    border-radius: 5px;
-}
-
-.show-points{
-    padding: 2%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.cost-cap{
-    padding: 2%;
-    display: flex;
-    flex-direction: column;
-}
-
-.total-points{
-    padding: 2%;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Constructors: show the RIGHT side of the car (nose) and clip the LEFT */
-#constructors-table .fila-equipo .foto-piloto.team-photo-stack{
-  justify-content: flex-end !important;
-  align-items: flex-end !important;
-  position: relative;         /* make absolute children anchor here */
-  overflow: hidden;           /* clip overflow */
-}
-
-#constructors-table .fila-equipo .foto-piloto.team-photo-stack img.team-car{
-  position: absolute !important;
-  right: 0 !important;
-  left: auto !important;
-  bottom: 0 !important;
-  height: 55% !important;
-  width: auto !important;
-  max-width: none !important;
-  display: block;
-}
-
-/* Constructors: logo badge top-right with dark circle */
-#constructors-table .foto-piloto.team-photo-stack{
-  position: relative; /* anchor for absolute logo */
-}
-
-#constructors-table .foto-piloto.team-photo-stack .team-logo-ring{
-  position: absolute;
-  top: 6px;
-  right: 6px;
-
-  width: var(--logo-size, 40px);
-  height: var(--logo-size, 40px);
-
-  box-sizing: border-box;
-  padding: var(--logo-pad, 6px);
-
-  border-radius: 999px;
-  background: rgba(0,0,0,0.55);            /* dark circle */
-  border: 1px solid rgba(255,255,255,0.20);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
-
-  display: grid;
-  place-items: center;
-
-  z-index: 3; /* above the car */
-}
-
-#constructors-table .foto-piloto.team-photo-stack .team-logo{
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-#constructors-table .foto-piloto.team-photo-stack .team-car{
-  z-index: 1; /* keep car below logo */
-}
-
-/* Selected team card car image fix */
-.driver-selected-photo.team-photo-stack {
+    width: clamp(100px, 18%, 200px);
     position: relative;
     overflow: hidden;
-    width: 100%;
-    height: 15ch;
 }
 
-/* The car must NOT expand container */
-.driver-selected-photo.team-photo-stack .team-car {
-    height: auto;
-    width: 80%;
-    max-width: 140%;
-    object-fit: contain;
+.vt-card-captain {
+    border: 3px solid red;
+}
+
+.vt-card-captain.drs-active {
+    border-color: #8d1598;
+}
+
+/* Captain "2x" / "3x" badge */
+.vt-card-captain::after {
     position: absolute;
-    bottom: 0;
-    margin-bottom: 5px;
+    top: 4px;
+    left: 4px;
+    content: "2x";
+    font-family: "Formula1Bold";
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    color: white;
+    background-color: black;
+    padding: 3px 6px;
+    border-radius: 100px;
+    z-index: 2;
+}
+
+.vt-card-captain.drs-active::after {
+    content: "3x";
+    background-color: #8d1598;
+}
+
+.vt-card-photo {
+    width: 100%;
+    height: auto;
+    padding: 5%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    overflow: hidden;
+}
+
+.vt-card-photo img {
+    width: 100%;
+    max-width: 10em;
+    height: auto;
+    object-fit: contain;
+}
+
+.vt-team-img {
+    max-width: 90% !important;
+    object-fit: contain;
+}
+
+.vt-card-info {
+    width: 100%;
+    padding: 0.3rem 0.4rem;
+    font-family: "Formula1Bold";
+    text-transform: uppercase;
+    font-size: clamp(0.45rem, 0.8vw, 0.65rem);
+}
+
+.vt-card-name {
+    display: block;
+    padding: 0.15rem 0;
+}
+
+.vt-card-pts {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.15rem 0;
+    font-size: 0.9em;
+}
+
+.vt-card-team .vt-card-photo {
+    height: auto;
+    padding: 12% 1%;
+}
+
+.vt-divider {
+    border: none;
+    height: 1px;
+    background-color: hsl(240, 5%, 28%);
+    margin: 0.5rem 0 1.5rem 0;
+}
+
+.vt-teams-row {
+    margin-bottom: 0.5rem;
+}
+
+.vt-teams-row .vt-card {
+    width: clamp(120px, 25%, 260px);
+}
+
+.gray-line-driver {
+    border: none;
+    height: 1px;
+    background-color: hsl(240, 5%, 28%);
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+/* Tablet */
+@media (max-width: 1100px) {
+    .vt-left-panel {
+        flex: 0 0 32%;
+        max-width: 32%;
+    }
+
+    .vt-card {
+        width: clamp(90px, 20%, 180px);
+    }
+
+    .vt-teams-row .vt-card {
+        width: clamp(110px, 28%, 240px);
+    }
+}
+
+/* Small tablet / large phone — switch to stacked layout */
+@media (max-width: 768px) {
+    .vt-content-layout {
+        flex-direction: column;
+    }
+
+    .vt-left-panel {
+        flex: none;
+        max-width: 100%;
+        width: 100%;
+        order: 1; /* bonus picks first */
+    }
+
+    .vt-right-panel {
+        order: 2; /* chips + cards second */
+        width: 100%;
+    }
+
+    /* Bonus grid: 2 columns on mobile */
+    .vt-bonus-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .view-team-gp {
+        padding: 2% 3%;
+    }
+
+    .vt-title {
+        font-size: 1.4rem;
+    }
+
+    .profile-photo-large {
+        width: 2.5em;
+        height: 2.5em;
+    }
+
+    /* GP banner: hide side images */
+    .left-gp {
+        display: none;
+    }
+
+    .right-gp {
+        display: none;
+    }
+
+    .center-gp {
+        width: 100%;
+        margin-left: 0;
+        font-size: clamp(0.8rem, 3vw, 1.3rem);
+    }
+
+    .subcontainer-gp {
+        border-radius: 10px;
+        padding: 0.5rem;
+    }
+
+    /* Top bar stacks */
+    .vt-top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0.6rem 0.8rem;
+    }
+
+    .vt-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .vt-bonus-photo {
+        min-width: 3rem;
+        max-width: 4rem;
+    }
+
+    /* Cards: smaller */
+    .vt-card {
+        width: clamp(80px, 28%, 160px);
+    }
+
+    .vt-card-photo {
+        height: auto;
+        padding: 5%;
+    }
+
+    .vt-teams-row .vt-card {
+        width: clamp(100px, 35%, 200px);
+    }
+
+    .vt-cards-row {
+        gap: 0.8rem;
+    }
+}
+
+/* Mobile phones */
+@media (max-width: 576px) {
+    .main-view-team {
+        padding: 0;
+    }
+
+    .view-team-gp {
+        margin: 0 0.5% 1% 0.5%;
+        padding: 3% 3%;
+        border-radius: 6px;
+    }
+
+    .vt-title {
+        font-size: 1.1rem;
+    }
+
+    .profile-photo-large {
+        width: 2em;
+        height: 2em;
+    }
+
+    /* Chips smaller */
+    .vt-chip {
+        font-size: 0.6rem;
+        padding: 0.25rem 0.6rem;
+    }
+
+    .vt-chip img {
+        width: 16px;
+        height: 16px;
+    }
+
+    .vt-stat-label {
+        font-size: 0.6rem;
+    }
+
+    .vt-stat-value {
+        font-size: 0.8rem;
+    }
+
+    /* Bonus: 2 columns, compact */
+    .vt-bonus-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.4rem;
+    }
+
+    .vt-bonus-photo {
+        min-width: 2.5rem;
+        max-width: 3rem;
+        padding: 1%;
+    }
+
+    .vt-bonus-photo img {
+        max-width: 3em;
+    }
+
+    .vt-bonus-name {
+        font-size: 0.5rem;
+    }
+
+    .vt-bonus-pts {
+        font-size: 0.45rem;
+    }
+
+    .vt-bonus-label {
+        font-size: 0.5rem;
+    }
+
+    /* Cards */
+    .vt-cards-row {
+        gap: 0.5rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .vt-card {
+        width: clamp(70px, 28%, 140px);
+    }
+
+    .vt-card-photo {
+        height: auto;
+        padding: 5%;
+    }
+
+    .vt-card-info {
+        font-size: 0.45rem;
+        padding: 0.2rem 0.3rem;
+    }
+
+    .vt-card-captain::after {
+        font-size: 0.4rem;
+        padding: 2px 4px;
+    }
+
+    .vt-teams-row .vt-card {
+        width: clamp(90px, 38%, 180px);
+    }
+
+    .vt-cards-section {
+        padding: 2% 3%;
+        border-radius: 6px;
+    }
+}
+
+/* Extra small phones */
+@media (max-width: 400px) {
+    .vt-title {
+        font-size: 0.9rem;
+    }
+
+    .vt-chip {
+        font-size: 0.5rem;
+        padding: 0.2rem 0.45rem;
+        gap: 0.2rem;
+    }
+
+    .vt-chip img {
+        width: 14px;
+        height: 14px;
+    }
+
+    .vt-bonus-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.3rem;
+    }
+
+    .vt-bonus-photo {
+        min-width: 2rem;
+        max-width: 2.5rem;
+    }
+
+    .vt-card {
+        width: clamp(60px, 30%, 120px);
+    }
+
+    .vt-card-photo {
+        height: auto;
+        padding: 5%;
+    }
+
+    .vt-teams-row .vt-card {
+        width: clamp(80px, 40%, 150px);
+    }
 }
 

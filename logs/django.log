@@ -1733,3 +1733,29 @@ WARNING 2026-03-06 10:33:02,927 log Not Found: /.well-known/appspecific/com.chro
 WARNING 2026-03-06 10:33:02,927 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198
 WARNING 2026-03-06 10:33:38,368 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
 WARNING 2026-03-06 10:33:38,369 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198
+WARNING 2026-03-07 17:30:58,995 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-07 17:30:58,996 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6459
+WARNING 2026-03-07 17:31:55,362 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-07 17:31:55,363 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6459
+WARNING 2026-03-07 17:39:13,734 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-07 17:39:13,735 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6459
+WARNING 2026-03-07 17:53:53,571 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-07 17:53:53,573 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6459
+WARNING 2026-03-07 18:04:32,518 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-07 18:04:32,519 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6459
+WARNING 2026-03-07 18:06:18,989 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-07 18:06:18,990 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6459
+WARNING 2026-03-07 18:06:37,941 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-07 18:06:37,942 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198
+WARNING 2026-03-07 18:08:40,675 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-07 18:08:40,676 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198
+WARNING 2026-03-07 18:09:02,481 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-07 18:09:02,481 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198
+WARNING 2026-03-07 18:11:50,846 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-07 18:11:50,848 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198
+WARNING 2026-03-07 18:15:07,760 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-07 18:15:07,762 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198
+WARNING 2026-03-07 18:16:18,372 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-07 18:16:18,374 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198
+WARNING 2026-03-07 18:17:18,107 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-07 18:17:18,107 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198

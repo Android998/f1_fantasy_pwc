@@ -1,19 +1,31 @@
 """
-Automated GP Points Pipeline
-==============================
-Orchestrates the full post-race workflow:
+Automated GP Points Pipeline — Dual-Trigger Architecture
+==========================================================
+Orchestrates two separate workflows per GP weekend:
 
-1. Fetch results from Jolpica (primary) or OpenF1 (fallback)
-2. Create the RaceResults record for the GP
-3. Compute driver & team fantasy points (qualifying + race)
-4. Upload points (DriverPoints / TeamPoints) for the GP
-5. Compute each user's Porra points
-6. Update prices for the *next* GP
-7. Recompute achievements
+**Qualifying pipeline** (triggered ~3-4 h after qualy_date):
+    1. Fetch qualifying results from API
+    2. Create RaceResults record with poleman only
+    3. Compute qualifying-only driver & team fantasy points
+    4. Save DriverPoints / TeamPoints (qualy portion only)
+    5. Compute each user's partial Porra points (poleman + qualy fantasy)
+
+**Race pipeline** (triggered ~4-5 h after gp_date):
+    1. Fetch full GP data (qualy + race) from API
+    2. Update existing RaceResults with race fields (P1-P3, fast lap, team winner)
+    3. Compute combined driver & team fantasy points (qualy + race)
+    4. Update DriverPoints / TeamPoints with full combined points
+    5. Recompute each user's Porra points (all predictions + full fantasy)
+    6. Update prices for the next GP
+    7. Recompute achievements
+
+A legacy ``run_gp_pipeline()`` is kept for backward compatibility (runs both
+phases in sequence).
 
 This module is API-driven: no Excel file needed.
 """
 import logging
+import time as _time
 from datetime import date
 from typing import Optional
 
@@ -27,7 +39,8 @@ from f1porra_website.apps.public.models import (
     DriverPoints, TeamPoints, RaceResults, Porra, BlockChip,
 )
 from f1porra_website.apps.public.src.api_client import (
-    fetch_gp_data, GPSessionData, QualifyingResult, RaceResultEntry,
+    fetch_gp_data, fetch_qualy_data,
+    GPSessionData, QualifyingResult, RaceResultEntry,
 )
 from f1porra_website.apps.public.src.actualizar_precios import update_points
 from f1porra_website.apps.public.services.achievement_service import recompute_achievements
@@ -98,17 +111,32 @@ def _resolve_team(season: Season, name: str) -> Optional[Team]:
 
 
 # ---------------------------------------------------------------------------
-# Step 2 — Create RaceResults
+# Step 2 — Create / Update RaceResults
 # ---------------------------------------------------------------------------
 
-def create_race_results(season: Season, gp: GrandPrix, data: GPSessionData) -> RaceResults:
-    """Create or update the RaceResults record for a GP."""
+def create_qualy_race_results(season: Season, gp: GrandPrix, data: GPSessionData) -> RaceResults:
+    """Create the RaceResults record after qualifying — sets poleman only."""
     pole = _resolve_driver(season, data.pole_sitter) if data.pole_sitter else None
+
+    rr, created = RaceResults.objects.update_or_create(
+        season=season,
+        gp=gp,
+        defaults={"poleman": pole},
+    )
+    action = "Created" if created else "Updated"
+    logger.info("%s RaceResults (qualy) for %s — poleman: %s", action, gp, pole)
+    return rr
+
+
+def update_race_results(season: Season, gp: GrandPrix, data: GPSessionData) -> RaceResults:
+    """Update existing RaceResults with race fields (P1-P3, fast lap, team winner)."""
     first = _resolve_driver(season, data.race_winner) if data.race_winner else None
     second = _resolve_driver(season, data.second_place) if data.second_place else None
     third = _resolve_driver(season, data.third_place) if data.third_place else None
     fast = _resolve_driver(season, data.fastest_lap_driver) if data.fastest_lap_driver else None
     team_w = _resolve_team(season, data.winning_constructor) if data.winning_constructor else None
+    # Also re-set poleman in case qualy data was incomplete earlier
+    pole = _resolve_driver(season, data.pole_sitter) if data.pole_sitter else None
 
     rr, created = RaceResults.objects.update_or_create(
         season=season,
@@ -123,8 +151,13 @@ def create_race_results(season: Season, gp: GrandPrix, data: GPSessionData) -> R
         },
     )
     action = "Created" if created else "Updated"
-    logger.info("%s RaceResults for %s", action, gp)
+    logger.info("%s RaceResults (race) for %s", action, gp)
     return rr
+
+
+def create_race_results(season: Season, gp: GrandPrix, data: GPSessionData) -> RaceResults:
+    """Legacy: Create or update the full RaceResults record for a GP (both qualy + race)."""
+    return update_race_results(season, gp, data)
 
 
 # ---------------------------------------------------------------------------
@@ -138,9 +171,8 @@ def _quali_participation(q: QualifyingResult) -> int:
         return 3
     if q.q2_time:
         return 2
-    if q.q1_time:
-        return 1
-    return 0
+    # Every driver in qualifying gets at least 1 point (Q1 participation)
+    return 1
 
 
 def _quali_reverse(position: int) -> int:
@@ -163,6 +195,146 @@ DNF_STATUSES = frozenset([
     "Wheel", "Throttle", "Steering", "Technical", "Spun off",
     "DNF", "Did not finish",
 ])
+
+# Sprint race position points: 8,7,6,5,4,3,2,1 for P1-P8
+SPRINT_POSITION_POINTS = {1: 8, 2: 7, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2, 8: 1}
+
+
+def compute_qualy_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Compute QUALIFYING-ONLY driver and team fantasy points.
+    Called after qualifying, before the race has happened.
+
+    Returns (driver_points_df, team_points_df) with columns:
+        Driver:  [Driver, Constructor, Total Points]   (qualy points only)
+        Team:    [Constructor, Total Points]            (team qualy points only)
+    """
+    if not data.qualifying:
+        return (
+            pd.DataFrame(columns=["Driver", "Constructor", "Total Points"]),
+            pd.DataFrame(columns=["Constructor", "Total Points"]),
+        )
+
+    q_rows = []
+    for q in sorted(data.qualifying, key=lambda x: x.position):
+        q_rows.append({
+            "Driver": q.driver_name,
+            "Constructor": q.constructor_name,
+            "Position": q.position,
+            "Q1": q.q1_time,
+            "Q2": q.q2_time,
+            "Q3": q.q3_time,
+        })
+    qdf = pd.DataFrame(q_rows)
+
+    qdf["Participation"] = qdf.apply(
+        lambda r: 3 if pd.notna(r["Q3"]) and r["Q3"]
+                  else (2 if pd.notna(r["Q2"]) and r["Q2"]
+                        else 1),  # every driver gets at least 1 pt (Q1 participation)
+        axis=1,
+    )
+    qdf["Reverse"] = qdf["Position"].apply(lambda p: max(0, 11 - p) if p <= 10 else 0)
+    qdf["TeammateBonus"] = qdf.groupby("Constructor")["Position"].transform(
+        lambda x: (x == x.min()).astype(int)
+    )
+    qdf["QualyPoints"] = qdf["Participation"] + qdf["Reverse"] + qdf["TeammateBonus"]
+
+    # Driver output: qualy points only
+    driver_total = qdf[["Driver", "Constructor", "QualyPoints"]].copy()
+    driver_total["Total Points"] = driver_total["QualyPoints"]
+
+    # Team qualifying
+    team_q = qdf.groupby("Constructor").agg(
+        q3_count=("Q3", lambda x: x.apply(lambda v: v is not None and v != "").sum()),
+        q2_count=("Q2", lambda x: x.apply(lambda v: v is not None and v != "").sum()),
+        driver_q_pts=("QualyPoints", "sum"),
+    ).reset_index()
+    team_q["TeamQualyBonus"] = team_q.apply(
+        lambda r: _team_quali_bonus(int(r["q3_count"]), int(r["q2_count"])), axis=1
+    )
+    team_q["Total Points"] = team_q["TeamQualyBonus"] + team_q["driver_q_pts"]
+
+    # ── Sprint race points (only on sprint weekends) ───────────────────
+    if data.sprint_race:
+        sprint_driver_pts, sprint_team_pts = _compute_sprint_race_points(data)
+
+        # Add sprint race points to driver totals
+        if not sprint_driver_pts.empty:
+            driver_total = driver_total.merge(
+                sprint_driver_pts[["Driver", "SprintRacePoints"]],
+                on="Driver", how="left",
+            )
+            driver_total["SprintRacePoints"] = driver_total["SprintRacePoints"].fillna(0)
+            driver_total["Total Points"] = driver_total["Total Points"] + driver_total["SprintRacePoints"]
+
+        # Add sprint race points to team totals
+        if not sprint_team_pts.empty:
+            team_q = team_q.merge(
+                sprint_team_pts[["Constructor", "TeamSprintRacePoints"]],
+                on="Constructor", how="left",
+            )
+            team_q["TeamSprintRacePoints"] = team_q["TeamSprintRacePoints"].fillna(0)
+            team_q["Total Points"] = team_q["Total Points"] + team_q["TeamSprintRacePoints"]
+
+    return driver_total, team_q[["Constructor", "Total Points"]]
+
+
+def _compute_sprint_race_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Compute sprint race fantasy points.
+
+    Same logic as regular race points BUT:
+    - Position points: 8,7,6,5,4,3,2,1 for P1-P8 (instead of F1 25,18,15,12,10,8,6,4,2,1)
+    - Positions gained from sprint grid
+    - DNF penalty (-10)
+    - Teammate bonus (+2 to driver finishing ahead)
+
+    Returns (driver_sprint_df, team_sprint_df).
+    """
+    if not data.sprint_race:
+        return (
+            pd.DataFrame(columns=["Driver", "Constructor", "SprintRacePoints"]),
+            pd.DataFrame(columns=["Constructor", "TeamSprintRacePoints"]),
+        )
+
+    s_rows = []
+    for r in data.sprint_race:
+        s_rows.append({
+            "Driver": r.driver_name,
+            "Constructor": r.constructor_name,
+            "Position_Sprint": r.position,
+            "SprintGrid": r.grid,
+            "Status": r.status,
+            "Laps": r.laps,
+        })
+    sdf = pd.DataFrame(s_rows)
+
+    def sprint_pts(row):
+        status = str(row.get("Status", ""))
+        if status in DNF_STATUSES or status.startswith("Retired"):
+            return -10
+        pos = int(row["Position_Sprint"])
+        f1_pts = SPRINT_POSITION_POINTS.get(pos, 0)
+        positions_gained = int(row["SprintGrid"]) - pos
+        return f1_pts + positions_gained
+
+    sdf["SprintRacePoints"] = sdf.apply(sprint_pts, axis=1)
+
+    # Teammate bonus: driver finishing ahead gets +2
+    def teammate_bonus(group):
+        if len(group) == 2:
+            g = group.sort_values("Position_Sprint")
+            idx_first = g.index[0]
+            group.loc[idx_first, "SprintRacePoints"] = group.loc[idx_first, "SprintRacePoints"] + 2
+        return group
+
+    sdf = sdf.groupby("Constructor", group_keys=False).apply(teammate_bonus).reset_index(drop=True)
+
+    # Team sprint points
+    team_s = sdf.groupby("Constructor")["SprintRacePoints"].sum().reset_index()
+    team_s.columns = ["Constructor", "TeamSprintRacePoints"]
+
+    return sdf[["Driver", "Constructor", "SprintRacePoints"]], team_s
 
 
 def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -189,7 +361,7 @@ def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFr
         qdf["Participation"] = qdf.apply(
             lambda r: 3 if pd.notna(r["Q3"]) and r["Q3"]
                       else (2 if pd.notna(r["Q2"]) and r["Q2"]
-                            else (1 if pd.notna(r["Q1"]) and r["Q1"] else 0)),
+                            else 1),  # every driver gets at least 1 pt (Q1 participation)
             axis=1,
         )
         qdf["Reverse"] = qdf["Position"].apply(lambda p: max(0, 11 - p) if p <= 10 else 0)
@@ -300,6 +472,26 @@ def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFr
     else:
         team_total["Total Points"] = 0
 
+    # ── Sprint race points (only on sprint weekends) ───────────────────
+    if data.sprint_race:
+        sprint_driver_pts, sprint_team_pts = _compute_sprint_race_points(data)
+
+        if not sprint_driver_pts.empty and not driver_total.empty:
+            driver_total = driver_total.merge(
+                sprint_driver_pts[["Driver", "SprintRacePoints"]],
+                on="Driver", how="left",
+            )
+            driver_total["SprintRacePoints"] = driver_total["SprintRacePoints"].fillna(0)
+            driver_total["Total Points"] = driver_total["Total Points"] + driver_total["SprintRacePoints"]
+
+        if not sprint_team_pts.empty and not team_total.empty:
+            team_total = team_total.merge(
+                sprint_team_pts[["Constructor", "TeamSprintRacePoints"]],
+                on="Constructor", how="left",
+            )
+            team_total["TeamSprintRacePoints"] = team_total["TeamSprintRacePoints"].fillna(0)
+            team_total["Total Points"] = team_total["Total Points"] + team_total["TeamSprintRacePoints"]
+
     return driver_total, team_total
 
 
@@ -407,9 +599,6 @@ def compute_porra_points_for_gp(season: Season, gp: GrandPrix) -> None:
 
         porra.points = total
         porra.save()
-        logger.info("Porra %s (%s) → %d pts", porra.user.username, gp.country, total)
-
-
 # ---------------------------------------------------------------------------
 # Full pipeline
 # ---------------------------------------------------------------------------
@@ -418,6 +607,7 @@ class PipelineResult:
     """Result summary of a pipeline run."""
     def __init__(self):
         self.success = False
+        self.phase: str = "unknown"       # "qualy", "race", or "full"
         self.gp: Optional[GrandPrix] = None
         self.errors: list[str] = []
         self.warnings: list[str] = []
@@ -426,16 +616,214 @@ class PipelineResult:
     def __str__(self):
         status = "SUCCESS" if self.success else "FAILED"
         return (
-            f"Pipeline {status} for {self.gp}\n"
+            f"Pipeline [{self.phase}] {status} for {self.gp}\n"
             f"  Steps: {', '.join(self.steps_completed)}\n"
             f"  Warnings: {len(self.warnings)}\n"
             f"  Errors: {len(self.errors)}"
         )
 
 
+# ───────────────────────────────────────────────────────────────────────────
+# Phase 1 — Qualifying pipeline
+# ───────────────────────────────────────────────────────────────────────────
+
+def run_qualy_pipeline(gp: GrandPrix, retry_count: int = 3,
+                       retry_interval: int = 300) -> PipelineResult:
+    """
+    Post-qualifying pipeline.
+
+    Steps:
+        1. Fetch qualifying data from API (Jolpica → OpenF1 fallback)
+        2. Create RaceResults record (poleman only)
+        3. Compute qualifying-only driver & team fantasy points
+        4. Save DriverPoints & TeamPoints (qualy portion)
+        5. Compute partial porra points (poleman prediction + qualy fantasy)
+
+    Args:
+        retry_count: Number of fetch attempts before giving up.
+        retry_interval: Seconds between retries (default 5 min).
+    """
+    result = PipelineResult()
+    result.phase = "qualy"
+    result.gp = gp
+    season = gp.season
+
+    if not season:
+        result.errors.append("GP has no associated season.")
+        return result
+    nround = gp.nround
+    if not nround:
+        result.errors.append("GP has no round number.")
+        return result
+
+    # Step 1 — Fetch qualifying data
+    logger.info("═══ QUALY Pipeline start: %s (round %d) ═══", gp, nround)
+    qualy_data = None
+    for attempt in range(1, retry_count + 1):
+        qualy_data = fetch_qualy_data(season.year, nround)
+        if qualy_data:
+            break
+        logger.warning("Qualy attempt %d/%d: No data yet, will retry in %ds...",
+                        attempt, retry_count, retry_interval)
+        if attempt < retry_count:
+            _time.sleep(retry_interval)
+
+    if not qualy_data:
+        result.errors.append(
+            f"No qualifying data available from any API after {retry_count} attempts. "
+            "Qualifying results may not be published yet (rain/red flag delay?)."
+        )
+        return result
+    result.steps_completed.append("1-fetch_qualy_data")
+
+    # Step 2 — Create RaceResults (poleman only)
+    try:
+        create_qualy_race_results(season, gp, qualy_data)
+        result.steps_completed.append("2-create_race_results_poleman")
+    except Exception as exc:
+        result.errors.append(f"Failed to create qualy RaceResults: {exc}")
+        logger.exception("Qualy RaceResults creation failed")
+        return result
+
+    # Step 3+4 — Compute and save qualifying-only fantasy points
+    try:
+        driver_df, team_df = compute_qualy_fantasy_points(qualy_data)
+        save_gp_points(season, gp, driver_df, team_df)
+        result.steps_completed.append("3-compute_qualy_points")
+        result.steps_completed.append("4-save_driver_team_points")
+    except Exception as exc:
+        result.errors.append(f"Failed to compute/save qualy fantasy points: {exc}")
+        logger.exception("Qualy fantasy points computation failed")
+        return result
+
+    # Step 5 — Compute partial porra points
+    try:
+        compute_porra_points_for_gp(season, gp)
+        result.steps_completed.append("5-compute_porra_points_partial")
+    except Exception as exc:
+        result.errors.append(f"Failed to compute qualy porra points: {exc}")
+        logger.exception("Qualy porra points failed")
+        return result
+
+    result.success = True
+    logger.info("═══ QUALY Pipeline complete: %s ═══\n%s", gp, result)
+    return result
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Phase 2 — Race pipeline
+# ───────────────────────────────────────────────────────────────────────────
+
+def run_race_pipeline(gp: GrandPrix, retry_count: int = 3,
+                      retry_interval: int = 300) -> PipelineResult:
+    """
+    Post-race pipeline.  Assumes the qualy pipeline has already run
+    (RaceResults exists with poleman, DriverPoints/TeamPoints have qualy points).
+
+    Steps:
+        1. Fetch full GP data from API (qualy + race)
+        2. Update existing RaceResults with race fields
+        3. Compute FULL driver & team fantasy points (qualy + race combined)
+        4. Update DriverPoints & TeamPoints with combined totals
+        5. Recompute porra points (all predictions + full fantasy)
+        6. Update prices for the next GP
+        7. Recompute achievements
+
+    Args:
+        retry_count: Number of fetch attempts before giving up.
+        retry_interval: Seconds between retries (default 5 min).
+    """
+    result = PipelineResult()
+    result.phase = "race"
+    result.gp = gp
+    season = gp.season
+
+    if not season:
+        result.errors.append("GP has no associated season.")
+        return result
+    nround = gp.nround
+    if not nround:
+        result.errors.append("GP has no round number.")
+        return result
+
+    # Step 1 — Fetch full GP data (qualy + race)
+    logger.info("═══ RACE Pipeline start: %s (round %d) ═══", gp, nround)
+    gp_data = None
+    for attempt in range(1, retry_count + 1):
+        gp_data = fetch_gp_data(season.year, nround)
+        if gp_data:
+            break
+        logger.warning("Race attempt %d/%d: No data yet, will retry in %ds...",
+                        attempt, retry_count, retry_interval)
+        if attempt < retry_count:
+            _time.sleep(retry_interval)
+
+    if not gp_data:
+        result.errors.append(
+            f"No race data available from any API after {retry_count} attempts. "
+            "Race results may not be published yet (rain/red flag delay?)."
+        )
+        return result
+    result.steps_completed.append("1-fetch_race_data")
+
+    # Step 2 — Update RaceResults with race fields
+    try:
+        update_race_results(season, gp, gp_data)
+        result.steps_completed.append("2-update_race_results")
+    except Exception as exc:
+        result.errors.append(f"Failed to update RaceResults: {exc}")
+        logger.exception("Race RaceResults update failed")
+        return result
+
+    # Step 3+4 — Compute FULL fantasy points (qualy + race) and overwrite
+    try:
+        driver_df, team_df = compute_fantasy_points(gp_data)
+        save_gp_points(season, gp, driver_df, team_df)
+        result.steps_completed.append("3-compute_full_fantasy_points")
+        result.steps_completed.append("4-save_driver_team_points")
+    except Exception as exc:
+        result.errors.append(f"Failed to compute/save full fantasy points: {exc}")
+        logger.exception("Full fantasy points computation failed")
+        return result
+
+    # Step 5 — Recompute porra points (now with all prediction scores)
+    try:
+        compute_porra_points_for_gp(season, gp)
+        result.steps_completed.append("5-recompute_porra_points")
+    except Exception as exc:
+        result.errors.append(f"Failed to recompute porra points: {exc}")
+        logger.exception("Porra points recomputation failed")
+        return result
+
+    # Step 6 — Update prices for next GP
+    try:
+        update_points()
+        result.steps_completed.append("6-update_next_gp_prices")
+    except Exception as exc:
+        result.warnings.append(f"Price update warning: {exc}")
+        logger.warning("Price update issue (non-fatal): %s", exc)
+
+    # Step 7 — Achievements
+    try:
+        recompute_achievements(rebuild=False)
+        result.steps_completed.append("7-recompute_achievements")
+    except Exception as exc:
+        result.warnings.append(f"Achievement recompute warning: {exc}")
+        logger.warning("Achievement recompute issue: %s", exc)
+
+    result.success = True
+    logger.info("═══ RACE Pipeline complete: %s ═══\n%s", gp, result)
+    return result
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Legacy: Full pipeline (runs both phases sequentially)
+# ───────────────────────────────────────────────────────────────────────────
+
 def run_gp_pipeline(gp: GrandPrix, retry_count: int = 3) -> PipelineResult:
     """
     Run the full automated pipeline for a single Grand Prix.
+    Legacy compatibility: runs qualy + race as a single combined pipeline.
 
     Steps:
         1. Fetch GP data from API (Jolpica → OpenF1 fallback)
@@ -447,6 +835,7 @@ def run_gp_pipeline(gp: GrandPrix, retry_count: int = 3) -> PipelineResult:
         7. Recompute achievements
     """
     result = PipelineResult()
+    result.phase = "full"
     result.gp = gp
     season = gp.season
 
@@ -468,8 +857,7 @@ def run_gp_pipeline(gp: GrandPrix, retry_count: int = 3) -> PipelineResult:
             break
         logger.warning("Attempt %d/%d: No data yet, will retry...", attempt, retry_count)
         if attempt < retry_count:
-            import time
-            time.sleep(60 * 5)  # wait 5 min between retries
+            _time.sleep(60 * 5)  # wait 5 min between retries
 
     if not gp_data:
         result.errors.append(
