@@ -54,6 +54,11 @@ class GPSessionData:
     gp_name: str
     qualifying: list[QualifyingResult] = field(default_factory=list)
     race: list[RaceResultEntry] = field(default_factory=list)
+    # Sprint sessions (empty on non-sprint weekends)
+    sprint_qualifying: list[QualifyingResult] = field(default_factory=list)
+    sprint_race: list[RaceResultEntry] = field(default_factory=list)
+    sprint_winner: Optional[str] = None           # driver name
+    # Key results
     pole_sitter: Optional[str] = None            # driver name
     race_winner: Optional[str] = None             # driver name
     second_place: Optional[str] = None
@@ -141,13 +146,73 @@ def fetch_race_results_jolpica(season: int, round_number: int) -> list[RaceResul
     return results
 
 
+def fetch_sprint_results_jolpica(season: int, round_number: int) -> list[RaceResultEntry]:
+    """Fetch sprint race results from Jolpica. Returns empty list on non-sprint weekends."""
+    data = _jolpica_get(f"{season}/{round_number}/sprint.json?limit=100")
+    if not data:
+        return []
+
+    races = data.get("MRData", {}).get("RaceTable", {}).get("Races", [])
+    if not races:
+        return []
+
+    results = []
+    for r in races[0].get("SprintResults", []):
+        driver = r.get("Driver", {})
+        name = f"{driver.get('givenName', '')} {driver.get('familyName', '')}".strip()
+        constructor = r.get("Constructor", {}).get("name", "")
+        fl = r.get("FastestLap", {})
+        fl_rank = int(fl.get("rank", 0)) if fl.get("rank") else None
+        results.append(RaceResultEntry(
+            position=int(r.get("position", 0)),
+            driver_name=name,
+            constructor_name=constructor,
+            grid=int(r.get("grid", 0)),
+            points=float(r.get("points", 0)),
+            status=r.get("status", "Unknown"),
+            fastest_lap_rank=fl_rank,
+            laps=int(r.get("laps", 0)),
+        ))
+    return results
+
+
+def fetch_sprint_results_openf1(season: int, round_number: int) -> list[RaceResultEntry]:
+    """Fetch sprint race results from OpenF1. Returns empty list on non-sprint weekends."""
+    sprint_key = _openf1_find_session_key(season, round_number, "Sprint")
+    if not sprint_key:
+        return []
+
+    drivers_map = _openf1_get_drivers_map(sprint_key)
+    results_raw = _openf1_get(f"session_result?session_key={sprint_key}")
+    if not results_raw or not isinstance(results_raw, list):
+        return []
+
+    results = []
+    for r in results_raw:
+        num = r.get("driver_number")
+        name, constructor = drivers_map.get(num, ("Unknown", "Unknown"))
+        results.append(RaceResultEntry(
+            position=int(r.get("position", 0)),
+            driver_name=name,
+            constructor_name=constructor,
+            grid=0,
+            points=float(r.get("points", 0)),
+            status="DNF" if r.get("dnf") else ("DNS" if r.get("dns") else "Finished"),
+            fastest_lap_rank=None,
+            laps=int(r.get("number_of_laps", 0)),
+        ))
+    return results
+
+
 def fetch_gp_data_jolpica(season: int, round_number: int) -> Optional[GPSessionData]:
     """
     Fetch complete GP data from Jolpica.
     Returns None if race data is not yet available.
+    Also attempts to fetch sprint data (returns empty lists on non-sprint weekends).
     """
     qualifying = fetch_qualifying_jolpica(season, round_number)
     race = fetch_race_results_jolpica(season, round_number)
+    sprint_race = fetch_sprint_results_jolpica(season, round_number)
 
     if not race:
         logger.info("No race data from Jolpica for %s round %s", season, round_number)
@@ -159,6 +224,7 @@ def fetch_gp_data_jolpica(season: int, round_number: int) -> Optional[GPSessionD
         gp_name=f"Round {round_number}",
         qualifying=qualifying,
         race=race,
+        sprint_race=sprint_race,
     )
 
     # Derive key results
@@ -178,6 +244,11 @@ def fetch_gp_data_jolpica(season: int, round_number: int) -> Optional[GPSessionD
         fl_drivers = [r for r in race if r.fastest_lap_rank == 1]
         if fl_drivers:
             gp_data.fastest_lap_driver = fl_drivers[0].driver_name
+
+    # Sprint winner
+    if sprint_race:
+        sorted_sprint = sorted(sprint_race, key=lambda r: r.position)
+        gp_data.sprint_winner = sorted_sprint[0].driver_name
 
     return gp_data
 
@@ -306,12 +377,16 @@ def fetch_gp_data_openf1(season: int, round_number: int) -> Optional[GPSessionDa
             if fl_num in drivers_map:
                 fastest_lap_driver = drivers_map[fl_num][0]
 
+    # Also fetch sprint data
+    sprint_race = fetch_sprint_results_openf1(season, round_number)
+
     gp_data = GPSessionData(
         season=season,
         round_number=round_number,
         gp_name=f"Round {round_number}",
         qualifying=qualifying,
         race=race,
+        sprint_race=sprint_race,
     )
 
     if qualifying:
@@ -328,9 +403,125 @@ def fetch_gp_data_openf1(season: int, round_number: int) -> Optional[GPSessionDa
         if len(sorted_race) >= 3:
             gp_data.third_place = sorted_race[2].driver_name
 
+    if sprint_race:
+        sorted_sprint = sorted(sprint_race, key=lambda r: r.position)
+        gp_data.sprint_winner = sorted_sprint[0].driver_name
+
     gp_data.fastest_lap_driver = fastest_lap_driver
 
     return gp_data
+
+
+# ---------------------------------------------------------------------------
+# Qualifying-only fetchers  (used by the qualy pipeline trigger)
+# ---------------------------------------------------------------------------
+
+def fetch_qualy_data_jolpica(season: int, round_number: int) -> Optional[GPSessionData]:
+    """
+    Fetch qualifying-only data from Jolpica.
+    Also attempts to fetch sprint race data (available on sprint weekends).
+    Returns GPSessionData with qualifying + sprint lists and pole_sitter, but NO race data.
+    Returns None if qualifying data is not yet available.
+    """
+    qualifying = fetch_qualifying_jolpica(season, round_number)
+    if not qualifying:
+        logger.info("No qualifying data from Jolpica for %s round %s", season, round_number)
+        return None
+
+    # Also try to fetch sprint data (non-sprint weekends return empty list)
+    sprint_race = fetch_sprint_results_jolpica(season, round_number)
+
+    gp_data = GPSessionData(
+        season=season,
+        round_number=round_number,
+        gp_name=f"Round {round_number}",
+        qualifying=qualifying,
+        race=[],  # no race data yet
+        sprint_race=sprint_race,
+    )
+    gp_data.pole_sitter = qualifying[0].driver_name
+
+    if sprint_race:
+        sorted_sprint = sorted(sprint_race, key=lambda r: r.position)
+        gp_data.sprint_winner = sorted_sprint[0].driver_name
+
+    return gp_data
+
+
+def fetch_qualy_data_openf1(season: int, round_number: int) -> Optional[GPSessionData]:
+    """
+    Fetch qualifying-only data from OpenF1 as fallback.
+    Also attempts to fetch sprint race data.
+    Returns GPSessionData with qualifying list and pole_sitter, but NO race data.
+    """
+    quali_key = _openf1_find_session_key(season, round_number, "Qualifying")
+    if not quali_key:
+        logger.info("No OpenF1 qualifying session key for %s round %s", season, round_number)
+        return None
+
+    quali_drivers_map = _openf1_get_drivers_map(quali_key)
+    quali_results_raw = _openf1_get(f"session_result?session_key={quali_key}")
+    if not quali_results_raw or not isinstance(quali_results_raw, list):
+        return None
+
+    qualifying = []
+    for r in quali_results_raw:
+        num = r.get("driver_number")
+        name, constructor = quali_drivers_map.get(num, ("Unknown", "Unknown"))
+        durations = r.get("duration", [])
+        qualifying.append(QualifyingResult(
+            position=int(r.get("position", 0)),
+            driver_name=name,
+            constructor_name=constructor,
+            q1_time=str(durations[0]) if len(durations) > 0 and durations[0] else None,
+            q2_time=str(durations[1]) if len(durations) > 1 and durations[1] else None,
+            q3_time=str(durations[2]) if len(durations) > 2 and durations[2] else None,
+        ))
+
+    if not qualifying:
+        return None
+
+    # Also try to fetch sprint data
+    sprint_race = fetch_sprint_results_openf1(season, round_number)
+
+    gp_data = GPSessionData(
+        season=season,
+        round_number=round_number,
+        gp_name=f"Round {round_number}",
+        qualifying=qualifying,
+        race=[],
+        sprint_race=sprint_race,
+    )
+    sorted_q = sorted(qualifying, key=lambda q: q.position)
+    gp_data.pole_sitter = sorted_q[0].driver_name
+
+    if sprint_race:
+        sorted_sprint = sorted(sprint_race, key=lambda r: r.position)
+        gp_data.sprint_winner = sorted_sprint[0].driver_name
+
+    return gp_data
+
+
+def fetch_qualy_data(season: int, round_number: int) -> Optional[GPSessionData]:
+    """
+    Fetch qualifying-only data.  Jolpica first, OpenF1 fallback.
+    Returns GPSessionData with qualifying + pole_sitter but no race data.
+    Returns None if neither API has qualifying data yet.
+    """
+    logger.info("Fetching QUALY data for %s round %s from Jolpica...", season, round_number)
+    data = fetch_qualy_data_jolpica(season, round_number)
+    if data:
+        logger.info("Successfully fetched qualy from Jolpica.")
+        return data
+
+    logger.info("Jolpica qualy unavailable, trying OpenF1...")
+    data = fetch_qualy_data_openf1(season, round_number)
+    if data:
+        logger.info("Successfully fetched qualy from OpenF1.")
+        return data
+
+    logger.warning("No qualifying data from either API for %s round %s.", season, round_number)
+    return None
 
 
 # ---------------------------------------------------------------------------

@@ -1,22 +1,30 @@
 """
 Management command: process_gp_results
 =======================================
-Automatically processes GP results when ``gp_end_date`` has passed.
+Automatically processes GP results using the dual-trigger architecture:
+qualifying phase after qualy, race phase after the race.
 
 Usage:
-    # One-shot: check and process any pending GPs now
+    # One-shot: check and process any pending GP phases (qualy + race)
     python manage.py process_gp_results
 
     # Continuous: check every 30 minutes (default)
     python manage.py process_gp_results --watch
 
-    # Custom interval (minutes) and delay (hours after gp_end_date)
-    python manage.py process_gp_results --watch --interval 15 --delay 2
+    # Custom interval (minutes) and delays (hours)
+    python manage.py process_gp_results --watch --interval 15 --qualy-delay 3 --race-delay 5
 
-    # Process a specific GP round (overrides automatic detection)
+    # Process a specific GP round (auto-detect phase)
     python manage.py process_gp_results --round 5
 
-    # Dry-run: show what would be processed without actually doing it
+    # Force a specific phase for a round
+    python manage.py process_gp_results --round 5 --phase qualy
+    python manage.py process_gp_results --round 5 --phase race
+
+    # Legacy mode: run old single-phase pipeline
+    python manage.py process_gp_results --round 5 --phase full
+
+    # Dry-run: show what would be processed
     python manage.py process_gp_results --dry-run
 """
 import time
@@ -26,9 +34,13 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from f1porra_website.apps.public.models import Season, GrandPrix
-from f1porra_website.apps.public.src.gp_scheduler import process_pending_gps, find_pending_gps
-from f1porra_website.apps.public.src.gp_pipeline import run_gp_pipeline
+from f1porra_website.apps.public.models import Season, GrandPrix, RaceResults
+from f1porra_website.apps.public.src.gp_scheduler import (
+    process_pending_gps_dual, find_pending_qualy_gps, find_pending_race_gps,
+)
+from f1porra_website.apps.public.src.gp_pipeline import (
+    run_gp_pipeline, run_qualy_pipeline, run_race_pipeline,
+)
 
 logger = logging.getLogger("process_gp_results")
 
@@ -37,7 +49,7 @@ class Command(BaseCommand):
     help = (
         "Automatically fetch race results from Jolpica/OpenF1 APIs, compute "
         "fantasy points, update user porras, and adjust prices for the next GP. "
-        "Triggered by gp_end_date."
+        "Supports dual-trigger: runs qualy pipeline after qualifying, race pipeline after race."
     )
 
     def add_arguments(self, parser):
@@ -53,10 +65,16 @@ class Command(BaseCommand):
             help="Check interval in minutes when using --watch (default: 30).",
         )
         parser.add_argument(
-            "--delay",
+            "--qualy-delay",
             type=float,
-            default=3.0,
-            help="Hours to wait after gp_end_date before processing (default: 3).",
+            default=4.0,
+            help="Hours to wait after qualy_date before processing qualifying (default: 4).",
+        )
+        parser.add_argument(
+            "--race-delay",
+            type=float,
+            default=5.0,
+            help="Hours to wait after gp_date before processing race (default: 5).",
         )
         parser.add_argument(
             "--round",
@@ -71,6 +89,17 @@ class Command(BaseCommand):
             help="Season year (default: current year).",
         )
         parser.add_argument(
+            "--phase",
+            choices=["qualy", "race", "full", "auto"],
+            default="auto",
+            help=(
+                "Which pipeline phase to run: "
+                "'qualy' = qualifying only, 'race' = race only, "
+                "'full' = legacy combined pipeline, "
+                "'auto' = detect phase automatically (default)."
+            ),
+        )
+        parser.add_argument(
             "--dry-run",
             action="store_true",
             help="Show what would be processed without executing the pipeline.",
@@ -83,7 +112,9 @@ class Command(BaseCommand):
         )
 
         year = options["year"] or timezone.now().year
-        delay = timedelta(hours=options["delay"])
+        qualy_delay = timedelta(hours=options["qualy_delay"])
+        race_delay = timedelta(hours=options["race_delay"])
+        phase = options["phase"]
 
         try:
             season = Season.objects.get(year=year)
@@ -101,50 +132,95 @@ class Command(BaseCommand):
                 return
 
             if options["dry_run"]:
+                detected = self._detect_phase(season, gp) if phase == "auto" else phase
                 self.stdout.write(self.style.WARNING(
-                    f"[DRY RUN] Would process: {gp.country} (round {gp.nround})"
+                    f"[DRY RUN] Would process: {gp.country} (round {gp.nround}) "
+                    f"phase={detected}"
                 ))
                 return
 
+            # Determine which phase to run
+            if phase == "auto":
+                phase = self._detect_phase(season, gp)
+
             self.stdout.write(self.style.SUCCESS(
-                f"Processing GP: {gp.country} (round {gp.nround})..."
+                f"Processing GP: {gp.country} (round {gp.nround}) — phase: {phase}..."
             ))
-            result = run_gp_pipeline(gp)
+
+            if phase == "qualy":
+                result = run_qualy_pipeline(gp)
+            elif phase == "race":
+                result = run_race_pipeline(gp)
+            else:  # "full"
+                result = run_gp_pipeline(gp)
+
             self._print_result(result)
             return
 
-        # ── Watch mode ─────────────────────────────────────────────────
+        # ── Watch mode / one-shot ──────────────────────────────────────
         if options["watch"]:
             interval_sec = options["interval"] * 60
             self.stdout.write(self.style.SUCCESS(
                 f"Watching for pending GPs every {options['interval']} min "
-                f"(delay: {options['delay']}h after gp_end_date)..."
+                f"(qualy delay: {options['qualy_delay']}h, "
+                f"race delay: {options['race_delay']}h)..."
             ))
             while True:
-                self._run_check(season, delay, options["dry_run"])
+                self._run_dual_check(season, qualy_delay, race_delay, options["dry_run"])
                 self.stdout.write(f"Next check in {options['interval']} minutes...")
                 time.sleep(interval_sec)
         else:
-            # ── One-shot ───────────────────────────────────────────────
-            self._run_check(season, delay, options["dry_run"])
+            self._run_dual_check(season, qualy_delay, race_delay, options["dry_run"])
 
-    def _run_check(self, season, delay, dry_run):
-        pending = find_pending_gps(season, delay)
-        if not pending:
+    def _detect_phase(self, season, gp) -> str:
+        """Auto-detect which phase to run for a given GP."""
+        try:
+            rr = RaceResults.objects.get(season=season, gp=gp)
+            if rr.first_pos is None:
+                # RaceResults exists with poleman but no race data → race pending
+                return "race"
+            else:
+                # Already fully processed → run race again (re-process)
+                return "race"
+        except RaceResults.DoesNotExist:
+            # No RaceResults at all → qualy pending
+            return "qualy"
+
+    def _run_dual_check(self, season, qualy_delay, race_delay, dry_run):
+        """Check for both qualy-pending and race-pending GPs."""
+        qualy_pending = find_pending_qualy_gps(season, qualy_delay)
+        race_pending = find_pending_race_gps(season, race_delay)
+
+        if not qualy_pending and not race_pending:
             self.stdout.write("No pending GPs to process.")
             return
 
-        for gp in pending:
+        # Process qualy-pending GPs
+        for gp in qualy_pending:
             if dry_run:
                 self.stdout.write(self.style.WARNING(
-                    f"[DRY RUN] Would process: {gp.country} (round {gp.nround}, "
-                    f"end_date: {gp.gp_end_date})"
+                    f"[DRY RUN] Would process QUALY: {gp.country} (round {gp.nround}, "
+                    f"qualy_date: {gp.qualy_date})"
                 ))
             else:
                 self.stdout.write(self.style.SUCCESS(
-                    f"Processing: {gp.country} (round {gp.nround})..."
+                    f"Processing QUALY: {gp.country} (round {gp.nround})..."
                 ))
-                result = run_gp_pipeline(gp)
+                result = run_qualy_pipeline(gp)
+                self._print_result(result)
+
+        # Process race-pending GPs
+        for gp in race_pending:
+            if dry_run:
+                self.stdout.write(self.style.WARNING(
+                    f"[DRY RUN] Would process RACE: {gp.country} (round {gp.nround}, "
+                    f"gp_date: {gp.gp_date})"
+                ))
+            else:
+                self.stdout.write(self.style.SUCCESS(
+                    f"Processing RACE: {gp.country} (round {gp.nround})..."
+                ))
+                result = run_race_pipeline(gp)
                 self._print_result(result)
 
     def _print_result(self, result):

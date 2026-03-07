@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+﻿from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from f1porra_website.apps.public.models import (
@@ -19,7 +19,7 @@ def team_paths(year: int, team_name: str) -> tuple[str, str]:
     return (f"season{year}/teams/{s}.png", f"season{year}/cars/{s}.png")
 
 def driver_paths(year: int, driver_name: str) -> tuple[str, str]:
-    # Usamos el último token como "apellido" (como tu convención: verstappen.png, alonso.png, etc.)
+    # Usamos el Ãºltimo token como "apellido" (como tu convenciÃ³n: verstappen.png, alonso.png, etc.)
     last = driver_name.strip().split()[-1]
     s = _slug(last)
     return (f"season{year}/drivers/{s}.png", f"season{year}/selected/{s}.png")
@@ -94,28 +94,28 @@ DRIVERS_2026 = [
 
 # Round order based on official F1 2026 calendar (formula1.com/en/racing/2026)
 GRAND_PRIXES_2026 = [
-    {"nround": 1,  "country": "Australia",             "name": "Australian Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/australia.png", "country_link": "season2026/flags/australia.jpg", "gp_photo": "season2026/track/australia.png", "season": 3},
-    {"nround": 2,  "country": "China",                 "name": "Chinese Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/china.png", "country_link": "season2026/flags/china.jpg", "gp_photo": "season2026/track/china.png", "season": 3},
-    {"nround": 3,  "country": "Japan",                 "name": "Japanese Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/japan.png", "country_link": "season2026/flags/japan.jpg", "gp_photo": "season2026/track/japan.png", "season": 3},
-    {"nround": 4,  "country": "Bahrain",               "name": "Bahrain Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/bahrain.png", "country_link": "season2026/flags/bahrain.jpg", "gp_photo": "season2026/track/bahrain.png", "season": 3},
-    {"nround": 5,  "country": "Saudi Arabia",          "name": "Saudi Arabian Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/arabiasaudi.png", "country_link": "season2026/flags/arabiasaudi.jpg", "gp_photo": "season2026/track/arabiasaudi.png", "season": 3},
-    {"nround": 7,  "country": "Canada",                "name": "Canadian Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/canada.png", "country_link": "season2026/flags/canada.jpg", "gp_photo": "season2026/track/canada.png", "season": 3},
-    {"nround": 8,  "country": "Monaco",                "name": "Monaco Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/monaco.png", "country_link": "season2026/flags/monaco.jpg", "gp_photo": "season2026/track/monaco.png", "season": 3},
-    {"nround": 9,  "country": "Barcelona-Catalunya",   "name": "Barcelona-Catalunya Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/barcelona.png", "country_link": "season2026/flags/spain.jpg", "gp_photo": "season2026/track/barcelona.png", "season": 3},
-    {"nround": 10, "country": "Austria",               "name": "Austrian Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/austria.png", "country_link": "season2026/flags/austria.jpg", "gp_photo": "season2026/track/austria.png", "season": 3},
-    {"nround": 11, "country": "Great Britain",         "name": "British Grand Prix",  	"last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/greatbritain.png", "country_link": "season2026/flags/greatbritain.jpg", "gp_photo": "season2026/track/greatbritain.png", "season": 3},
-    {"nround": 13, "country": "Hungary",               "name": "Hungarian Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/hungary.png", "country_link": "season2026/flags/hungary.jpg", "gp_photo": "season2026/track/hungary.png", "season": 3},
-    {"nround": 14, "country": "Netherlands",           "name": "Dutch Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/netherlands.png", "country_link": "season2026/flags/netherlands.jpg", "gp_photo": "season2026/track/netherlands.png", "season": 3},
-    {"nround": 15, "country": "Italy",                 "name": "Italian Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/italy.png", "country_link": "season2026/flags/italy.jpg", "gp_photo": "season2026/track/italy.png", "season": 3},
-    {"nround": 16, "country": "Spain",                 "name": "Spanish Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/spain.png", "country_link": "season2026/flags/spain.jpg", "gp_photo": "season2026/track/spain.png", "season": 3},
-    {"nround": 17, "country": "Azerbaijan",            "name": "Azerbaijan Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/azerbaijan.png", "country_link": "season2026/flags/azerbaijan.jpg", "gp_photo": "season2026/track/azerbaijan.png", "season": 3},
-    {"nround": 18, "country": "Singapore",             "name": "Singapore Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/singapore.png", "country_link": "season2026/flags/singapore.jpg", "gp_photo": "season2026/track/singapore.png", "season": 3},
-    {"nround": 19, "country": "United States",         "name": "United States Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/unitedstates.png", "country_link": "season2026/flags/unitedstates.jpg", "gp_photo": "season2026/track/unitedstates.png", "season": 3},
-    {"nround": 20, "country": "Mexico",                "name": "Mexico City Grand Prix", 	"last_edit_date": None, "gp_end_date": None, "photo_link":"season2026/gps/mexico.png","country_link":"season2026/flags/mexico.jpg","gp_photo":"season2026/track/mexico.png","season":"3"},
-    {"nround": 21, "country": "Brazil",                "name": "São Paulo Grand Prix",  	"last_edit_date": None, "gp_end_date": None, "photo_link":"season2026/gps/brazil.png","country_link":"season2026/flags/brazil.jpg","gp_photo":"season2026/track/brazil.png","season":"3"},
-    {"nround": 22, "country": "Las Vegas",             "name": "Las Vegas Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/lasvegas.png", "country_link":"season2026/flags/unitedstates.jpg","gp_photo":"season2026/track/lasvegas.png","season":"3"},
-    {"nround": 23, "country": "Qatar",                 "name":"Qatar Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/qatar.png","country_link":"season2026/flags/qatar.jpg","gp_photo":"season2026/track/qatar.png","season":"3"},
-    {"nround": 24, "country": "Abu Dhabi",             "name": "Abu Dhabi Grand Prix", "last_edit_date": None, "gp_end_date": None, "photo_link": "season2026/gps/abudhabi.png", "country_link":"season2026/flags/abudhabi.jpg","gp_photo":"season2026/track/abudhabi.png","season":"3"},
+    {"nround": 1,  "country": "Australia",             "name": "Australian Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/australia.png", "country_link": "season2026/flags/australia.jpg", "gp_photo": "season2026/track/australia.png", "season": 3},
+    {"nround": 2,  "country": "China",                 "name": "Chinese Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/china.png", "country_link": "season2026/flags/china.jpg", "gp_photo": "season2026/track/china.png", "season": 3},
+    {"nround": 3,  "country": "Japan",                 "name": "Japanese Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/japan.png", "country_link": "season2026/flags/japan.jpg", "gp_photo": "season2026/track/japan.png", "season": 3},
+    {"nround": 4,  "country": "Bahrain",               "name": "Bahrain Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/bahrain.png", "country_link": "season2026/flags/bahrain.jpg", "gp_photo": "season2026/track/bahrain.png", "season": 3},
+    {"nround": 5,  "country": "Saudi Arabia",          "name": "Saudi Arabian Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/arabiasaudi.png", "country_link": "season2026/flags/arabiasaudi.jpg", "gp_photo": "season2026/track/arabiasaudi.png", "season": 3},
+    {"nround": 7,  "country": "Canada",                "name": "Canadian Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/canada.png", "country_link": "season2026/flags/canada.jpg", "gp_photo": "season2026/track/canada.png", "season": 3},
+    {"nround": 8,  "country": "Monaco",                "name": "Monaco Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/monaco.png", "country_link": "season2026/flags/monaco.jpg", "gp_photo": "season2026/track/monaco.png", "season": 3},
+    {"nround": 9,  "country": "Barcelona-Catalunya",   "name": "Barcelona-Catalunya Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/barcelona.png", "country_link": "season2026/flags/spain.jpg", "gp_photo": "season2026/track/barcelona.png", "season": 3},
+    {"nround": 10, "country": "Austria",               "name": "Austrian Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/austria.png", "country_link": "season2026/flags/austria.jpg", "gp_photo": "season2026/track/austria.png", "season": 3},
+    {"nround": 11, "country": "Great Britain",         "name": "British Grand Prix",  	"last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/greatbritain.png", "country_link": "season2026/flags/greatbritain.jpg", "gp_photo": "season2026/track/greatbritain.png", "season": 3},
+    {"nround": 13, "country": "Hungary",               "name": "Hungarian Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/hungary.png", "country_link": "season2026/flags/hungary.jpg", "gp_photo": "season2026/track/hungary.png", "season": 3},
+    {"nround": 14, "country": "Netherlands",           "name": "Dutch Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/netherlands.png", "country_link": "season2026/flags/netherlands.jpg", "gp_photo": "season2026/track/netherlands.png", "season": 3},
+    {"nround": 15, "country": "Italy",                 "name": "Italian Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/italy.png", "country_link": "season2026/flags/italy.jpg", "gp_photo": "season2026/track/italy.png", "season": 3},
+    {"nround": 16, "country": "Spain",                 "name": "Spanish Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/spain.png", "country_link": "season2026/flags/spain.jpg", "gp_photo": "season2026/track/spain.png", "season": 3},
+    {"nround": 17, "country": "Azerbaijan",            "name": "Azerbaijan Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/azerbaijan.png", "country_link": "season2026/flags/azerbaijan.jpg", "gp_photo": "season2026/track/azerbaijan.png", "season": 3},
+    {"nround": 18, "country": "Singapore",             "name": "Singapore Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/singapore.png", "country_link": "season2026/flags/singapore.jpg", "gp_photo": "season2026/track/singapore.png", "season": 3},
+    {"nround": 19, "country": "United States",         "name": "United States Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/unitedstates.png", "country_link": "season2026/flags/unitedstates.jpg", "gp_photo": "season2026/track/unitedstates.png", "season": 3},
+    {"nround": 20, "country": "Mexico",                "name": "Mexico City Grand Prix", 	"last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link":"season2026/gps/mexico.png","country_link":"season2026/flags/mexico.jpg","gp_photo":"season2026/track/mexico.png","season":"3"},
+    {"nround": 21, "country": "Brazil",                "name": "SÃ£o Paulo Grand Prix",  	"last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link":"season2026/gps/brazil.png","country_link":"season2026/flags/brazil.jpg","gp_photo":"season2026/track/brazil.png","season":"3"},
+    {"nround": 22, "country": "Las Vegas",             "name": "Las Vegas Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/lasvegas.png", "country_link":"season2026/flags/unitedstates.jpg","gp_photo":"season2026/track/lasvegas.png","season":"3"},
+    {"nround": 23, "country": "Qatar",                 "name":"Qatar Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/qatar.png","country_link":"season2026/flags/qatar.jpg","gp_photo":"season2026/track/qatar.png","season":"3"},
+    {"nround": 24, "country": "Abu Dhabi",             "name": "Abu Dhabi Grand Prix", "last_edit_date": None, "qualy_date": None, "gp_date": None, "photo_link": "season2026/gps/abudhabi.png", "country_link":"season2026/flags/abudhabi.jpg","gp_photo":"season2026/track/abudhabi.png","season":"3"},
 ]
 
 
@@ -244,7 +244,7 @@ class Command(BaseCommand):
                     defaults={"price": 0, "points": None}
                 )
 
-        self.stdout.write(self.style.SUCCESS(f"✅ Seeded season {season.year} ({season.name})"))
+        self.stdout.write(self.style.SUCCESS(f"âœ… Seeded season {season.year} ({season.name})"))
         self.stdout.write(self.style.SUCCESS(
             f"Teams: {len(team_by_name)} | Drivers: {len(driver_by_name)} | GPs: {len(gps)}"
         ))

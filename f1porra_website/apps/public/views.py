@@ -821,7 +821,7 @@ def calendar_view(request):
     for gp in gps:
         gp_by_id[gp.id] = gp
 
-        reference_dt = gp.gp_end_date or gp.last_edit_date
+        reference_dt = gp.gp_date or gp.last_edit_date
         if not reference_dt:
             continue
 
@@ -830,7 +830,7 @@ def calendar_view(request):
         if reference_dt_madrid is None:
             continue
         race_day = reference_dt_madrid.date()
-        is_past = gp.id in scored_gp_ids or (gp.gp_end_date is not None and gp.gp_end_date <= now_utc)
+        is_past = gp.id in scored_gp_ids or (gp.gp_date is not None and gp.gp_date <= now_utc)
         is_locked = (gp.last_edit_date is not None and gp.last_edit_date <= now_utc and not is_past)
 
         if gp.id == next_gp_id:
