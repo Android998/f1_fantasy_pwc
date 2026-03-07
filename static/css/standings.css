@@ -77,7 +77,7 @@
     border-collapse: separate;
     border-spacing: 0;
     background-color: white;
-    font-size: 1vw;
+    font-size: clamp(0.65rem, 1vw, 1rem);
     border: 2px solid #ffffff; /* Border color for the table */
     border-radius: 20px;
     overflow: hidden; /* Ensures the rounded corners are applied correctly */
@@ -171,8 +171,8 @@
 }
 
 .profile-photo {
-    width: 2.5em;
-    height: 2.5em;
+    width: clamp(1.4rem, 2.5em, 2.5em);
+    height: clamp(1.4rem, 2.5em, 2.5em);
     border-radius: 50%;
     object-fit: cover;
 }
@@ -191,8 +191,8 @@
 }
 
 .chip-icon{
-    width: 46px;
-    height: 46px;
+    width: clamp(24px, 3.2vw, 46px);
+    height: clamp(24px, 3.2vw, 46px);
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
@@ -247,7 +247,7 @@
     border-collapse: separate;
     border-spacing: 0;
     background-color: white;
-    font-size: 1vw;
+    font-size: clamp(0.65rem, 1vw, 1rem);
     border: 2px solid #ffffff; /* Border color for the table */
     border-radius: 20px;
     overflow: hidden; /* Ensures the rounded corners are applied correctly */
@@ -302,4 +302,335 @@
 
 .standings-table-team tbody tr:last-child td:last-child {
     border-bottom-right-radius: 18px;
+}
+
+/* =========================================
+   RESPONSIVE — Standings
+========================================= */
+
+/* Tablet / medium screens */
+@media (max-width: 1100px) {
+    .standings-table,
+    .standings-table-team {
+        width: 100%;
+        font-size: clamp(0.6rem, 1.6vw, 0.9rem);
+    }
+
+    .standings-table th,
+    .standings-table td,
+    .standings-table-team th,
+    .standings-table-team td {
+        padding: 0.4rem 0.3rem;
+    }
+
+    .chip-icons {
+        gap: 0.2rem;
+    }
+
+    .user-standings,
+    .teams-standings {
+        padding: 2% 1.5%;
+    }
+}
+
+/* Small tablets / large phones */
+@media (max-width: 768px) {
+    .main-standings {
+        padding: 1% 0;
+    }
+
+    .user-standings,
+    .teams-standings {
+        margin: 0.5%;
+        padding: 2% 1%;
+    }
+
+    .user-standings h1,
+    .teams-standings h1 {
+        font-size: 1.3rem !important;
+    }
+
+    .standings-table,
+    .standings-table-team {
+        width: 100%;
+        table-layout: auto;
+        font-size: clamp(0.55rem, 2.2vw, 0.8rem);
+        border-radius: 12px;
+    }
+
+    .standings-table thead tr th:first-child,
+    .standings-table-team thead tr th:first-child {
+        border-top-left-radius: 10px;
+    }
+    .standings-table thead tr th:last-child,
+    .standings-table-team thead tr th:last-child {
+        border-top-right-radius: 10px;
+    }
+    .standings-table tbody tr:last-child td:first-child,
+    .standings-table-team tbody tr:last-child td:first-child {
+        border-bottom-left-radius: 10px;
+    }
+    .standings-table tbody tr:last-child td:last-child,
+    .standings-table-team tbody tr:last-child td:last-child {
+        border-bottom-right-radius: 10px;
+    }
+
+    .standings-table th,
+    .standings-table td,
+    .standings-table-team th,
+    .standings-table-team td {
+        padding: 0.35rem 0.2rem;
+    }
+
+    /* Column widths — let table auto-size but give hints */
+    .rank { width: auto; }
+    .user-name { width: auto; }
+    .team-name { width: auto; }
+    .points, .wins, .podiums, .last-2 { width: auto; }
+    .chips { width: auto; }
+    .view-team { width: auto; }
+
+    .chip-icon {
+        width: clamp(20px, 5vw, 34px);
+        height: clamp(20px, 5vw, 34px);
+    }
+
+    .chip-icon img {
+        transform: scale(1.7);
+    }
+
+    .chip-icons {
+        gap: 0.15rem;
+    }
+
+    .profile-photo {
+        width: 1.6em;
+        height: 1.6em;
+    }
+
+    .standings-table img {
+        max-width: 20%;
+        margin-right: 3px;
+    }
+
+    .achievement-badge {
+        width: 20px;
+        height: 20px;
+        font-size: 0.6rem;
+        margin-left: 0.25rem;
+    }
+
+    .achievement-badge.icon-number {
+        font-size: 0.35rem;
+    }
+
+    .achievement-tooltip {
+        min-width: 180px;
+        max-width: 260px;
+        font-size: 0.6rem;
+    }
+
+    .achievement-tooltip-icon {
+        width: 22px;
+        height: 22px;
+        font-size: 0.7rem;
+    }
+
+    .achievement-tooltip-name {
+        font-size: 0.58rem;
+    }
+
+    .view-team a {
+        font-size: 0.7em;
+    }
+
+    .gray-line {
+        margin-bottom: 15px;
+    }
+}
+
+/* Mobile phones */
+@media (max-width: 576px) {
+    .main-standings {
+        padding: 0;
+    }
+
+    .user-standings,
+    .teams-standings {
+        margin: 0.3%;
+        padding: 3% 1%;
+        border-radius: 6px;
+    }
+
+    .user-standings h1,
+    .teams-standings h1 {
+        font-size: 1.1rem !important;
+        margin-bottom: 1% !important;
+    }
+
+    .standings-table,
+    .standings-table-team {
+        width: 100%;
+        table-layout: auto;
+        font-size: clamp(0.5rem, 2.8vw, 0.72rem);
+        border-radius: 8px;
+    }
+
+    .standings-table th,
+    .standings-table td {
+        padding: 0.3rem 0.15rem;
+        word-break: break-word;
+    }
+
+    .standings-table-team th,
+    .standings-table-team td {
+        padding: 0.3rem 0.2rem;
+    }
+
+    /* Hide less important columns on very small screens */
+    .standings-table .podiums,
+    .standings-table .last-2 {
+        display: none;
+    }
+
+    .chip-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .chip-icon img {
+        transform: scale(1.5);
+    }
+
+    .chip-icons {
+        gap: 0.1rem;
+    }
+
+    .profile-photo {
+        width: 1.3em;
+        height: 1.3em;
+    }
+
+    .standings-table img {
+        max-width: 18%;
+        margin-right: 2px;
+    }
+
+    .achievement-badge {
+        width: 16px;
+        height: 16px;
+        font-size: 0.5rem;
+        margin-left: 0.15rem;
+    }
+
+    .achievement-badge.icon-number {
+        font-size: 0.3rem;
+    }
+
+    .achievement-badge.icon-symbol {
+        font-size: 0.55rem;
+    }
+
+    .achievement-tooltip {
+        min-width: 150px;
+        max-width: 220px;
+        font-size: 0.55rem;
+        left: 0;
+        transform: translateX(-30%);
+    }
+
+    .achievement-tooltip-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 0.6rem;
+    }
+
+    .achievement-tooltip-item {
+        gap: 0.25rem;
+    }
+
+    .achievement-tooltip-name {
+        font-size: 0.5rem;
+    }
+
+    .achievement-tooltip-tag {
+        font-size: 0.45rem;
+        padding: 0.05rem 0.25rem;
+    }
+
+    .view-team a {
+        font-size: 0.65em;
+    }
+
+    .gray-line {
+        margin-bottom: 10px;
+    }
+
+    .top-filters {
+        margin: 0 0.5% 1% 0.5%;
+        padding: 0.5%;
+    }
+
+    /* Stack filter grid on mobile */
+    .main-standings .stats-filter-grid {
+        flex-wrap: wrap;
+    }
+
+    .main-standings .stats-filter-grid .section-std {
+        flex: 1 1 45%;
+        min-width: 100px;
+    }
+
+    .main-standings .stats-filter-grid .stats-actions-cell {
+        flex: 1 1 100%;
+    }
+
+    .main-standings .stats-title {
+        font-size: 1.2rem;
+    }
+}
+
+/* Extra small phones */
+@media (max-width: 400px) {
+    .standings-table,
+    .standings-table-team {
+        font-size: clamp(0.45rem, 3vw, 0.62rem);
+        border-radius: 6px;
+    }
+
+    .standings-table th,
+    .standings-table td {
+        padding: 0.25rem 0.1rem;
+    }
+
+    /* Also hide wins on very tiny screens */
+    .standings-table .wins {
+        display: none;
+    }
+
+    .chip-icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    .chip-icon img {
+        transform: scale(1.3);
+    }
+
+    .profile-photo {
+        width: 1.1em;
+        height: 1.1em;
+    }
+
+    .achievement-badge {
+        width: 14px;
+        height: 14px;
+        font-size: 0.42rem;
+        margin-left: 0.1rem;
+    }
+
+    .user-standings h1,
+    .teams-standings h1 {
+        font-size: 0.9rem !important;
+    }
 }
