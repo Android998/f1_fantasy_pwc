@@ -83,6 +83,10 @@
                         </li>
                         {%url 'public:team' as team_url%}
                         <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == team_url %} activate {%endif%}" href="{{team_url}}">My Team</a></li>
+                        {% if user.is_staff %}
+                        {%url 'public:admin_points_review' as admin_review_url%}
+                        <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded {% if request.path == admin_review_url %} activate {%endif%}" href="{{admin_review_url}}" style="color:#e94560;">Admin</a></li>
+                        {% endif %}
                     </ul>
                 </div>
             </div>
