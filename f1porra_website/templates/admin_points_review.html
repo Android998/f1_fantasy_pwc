@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    .admin-review { padding: 3% 5%; font-family: 'Montserrat', sans-serif; }
+    .admin-review h1 { font-family: Formula1Bold; text-transform: uppercase; margin-bottom: 1rem; }
+    .admin-review h2 { font-family: Formula1Bold; font-size: 1.3rem; margin-top: 2rem; margin-bottom: .5rem; }
+    .admin-review .gp-selector { margin-bottom: 2rem; }
+    .admin-review select, .admin-review input, .admin-review textarea {
+        font-family: 'Montserrat', sans-serif; font-size: .85rem;
+        border: 1px solid #555; border-radius: 4px; padding: 4px 8px;
+        background: #1a1a2e; color: #eee;
+    }
+    .admin-review select { min-width: 200px; }
+    .admin-review textarea { resize: vertical; min-height: 28px; width: 100%; }
+    .admin-review input[type=number] { width: 70px; text-align: center; }
+    .admin-review table {
+        width: 100%; border-collapse: collapse; font-size: .8rem;
+        background: #16213e; color: #eee; margin-bottom: 1.5rem;
+    }
+    .admin-review th {
+        background: #0f3460; padding: 6px 8px; text-align: center;
+        border: 1px solid #1a1a2e; white-space: nowrap; font-size: .75rem;
+    }
+    .admin-review td {
+        padding: 5px 8px; text-align: center; border: 1px solid #1a1a2e;
+    }
+    .admin-review tr:nth-child(even) { background: #1a1a3e; }
+    .admin-review .col-name { text-align: left; white-space: nowrap; font-weight: 600; }
+    .admin-review .col-note { text-align: left; min-width: 120px; }
+    .admin-review .subtotal { color: #e94560; font-weight: 700; }
+    .admin-review .final { color: #53d769; font-weight: 700; font-size: .9rem; }
+    .admin-review .adjusted { background: #3a2000 !important; }
+    .admin-review .btn-save {
+        background: #e94560; color: #fff; border: none; border-radius: 4px;
+        padding: 10px 30px; font-family: Formula1Bold; font-size: 1rem;
+        cursor: pointer; text-transform: uppercase; margin-top: 1rem;
+    }
+    .admin-review .btn-save:hover { background: #c23152; }
+    .admin-review .section-header { color: #e94560; font-size: .65rem; text-transform: uppercase; letter-spacing: 1px; }
+</style>
+
+<div class="admin-review">
+    <h1>Points Review & Adjustment</h1>
+
+    {% if not season %}
+        <p>No season found.</p>
+    {% else %}
+
+    <!-- GP Selector -->
+    <div class="gp-selector">
+        <form method="get">
+            <label for="gp-select">Grand Prix:</label>
+            <select id="gp-select" name="gp" onchange="this.form.submit()">
+                <option value="">-- Select GP --</option>
+                {% for gp in gps %}
+                <option value="{{ gp.id }}" {% if selected_gp and selected_gp.id == gp.id %}selected{% endif %}>
+                    R{{ gp.nround }} — {{ gp.country }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% if selected_gp %}
+    <form method="post" action="{% url 'public:admin_points_save' %}">
+        {% csrf_token %}
+        <input type="hidden" name="gp_id" value="{{ selected_gp.id }}">
+
+        <!-- ─── DRIVER DETAILS ─── -->
+        <h2>Driver Points Breakdown — {{ selected_gp.country }}</h2>
+        {% if driver_details %}
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th rowspan="2">Driver</th>
+                    <th colspan="5" class="section-header" style="border-bottom:2px solid #e94560;">Qualifying</th>
+                    <th colspan="5" class="section-header" style="border-bottom:2px solid #3282b8;">Race</th>
+                    <th colspan="5" class="section-header" style="border-bottom:2px solid #f5a623;">Sprint</th>
+                    <th colspan="4" class="section-header" style="border-bottom:2px solid #53d769;">Totals</th>
+                </tr>
+                <tr>
+                    <!-- Qualy -->
+                    <th>Part.</th>
+                    <th>Pos</th>
+                    <th>TM</th>
+                    <th>DNS</th>
+                    <th class="subtotal">Q</th>
+                    <!-- Race -->
+                    <th>F1Pts</th>
+                    <th>Gained</th>
+                    <th>TM</th>
+                    <th>DNF</th>
+                    <th class="subtotal">R</th>
+                    <!-- Sprint -->
+                    <th>Pos</th>
+                    <th>Gained</th>
+                    <th>TM</th>
+                    <th>DNF</th>
+                    <th class="subtotal">S</th>
+                    <!-- Totals -->
+                    <th>Auto</th>
+                    <th>Adj</th>
+                    <th class="final">Final</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in driver_details %}
+                <tr class="{% if d.admin_adjustment != 0 %}adjusted{% endif %}">
+                    <td class="col-name">{{ d.driver.name }}</td>
+                    <!-- Qualy -->
+                    <td>{{ d.qualy_participation }}</td>
+                    <td>{{ d.qualy_position }}</td>
+                    <td>{{ d.qualy_teammate }}</td>
+                    <td>{{ d.qualy_dns_penalty }}</td>
+                    <td class="subtotal">{{ d.qualy_total }}</td>
+                    <!-- Race -->
+                    <td>{{ d.race_f1_points }}</td>
+                    <td>{{ d.race_positions_gained }}</td>
+                    <td>{{ d.race_teammate }}</td>
+                    <td>{{ d.race_dnf_penalty }}</td>
+                    <td class="subtotal">{{ d.race_total }}</td>
+                    <!-- Sprint -->
+                    <td>{{ d.sprint_position_pts }}</td>
+                    <td>{{ d.sprint_positions_gained }}</td>
+                    <td>{{ d.sprint_teammate }}</td>
+                    <td>{{ d.sprint_dnf_penalty }}</td>
+                    <td class="subtotal">{{ d.sprint_total }}</td>
+                    <!-- Totals -->
+                    <td>{{ d.auto_total }}</td>
+                    <td><input type="number" name="driver_adj_{{ d.id }}" value="{{ d.admin_adjustment }}"></td>
+                    <td class="final">{{ d.final_total }}</td>
+                    <td class="col-note"><textarea name="driver_note_{{ d.id }}" rows="1">{{ d.admin_note }}</textarea></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p style="color:#888;">No driver detail records for this GP. Run the pipeline first.</p>
+        {% endif %}
+
+        <!-- ─── TEAM DETAILS ─── -->
+        <h2>Team Points Breakdown — {{ selected_gp.country }}</h2>
+        {% if team_details %}
+        <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th rowspan="2">Team</th>
+                    <th colspan="3" class="section-header" style="border-bottom:2px solid #e94560;">Qualifying</th>
+                    <th colspan="2" class="section-header" style="border-bottom:2px solid #3282b8;">Race</th>
+                    <th colspan="2" class="section-header" style="border-bottom:2px solid #f5a623;">Sprint</th>
+                    <th colspan="4" class="section-header" style="border-bottom:2px solid #53d769;">Totals</th>
+                </tr>
+                <tr>
+                    <!-- Qualy -->
+                    <th>Drv Pts</th>
+                    <th>Bonus</th>
+                    <th class="subtotal">Q</th>
+                    <!-- Race -->
+                    <th>Drv Pts</th>
+                    <th class="subtotal">R</th>
+                    <!-- Sprint -->
+                    <th>Drv Pts</th>
+                    <th class="subtotal">S</th>
+                    <!-- Totals -->
+                    <th>Auto</th>
+                    <th>Adj</th>
+                    <th class="final">Final</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in team_details %}
+                <tr class="{% if t.admin_adjustment != 0 %}adjusted{% endif %}">
+                    <td class="col-name">{{ t.team.name }}</td>
+                    <!-- Qualy -->
+                    <td>{{ t.qualy_driver_pts_sum }}</td>
+                    <td>{{ t.qualy_team_bonus }}</td>
+                    <td class="subtotal">{{ t.qualy_total }}</td>
+                    <!-- Race -->
+                    <td>{{ t.race_driver_pts_sum }}</td>
+                    <td class="subtotal">{{ t.race_total }}</td>
+                    <!-- Sprint -->
+                    <td>{{ t.sprint_driver_pts_sum }}</td>
+                    <td class="subtotal">{{ t.sprint_total }}</td>
+                    <!-- Totals -->
+                    <td>{{ t.auto_total }}</td>
+                    <td><input type="number" name="team_adj_{{ t.id }}" value="{{ t.admin_adjustment }}"></td>
+                    <td class="final">{{ t.final_total }}</td>
+                    <td class="col-note"><textarea name="team_note_{{ t.id }}" rows="1">{{ t.admin_note }}</textarea></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p style="color:#888;">No team detail records for this GP. Run the pipeline first.</p>
+        {% endif %}
+
+        <button type="submit" class="btn-save">Save Adjustments & Recompute</button>
+    </form>
+    {% else %}
+    <p style="color:#888;">Select a Grand Prix above to review points.</p>
+    {% endif %}
+
+    {% endif %}
+</div>
+{% endblock %}
