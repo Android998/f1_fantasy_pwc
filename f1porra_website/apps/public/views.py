@@ -799,8 +799,11 @@ def calendar_view(request):
     now_madrid = _now_madrid()
     now_utc = now_madrid.astimezone(pytz.UTC)
     gps = list(GrandPrix.objects.filter(season=season).order_by("nround", "id"))
-    scored_gp_ids = set(
-        Porra.objects.filter(season=season, points__isnull=False).values_list("gp_id", flat=True).distinct()
+    race_complete_gp_ids = set(
+        RaceResults.objects.filter(
+            season=season,
+            first_pos__isnull=False,
+        ).values_list("gp_id", flat=True)
     )
     user_porra_gp_ids = set()
     if request.user.is_authenticated:
@@ -809,10 +812,14 @@ def calendar_view(request):
         )
 
     next_gp_id = None
+    all_prev_scored = True
     for gp in gps:
-        if gp.last_edit_date and gp.last_edit_date > now_utc:
-            next_gp_id = gp.id
-            break
+        gp_scored = gp.id in race_complete_gp_ids
+        if not gp_scored:
+            if all_prev_scored:
+                next_gp_id = gp.id
+                break
+            all_prev_scored = False
 
     gp_by_id = {}
     gp_cards = []
@@ -830,8 +837,8 @@ def calendar_view(request):
         if reference_dt_madrid is None:
             continue
         race_day = reference_dt_madrid.date()
-        is_past = gp.id in scored_gp_ids or (gp.gp_date is not None and gp.gp_date <= now_utc)
-        is_locked = (gp.last_edit_date is not None and gp.last_edit_date <= now_utc and not is_past)
+        is_past = gp.id in race_complete_gp_ids
+        is_locked = False
 
         if gp.id == next_gp_id:
             state = "next"
@@ -854,7 +861,27 @@ def calendar_view(request):
 
         actions = []
         if state == "next":
-            actions.append({"label": "My Team", "url": reverse("public:team"), "external": False})
+            actions.append(
+                {
+                    "label": "View Live",
+                    "url": f"{reverse('public:standings')}?gp={gp.country}",
+                    "external": False,
+                }
+            )
+            selection_closed = gp.last_edit_date is not None and gp.last_edit_date <= now_utc
+            if selection_closed and request.user.is_authenticated and gp.id in user_porra_gp_ids:
+                actions.append(
+                    {
+                        "label": "My Team",
+                        "url": reverse(
+                            "public:view_team",
+                            kwargs={"username": request.user.username, "gp": gp.country},
+                        ),
+                        "external": False,
+                    }
+                )
+            else:
+                actions.append({"label": "My Team", "url": reverse("public:team"), "external": False})
         elif state == "past":
             if request.user.is_authenticated and gp.id in user_porra_gp_ids:
                 actions.append(
