@@ -195,16 +195,73 @@ DNF_STATUSES = frozenset([
     "Mechanical", "Overheating", "Oil Leak", "Water Leak", "Fuel Pump",
     "Wheel", "Throttle", "Steering", "Technical", "Spun off",
     "DNF", "Did not finish",
+    "DNS", "Did not start",  # race DNS = same as DNF
 ])
 
 # Sprint race position points: 8,7,6,5,4,3,2,1 for P1-P8
 SPRINT_POSITION_POINTS = {1: 8, 2: 7, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2, 8: 1}
 
 
-def compute_qualy_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _inject_missing_qualy_drivers(
+    qdf: pd.DataFrame,
+    all_drivers: dict[str, str],
+) -> pd.DataFrame:
+    """
+    Add DNS rows for drivers who are completely absent from qualifying data.
+
+    The Jolpica API omits drivers who never set a lap time (crash before
+    timing, DNS, etc.).  This function detects those missing drivers and
+    appends them to the qualy DataFrame with:
+      - Position at the back of the grid (= max existing + 1)
+        ALL DNS drivers share the same back-of-grid position to avoid
+        inflated "positions gained" in the race calculation.
+      - Q1/Q2/Q3 = "" (empty) → triggers the -10 DNS penalty downstream
+
+    Args:
+        qdf: existing qualifying DataFrame (may be empty).
+        all_drivers: {driver_api_name: constructor_api_name} for every driver
+                     that SHOULD appear (from race data or season DB).
+    Returns:
+        Updated qdf with missing drivers appended (or original if none missing).
+    """
+    if not all_drivers:
+        return qdf
+
+    existing = set(qdf["Driver"]) if not qdf.empty else set()
+    back_of_grid = (int(qdf["Position"].max()) + 1) if not qdf.empty else 1
+
+    dns_rows = []
+    for driver, constructor in sorted(all_drivers.items()):
+        if driver not in existing:
+            dns_rows.append({
+                "Driver": driver,
+                "Constructor": constructor,
+                "Position": back_of_grid,  # all DNS at same back-of-grid
+                "Q1": "",
+                "Q2": None,
+                "Q3": None,
+            })
+            logger.info(
+                "Qualy DNS: %s (%s) — not in API results, placing at P%d with -10 penalty",
+                driver, constructor, back_of_grid,
+            )
+
+    if dns_rows:
+        qdf = pd.concat([qdf, pd.DataFrame(dns_rows)], ignore_index=True)
+
+    return qdf
+
+
+def compute_qualy_fantasy_points(
+    data: GPSessionData,
+    season: Optional[Season] = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Compute QUALIFYING-ONLY driver and team fantasy points.
     Called after qualifying, before the race has happened.
+
+    If *season* is provided, drivers registered in the DB but missing from
+    the API qualifying results are added as DNS (–10 penalty).
 
     Returns (driver_points_df, team_points_df) with columns:
         Driver:  [Driver, Constructor, Total Points]   (qualy points only)
@@ -227,6 +284,21 @@ def compute_qualy_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.
             "Q3": q.q3_time,
         })
     qdf = pd.DataFrame(q_rows)
+
+    # ── Inject drivers missing from API (DNS / crash before timing) ────
+    if season:
+        all_season_drivers = {
+            _norm_driver(d.name): _norm_constructor(d.team.name)
+            for d in Driver.objects.filter(season=season).select_related("team")
+            if d.team
+        }
+        # Also map API names → normalized names for matching
+        api_to_norm = {}
+        for q in data.qualifying:
+            api_to_norm[_norm_driver(q.driver_name)] = _norm_constructor(q.constructor_name)
+        qdf["Driver"] = qdf["Driver"].apply(_norm_driver)
+        qdf["Constructor"] = qdf["Constructor"].apply(_norm_constructor)
+        qdf = _inject_missing_qualy_drivers(qdf, all_season_drivers)
 
     qdf["Participation"] = qdf.apply(
         lambda r: 3 if pd.notna(r["Q3"]) and r["Q3"]
@@ -317,8 +389,8 @@ def _compute_sprint_race_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.D
     s_rows = []
     for r in data.sprint_race:
         s_rows.append({
-            "Driver": r.driver_name,
-            "Constructor": r.constructor_name,
+            "Driver": _norm_driver(r.driver_name),
+            "Constructor": _norm_constructor(r.constructor_name),
             "Position_Sprint": r.position,
             "SprintGrid": r.grid,
             "Status": r.status,
@@ -384,14 +456,23 @@ def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFr
         q_rows = []
         for q in sorted(data.qualifying, key=lambda x: x.position):
             q_rows.append({
-                "Driver": q.driver_name,
-                "Constructor": q.constructor_name,
+                "Driver": _norm_driver(q.driver_name),
+                "Constructor": _norm_constructor(q.constructor_name),
                 "Position": q.position,
                 "Q1": q.q1_time,
                 "Q2": q.q2_time,
                 "Q3": q.q3_time,
             })
         qdf = pd.DataFrame(q_rows)
+
+        # ── Inject drivers missing from API (DNS / crash before timing) ──
+        # Use race participants as the reference for all expected drivers
+        if data.race:
+            race_drivers = {
+                _norm_driver(r.driver_name): _norm_constructor(r.constructor_name)
+                for r in data.race
+            }
+            qdf = _inject_missing_qualy_drivers(qdf, race_drivers)
 
         qdf["Participation"] = qdf.apply(
             lambda r: 3 if pd.notna(r["Q3"]) and r["Q3"]
@@ -432,8 +513,8 @@ def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFr
         r_rows = []
         for r in data.race:
             r_rows.append({
-                "Driver": r.driver_name,
-                "Constructor": r.constructor_name,
+                "Driver": _norm_driver(r.driver_name),
+                "Constructor": _norm_constructor(r.constructor_name),
                 "Position_Race": r.position,
                 "Grid": r.grid,
                 "F1Points": r.points,
@@ -872,7 +953,7 @@ def run_qualy_pipeline(gp: GrandPrix, retry_count: int = 3,
 
     # Step 3+4 — Compute and save qualifying-only fantasy points
     try:
-        driver_df, team_df = compute_qualy_fantasy_points(qualy_data)
+        driver_df, team_df = compute_qualy_fantasy_points(qualy_data, season=season)
         save_gp_points_detail(season, gp, driver_df, team_df)
         save_gp_points(season, gp, driver_df, team_df)
         result.steps_completed.append("3-compute_qualy_points")

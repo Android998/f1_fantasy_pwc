@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('public', '0008_add_is_sprint_to_grandprix'),
+        ('public', '0011_sync_gp_2026_data'),
     ]
 
     operations = [
