@@ -37,6 +37,7 @@ from django.db.models import Max
 from f1porra_website.apps.public.models import (
     Season, GrandPrix, Driver, Team,
     DriverPoints, TeamPoints, RaceResults, Porra, BlockChip,
+    DriverGPPointsDetail, TeamGPPointsDetail,
 )
 from f1porra_website.apps.public.src.api_client import (
     fetch_gp_data, fetch_qualy_data,
@@ -237,10 +238,19 @@ def compute_qualy_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.
     qdf["TeammateBonus"] = qdf.groupby("Constructor")["Position"].transform(
         lambda x: (x == x.min()).astype(int)
     )
-    qdf["QualyPoints"] = qdf["Participation"] + qdf["Reverse"] + qdf["TeammateBonus"]
+    # DNS/DNF penalty: -10 if no Q1 time set (crash, technical, DNS)
+    qdf["QualyDNSPenalty"] = qdf["Q1"].apply(
+        lambda v: -10 if (v is None or (isinstance(v, str) and v.strip() == "")) else 0
+    )
+    qdf["QualyPoints"] = (
+        qdf["Participation"] + qdf["Reverse"] + qdf["TeammateBonus"]
+        + qdf["QualyDNSPenalty"]
+    )
 
-    # Driver output: qualy points only
-    driver_total = qdf[["Driver", "Constructor", "QualyPoints"]].copy()
+    # Driver output: qualy points (with breakdown for detail table)
+    driver_total = qdf[["Driver", "Constructor", "QualyPoints",
+                         "Participation", "Reverse", "TeammateBonus",
+                         "QualyDNSPenalty"]].copy()
     driver_total["Total Points"] = driver_total["QualyPoints"]
 
     # Team qualifying
@@ -260,11 +270,15 @@ def compute_qualy_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.
 
         # Add sprint race points to driver totals
         if not sprint_driver_pts.empty:
+            sprint_merge_cols = [c for c in sprint_driver_pts.columns if c != "Constructor"]
             driver_total = driver_total.merge(
-                sprint_driver_pts[["Driver", "SprintRacePoints"]],
+                sprint_driver_pts[sprint_merge_cols],
                 on="Driver", how="left",
             )
             driver_total["SprintRacePoints"] = driver_total["SprintRacePoints"].fillna(0)
+            for sc in ["SprintPosPts", "SprintPosGained", "SprintTeammate", "SprintDNF"]:
+                if sc in driver_total.columns:
+                    driver_total[sc] = driver_total[sc].fillna(0)
             driver_total["Total Points"] = driver_total["Total Points"] + driver_total["SprintRacePoints"]
 
         # Add sprint race points to team totals
@@ -276,7 +290,10 @@ def compute_qualy_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.
             team_q["TeamSprintRacePoints"] = team_q["TeamSprintRacePoints"].fillna(0)
             team_q["Total Points"] = team_q["Total Points"] + team_q["TeamSprintRacePoints"]
 
-    return driver_total, team_q[["Constructor", "Total Points"]]
+    return driver_total, team_q[["Constructor", "Total Points", "TeamQualyBonus",
+                                  "driver_q_pts"] + (
+                                  ["TeamSprintRacePoints"] if "TeamSprintRacePoints" in team_q.columns else []
+                                 )]
 
 
 def _compute_sprint_race_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -320,12 +337,29 @@ def _compute_sprint_race_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.D
 
     sdf["SprintRacePoints"] = sdf.apply(sprint_pts, axis=1)
 
+    # Sprint breakdown for detail table
+    sdf["SprintPosPts"] = sdf["Position_Sprint"].apply(
+        lambda p: SPRINT_POSITION_POINTS.get(int(p), 0)
+    )
+    sdf["SprintDNF"] = sdf.apply(
+        lambda r: -10 if (str(r.get("Status", "")) in DNF_STATUSES
+                          or str(r.get("Status", "")).startswith("Retired")) else 0,
+        axis=1,
+    )
+    sdf["SprintPosGained"] = sdf.apply(
+        lambda r: 0 if int(r["SprintDNF"]) != 0
+                  else int(r["SprintGrid"]) - int(r["Position_Sprint"]),
+        axis=1,
+    )
+    sdf["SprintTeammate"] = 0  # filled by teammate_bonus below
+
     # Teammate bonus: driver finishing ahead gets +2
     def teammate_bonus(group):
         if len(group) == 2:
             g = group.sort_values("Position_Sprint")
             idx_first = g.index[0]
             group.loc[idx_first, "SprintRacePoints"] = group.loc[idx_first, "SprintRacePoints"] + 2
+            group.loc[idx_first, "SprintTeammate"] = 2
         return group
 
     sdf = sdf.groupby("Constructor", group_keys=False).apply(teammate_bonus).reset_index(drop=True)
@@ -334,7 +368,8 @@ def _compute_sprint_race_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.D
     team_s = sdf.groupby("Constructor")["SprintRacePoints"].sum().reset_index()
     team_s.columns = ["Constructor", "TeamSprintRacePoints"]
 
-    return sdf[["Driver", "Constructor", "SprintRacePoints"]], team_s
+    return sdf[["Driver", "Constructor", "SprintRacePoints",
+                "SprintPosPts", "SprintPosGained", "SprintTeammate", "SprintDNF"]], team_s
 
 
 def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -368,7 +403,14 @@ def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFr
         qdf["TeammateBonus"] = qdf.groupby("Constructor")["Position"].transform(
             lambda x: (x == x.min()).astype(int)
         )
-        qdf["QualyPoints"] = qdf["Participation"] + qdf["Reverse"] + qdf["TeammateBonus"]
+        # DNS/DNF penalty: -10 if no Q1 time set (crash, technical, DNS)
+        qdf["QualyDNSPenalty"] = qdf["Q1"].apply(
+            lambda v: -10 if (v is None or (isinstance(v, str) and v.strip() == "")) else 0
+        )
+        qdf["QualyPoints"] = (
+            qdf["Participation"] + qdf["Reverse"] + qdf["TeammateBonus"]
+            + qdf["QualyDNSPenalty"]
+        )
 
         # Team qualifying
         team_q = qdf.groupby("Constructor").agg(
@@ -422,12 +464,27 @@ def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFr
 
         rdf["RacePoints"] = rdf.apply(race_pts, axis=1)
 
+        # Breakdown columns for the detail table
+        rdf["RaceF1Pts"] = rdf["F1Points"].astype(int)
+        rdf["RaceDNF"] = rdf.apply(
+            lambda r: -10 if (str(r.get("Status", "")) in DNF_STATUSES
+                              or str(r.get("Status", "")).startswith("Retired")) else 0,
+            axis=1,
+        )
+        rdf["RacePosGained"] = rdf.apply(
+            lambda r: 0 if int(r["RaceDNF"]) != 0
+                      else int(r["Position_Qualy"]) - int(r["Position_Race"]),
+            axis=1,
+        )
+        rdf["RaceTeammate"] = 0  # will be filled by teammate_bonus below
+
         # Teammate bonus: driver finishing ahead gets +2
         def teammate_bonus(group):
             if len(group) == 2:
                 g = group.sort_values("Position_Race")
                 idx_first = g.index[0]
                 group.loc[idx_first, "RacePoints"] = group.loc[idx_first, "RacePoints"] + 2
+                group.loc[idx_first, "RaceTeammate"] = 2
             return group
 
         rdf = rdf.groupby("Constructor", group_keys=False).apply(teammate_bonus).reset_index(drop=True)
@@ -440,29 +497,51 @@ def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFr
         team_r = pd.DataFrame(columns=["Constructor", "TeamRacePoints"])
 
     # ── Combine ────────────────────────────────────────────────────────
+    race_detail_cols = ["Driver", "Constructor", "RacePoints", "Position_Race",
+                        "RaceF1Pts", "RaceDNF", "RacePosGained", "RaceTeammate"]
+    qualy_detail_cols = ["Driver", "QualyPoints", "Participation", "Reverse",
+                         "TeammateBonus", "QualyDNSPenalty"]
+
     if not rdf.empty and not qdf.empty and "QualyPoints" in qdf.columns:
-        driver_total = rdf[["Driver", "Constructor", "RacePoints", "Position_Race"]].merge(
-            qdf[["Driver", "QualyPoints"]], on="Driver", how="left"
+        avail_race = [c for c in race_detail_cols if c in rdf.columns]
+        avail_qualy = [c for c in qualy_detail_cols if c in qdf.columns]
+        driver_total = rdf[avail_race].merge(
+            qdf[avail_qualy], on="Driver", how="left"
         )
         driver_total["QualyPoints"] = driver_total["QualyPoints"].fillna(0)
     elif not rdf.empty:
-        driver_total = rdf[["Driver", "Constructor", "RacePoints", "Position_Race"]].copy()
+        avail_race = [c for c in race_detail_cols if c in rdf.columns]
+        driver_total = rdf[avail_race].copy()
         driver_total["QualyPoints"] = 0
     else:
         driver_total = pd.DataFrame(columns=["Driver", "Constructor", "RacePoints", "QualyPoints"])
 
+    # Fill missing breakdown columns with 0
+    for col in ["Participation", "Reverse", "TeammateBonus", "QualyDNSPenalty",
+                "RaceF1Pts", "RaceDNF", "RacePosGained", "RaceTeammate"]:
+        if col not in driver_total.columns:
+            driver_total[col] = 0
+        else:
+            driver_total[col] = driver_total[col].fillna(0)
+
     driver_total["Total Points"] = driver_total["RacePoints"] + driver_total["QualyPoints"]
 
     if not team_r.empty and not team_q.empty:
-        team_total = team_q[["Constructor", "TeamQualyPoints"]].merge(
+        team_q_cols = [c for c in ["Constructor", "TeamQualyPoints", "TeamQualyBonus",
+                                    "driver_q_pts"] if c in team_q.columns]
+        team_total = team_q[team_q_cols].merge(
             team_r, on="Constructor", how="outer"
         )
         team_total = team_total.fillna(0)
     elif not team_r.empty:
         team_total = team_r.copy()
         team_total["TeamQualyPoints"] = 0
+        team_total["TeamQualyBonus"] = 0
+        team_total["driver_q_pts"] = 0
     elif not team_q.empty:
-        team_total = team_q[["Constructor", "TeamQualyPoints"]].copy()
+        team_q_cols = [c for c in ["Constructor", "TeamQualyPoints", "TeamQualyBonus",
+                                    "driver_q_pts"] if c in team_q.columns]
+        team_total = team_q[team_q_cols].copy()
         team_total["TeamRacePoints"] = 0
     else:
         team_total = pd.DataFrame(columns=["Constructor", "TeamQualyPoints", "TeamRacePoints"])
@@ -477,11 +556,15 @@ def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFr
         sprint_driver_pts, sprint_team_pts = _compute_sprint_race_points(data)
 
         if not sprint_driver_pts.empty and not driver_total.empty:
+            sprint_merge_cols = [c for c in sprint_driver_pts.columns if c != "Constructor"]
             driver_total = driver_total.merge(
-                sprint_driver_pts[["Driver", "SprintRacePoints"]],
+                sprint_driver_pts[sprint_merge_cols],
                 on="Driver", how="left",
             )
             driver_total["SprintRacePoints"] = driver_total["SprintRacePoints"].fillna(0)
+            for sc in ["SprintPosPts", "SprintPosGained", "SprintTeammate", "SprintDNF"]:
+                if sc in driver_total.columns:
+                    driver_total[sc] = driver_total[sc].fillna(0)
             driver_total["Total Points"] = driver_total["Total Points"] + driver_total["SprintRacePoints"]
 
         if not sprint_team_pts.empty and not team_total.empty:
@@ -530,6 +613,108 @@ def save_gp_points(
                 defaults={"points": int(row["Total Points"])},
             )
             logger.info("TeamPoints: %s → %d pts", team.name, int(row["Total Points"]))
+
+
+# ---------------------------------------------------------------------------
+# Step 4b — Save points breakdown to detail tables
+# ---------------------------------------------------------------------------
+
+def _val(row, col):
+    """Safely extract an integer from a DataFrame row, defaulting to 0."""
+    v = row.get(col)
+    return int(v) if pd.notna(v) else 0
+
+
+def save_gp_points_detail(
+    season: Season,
+    gp: GrandPrix,
+    driver_df: pd.DataFrame,
+    team_df: pd.DataFrame,
+) -> None:
+    """
+    Persist per-component breakdown into DriverGPPointsDetail / TeamGPPointsDetail.
+
+    Preserves any existing ``admin_adjustment`` so admin overrides survive
+    pipeline re-runs.  After saving, updates the DataFrames' "Total Points"
+    column in-place so that ``save_gp_points`` (called next) stores the
+    ``final_total`` that includes the adjustment.
+    """
+    with transaction.atomic():
+        # ── Drivers ────────────────────────────────────────────────────
+        for idx, row in driver_df.iterrows():
+            driver = _resolve_driver(season, row["Driver"])
+            if not driver:
+                continue
+
+            # Preserve admin override if it already exists
+            existing = DriverGPPointsDetail.objects.filter(
+                season=season, driver=driver, gp=gp,
+            ).first()
+            admin_adj = existing.admin_adjustment if existing else 0
+            admin_note = existing.admin_note if existing else ""
+
+            detail, _ = DriverGPPointsDetail.objects.update_or_create(
+                season=season, driver=driver, gp=gp,
+                defaults={
+                    "qualy_participation": _val(row, "Participation"),
+                    "qualy_position": _val(row, "Reverse"),
+                    "qualy_teammate": _val(row, "TeammateBonus"),
+                    "qualy_dns_penalty": _val(row, "QualyDNSPenalty"),
+                    "race_f1_points": _val(row, "RaceF1Pts"),
+                    "race_positions_gained": _val(row, "RacePosGained"),
+                    "race_teammate": _val(row, "RaceTeammate"),
+                    "race_dnf_penalty": _val(row, "RaceDNF"),
+                    "sprint_position_pts": _val(row, "SprintPosPts"),
+                    "sprint_positions_gained": _val(row, "SprintPosGained"),
+                    "sprint_teammate": _val(row, "SprintTeammate"),
+                    "sprint_dnf_penalty": _val(row, "SprintDNF"),
+                    "admin_adjustment": admin_adj,
+                    "admin_note": admin_note,
+                },
+            )
+            detail.compute_totals()
+            detail.save()
+
+            # Propagate final_total (includes admin_adjustment) to DataFrame
+            driver_df.at[idx, "Total Points"] = detail.final_total
+            logger.info(
+                "DriverDetail: %s → auto=%d adj=%d final=%d",
+                driver.name, detail.auto_total, detail.admin_adjustment,
+                detail.final_total,
+            )
+
+        # ── Teams ──────────────────────────────────────────────────────
+        for idx, row in team_df.iterrows():
+            team = _resolve_team(season, row["Constructor"])
+            if not team:
+                continue
+
+            existing = TeamGPPointsDetail.objects.filter(
+                season=season, team=team, gp=gp,
+            ).first()
+            admin_adj = existing.admin_adjustment if existing else 0
+            admin_note = existing.admin_note if existing else ""
+
+            detail, _ = TeamGPPointsDetail.objects.update_or_create(
+                season=season, team=team, gp=gp,
+                defaults={
+                    "qualy_driver_pts_sum": _val(row, "driver_q_pts"),
+                    "qualy_team_bonus": _val(row, "TeamQualyBonus"),
+                    "race_driver_pts_sum": _val(row, "TeamRacePoints"),
+                    "sprint_driver_pts_sum": _val(row, "TeamSprintRacePoints"),
+                    "admin_adjustment": admin_adj,
+                    "admin_note": admin_note,
+                },
+            )
+            detail.compute_totals()
+            detail.save()
+
+            team_df.at[idx, "Total Points"] = detail.final_total
+            logger.info(
+                "TeamDetail: %s → auto=%d adj=%d final=%d",
+                team.name, detail.auto_total, detail.admin_adjustment,
+                detail.final_total,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -688,6 +873,7 @@ def run_qualy_pipeline(gp: GrandPrix, retry_count: int = 3,
     # Step 3+4 — Compute and save qualifying-only fantasy points
     try:
         driver_df, team_df = compute_qualy_fantasy_points(qualy_data)
+        save_gp_points_detail(season, gp, driver_df, team_df)
         save_gp_points(season, gp, driver_df, team_df)
         result.steps_completed.append("3-compute_qualy_points")
         result.steps_completed.append("4-save_driver_team_points")
@@ -778,6 +964,7 @@ def run_race_pipeline(gp: GrandPrix, retry_count: int = 3,
     # Step 3+4 — Compute FULL fantasy points (qualy + race) and overwrite
     try:
         driver_df, team_df = compute_fantasy_points(gp_data)
+        save_gp_points_detail(season, gp, driver_df, team_df)
         save_gp_points(season, gp, driver_df, team_df)
         result.steps_completed.append("3-compute_full_fantasy_points")
         result.steps_completed.append("4-save_driver_team_points")
@@ -879,6 +1066,7 @@ def run_gp_pipeline(gp: GrandPrix, retry_count: int = 3) -> PipelineResult:
     # Step 3+4 — Compute and save fantasy points
     try:
         driver_df, team_df = compute_fantasy_points(gp_data)
+        save_gp_points_detail(season, gp, driver_df, team_df)
         save_gp_points(season, gp, driver_df, team_df)
         result.steps_completed.append("3-compute_fantasy_points")
         result.steps_completed.append("4-save_driver_team_points")

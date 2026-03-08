@@ -14,6 +14,7 @@ import pytz
 import json
 from datetime import date
 from .models import Season, Driver, Team, DriverPoints, TeamPoints, GrandPrix, Porra, RaceResults, BlockChip
+from .models import DriverGPPointsDetail, TeamGPPointsDetail
 from f1porra_website.apps.accounts.models import UserProfile, UsersTeam
 from f1porra_website.apps.public.services import (
     build_assets_matrix_payload,
@@ -1952,3 +1953,117 @@ def team(request):
         'block_chip_reset_message': block_chip_reset_message,
         'drs_chip_reset_message': drs_chip_reset_message,
     })
+
+
+# ---------------------------------------------------------------------------
+# Admin: Points Review & Adjustment
+# ---------------------------------------------------------------------------
+
+@login_required
+def admin_points_review(request):
+    """Display per-component breakdown for a GP so an admin can adjust points."""
+    if not request.user.is_staff:
+        return redirect("public:home")
+
+    season = Season.objects.order_by("-year").first()
+    if not season:
+        return render(request, "admin_points_review.html", {"season": None})
+
+    gp_id = request.GET.get("gp")
+    gps = GrandPrix.objects.filter(season=season).order_by("nround")
+
+    selected_gp = None
+    driver_details = []
+    team_details = []
+
+    if gp_id:
+        selected_gp = GrandPrix.objects.filter(id=gp_id, season=season).first()
+        if selected_gp:
+            driver_details = (
+                DriverGPPointsDetail.objects
+                .filter(season=season, gp=selected_gp)
+                .select_related("driver")
+                .order_by("driver__name")
+            )
+            team_details = (
+                TeamGPPointsDetail.objects
+                .filter(season=season, gp=selected_gp)
+                .select_related("team")
+                .order_by("team__name")
+            )
+
+    return render(request, "admin_points_review.html", {
+        "season": season,
+        "gps": gps,
+        "selected_gp": selected_gp,
+        "driver_details": driver_details,
+        "team_details": team_details,
+    })
+
+
+@require_POST
+@login_required
+def admin_points_save(request):
+    """Save admin adjustments and cascade recompute."""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Forbidden"}, status=403)
+
+    from django.db import transaction
+    from f1porra_website.apps.public.src.gp_pipeline import (
+        compute_porra_points_for_gp,
+    )
+    from f1porra_website.apps.public.src.actualizar_precios import update_points
+
+    gp_id = request.POST.get("gp_id")
+    if not gp_id:
+        return JsonResponse({"error": "Missing gp_id"}, status=400)
+
+    season = Season.objects.order_by("-year").first()
+    gp = get_object_or_404(GrandPrix, id=gp_id, season=season)
+
+    with transaction.atomic():
+        # --- Update driver detail adjustments ---
+        for key, value in request.POST.items():
+            if key.startswith("driver_adj_"):
+                detail_id = int(key.replace("driver_adj_", ""))
+                note_key = f"driver_note_{detail_id}"
+                detail = DriverGPPointsDetail.objects.filter(
+                    id=detail_id, season=season, gp=gp,
+                ).first()
+                if detail:
+                    detail.admin_adjustment = int(value or 0)
+                    detail.admin_note = request.POST.get(note_key, "")
+                    detail.compute_totals()
+                    detail.save()
+                    # Propagate to DriverPoints
+                    DriverPoints.objects.filter(
+                        season=season, driver=detail.driver, gp=gp,
+                    ).update(points=detail.final_total)
+
+            elif key.startswith("team_adj_"):
+                detail_id = int(key.replace("team_adj_", ""))
+                note_key = f"team_note_{detail_id}"
+                detail = TeamGPPointsDetail.objects.filter(
+                    id=detail_id, season=season, gp=gp,
+                ).first()
+                if detail:
+                    detail.admin_adjustment = int(value or 0)
+                    detail.admin_note = request.POST.get(note_key, "")
+                    detail.compute_totals()
+                    detail.save()
+                    TeamPoints.objects.filter(
+                        season=season, team=detail.team, gp=gp,
+                    ).update(points=detail.final_total)
+
+    # --- Cascade: recompute porra points & prices ---
+    try:
+        compute_porra_points_for_gp(season, gp)
+    except Exception:
+        logger.exception("Failed to recompute porra points after admin adjustment")
+
+    try:
+        update_points()
+    except Exception:
+        logger.exception("Failed to update prices after admin adjustment")
+
+    return redirect(f"{reverse('public:admin_points_review')}?gp={gp_id}")

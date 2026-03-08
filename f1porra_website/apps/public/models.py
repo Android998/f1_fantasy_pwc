@@ -172,6 +172,123 @@ class BlockChip(models.Model):
     def __str__(self):
         return f"{self.blocker.username} blocked {self.target.username} ({self.asset_type}) @ {self.gp.country}"
 
+
+#
+# DRIVER GP POINTS DETAIL — per-component breakdown for admin review
+#
+class DriverGPPointsDetail(models.Model):
+    class Meta:
+        db_table = 'public_drivergppointsdetail'
+        verbose_name_plural = 'driver GP points detail'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['season', 'driver', 'gp'],
+                name='unique_driver_gp_detail',
+            ),
+        ]
+
+    season = models.ForeignKey(Season, on_delete=models.CASCADE)
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
+    gp = models.ForeignKey(GrandPrix, on_delete=models.CASCADE)
+
+    # Qualifying breakdown
+    qualy_participation = models.IntegerField(default=0, help_text="1=Q1, 2=Q2, 3=Q3")
+    qualy_position = models.IntegerField(default=0, help_text="Reverse-grid points (0-10)")
+    qualy_teammate = models.IntegerField(default=0, help_text="Teammate bonus (0 or 1)")
+    qualy_dns_penalty = models.IntegerField(default=0, help_text="-10 if no Q1 time set")
+    qualy_total = models.IntegerField(default=0, help_text="Sum of qualy components")
+
+    # Race breakdown
+    race_f1_points = models.IntegerField(default=0, help_text="F1 position points (25,18,...)")
+    race_positions_gained = models.IntegerField(default=0, help_text="Positions gained/lost")
+    race_teammate = models.IntegerField(default=0, help_text="Teammate bonus (0 or 2)")
+    race_dnf_penalty = models.IntegerField(default=0, help_text="-10 if DNF")
+    race_total = models.IntegerField(default=0, help_text="Sum of race components")
+
+    # Sprint breakdown (0 on non-sprint weekends)
+    sprint_position_pts = models.IntegerField(default=0, help_text="Sprint position points (8,7,...)")
+    sprint_positions_gained = models.IntegerField(default=0, help_text="Sprint positions gained")
+    sprint_teammate = models.IntegerField(default=0, help_text="Sprint teammate bonus (0 or 2)")
+    sprint_dnf_penalty = models.IntegerField(default=0, help_text="-10 if sprint DNF")
+    sprint_total = models.IntegerField(default=0, help_text="Sum of sprint components")
+
+    # Totals
+    auto_total = models.IntegerField(default=0, help_text="Automatic total (qualy + race + sprint)")
+    admin_adjustment = models.IntegerField(default=0, help_text="Manual adjustment by admin")
+    final_total = models.IntegerField(default=0, help_text="auto_total + admin_adjustment")
+    admin_note = models.TextField(blank=True, default="", help_text="Explanation for admin adjustment")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def compute_totals(self):
+        """Recompute the sub-totals and final total from components."""
+        self.qualy_total = (
+            self.qualy_participation + self.qualy_position
+            + self.qualy_teammate + self.qualy_dns_penalty
+        )
+        self.race_total = (
+            self.race_f1_points + self.race_positions_gained
+            + self.race_teammate + self.race_dnf_penalty
+        )
+        self.sprint_total = (
+            self.sprint_position_pts + self.sprint_positions_gained
+            + self.sprint_teammate + self.sprint_dnf_penalty
+        )
+        self.auto_total = self.qualy_total + self.race_total + self.sprint_total
+        self.final_total = self.auto_total + self.admin_adjustment
+
+    def __str__(self):
+        return f"{self.driver.name} @ {self.gp.country} = {self.final_total}pts"
+
+
+#
+# TEAM GP POINTS DETAIL — per-component breakdown for admin review
+#
+class TeamGPPointsDetail(models.Model):
+    class Meta:
+        db_table = 'public_teamgppointsdetail'
+        verbose_name_plural = 'team GP points detail'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['season', 'team', 'gp'],
+                name='unique_team_gp_detail',
+            ),
+        ]
+
+    season = models.ForeignKey(Season, on_delete=models.CASCADE)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    gp = models.ForeignKey(GrandPrix, on_delete=models.CASCADE)
+
+    # Qualifying breakdown
+    qualy_driver_pts_sum = models.IntegerField(default=0, help_text="Sum of both drivers' qualy points")
+    qualy_team_bonus = models.IntegerField(default=0, help_text="Team qualy bonus (1/3/5)")
+    qualy_total = models.IntegerField(default=0, help_text="Sum of team qualy components")
+
+    # Race breakdown
+    race_driver_pts_sum = models.IntegerField(default=0, help_text="Sum of both drivers' race points")
+    race_total = models.IntegerField(default=0, help_text="Team race total")
+
+    # Sprint breakdown
+    sprint_driver_pts_sum = models.IntegerField(default=0, help_text="Sum of sprint points")
+    sprint_total = models.IntegerField(default=0, help_text="Team sprint total")
+
+    # Totals
+    auto_total = models.IntegerField(default=0, help_text="Automatic total (qualy + race + sprint)")
+    admin_adjustment = models.IntegerField(default=0, help_text="Manual adjustment by admin")
+    final_total = models.IntegerField(default=0, help_text="auto_total + admin_adjustment")
+    admin_note = models.TextField(blank=True, default="", help_text="Explanation for admin adjustment")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def compute_totals(self):
+        """Recompute the sub-totals and final total from components."""
+        self.qualy_total = self.qualy_driver_pts_sum + self.qualy_team_bonus
+        self.race_total = self.race_driver_pts_sum
+        self.sprint_total = self.sprint_driver_pts_sum
+        self.auto_total = self.qualy_total + self.race_total + self.sprint_total
+        self.final_total = self.auto_total + self.admin_adjustment
+
+    def __str__(self):
+        return f"{self.team.name} @ {self.gp.country} = {self.final_total}pts"
+
 #
 # RACE RESULTS
 #

@@ -25,4 +25,7 @@ urlpatterns = [
     path('team/block-chip/', views.use_block_chip, name="use_block_chip"),
     path('team/block-chip/cancel/', views.cancel_block_chip, name="cancel_block_chip"),
     path('view_team/<str:username>/<str:gp>/', views.view_team, name='view_team'),
+    # Admin: points review & adjustment
+    path('admin-review/points/', views.admin_points_review, name='admin_points_review'),
+    path('admin-review/points/save/', views.admin_points_save, name='admin_points_save'),
 ]
