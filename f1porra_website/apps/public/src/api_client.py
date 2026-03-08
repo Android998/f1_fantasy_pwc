@@ -20,6 +20,31 @@ import requests
 
 logger = logging.getLogger("f1_api_client")
 
+
+# ---------------------------------------------------------------------------
+# Helpers — safe type conversions for API data that may contain None
+# ---------------------------------------------------------------------------
+
+def _safe_int(value, default: int = 0) -> int:
+    """Convert value to int, returning *default* when value is None or invalid."""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_float(value, default: float = 0.0) -> float:
+    """Convert value to float, returning *default* when value is None or invalid."""
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
 # ---------------------------------------------------------------------------
 # Data containers
 # ---------------------------------------------------------------------------
@@ -106,7 +131,7 @@ def fetch_qualifying_jolpica(season: int, round_number: int) -> list[QualifyingR
         name = f"{driver.get('givenName', '')} {driver.get('familyName', '')}".strip()
         constructor = r.get("Constructor", {}).get("name", "")
         results.append(QualifyingResult(
-            position=int(r.get("position", 0)),
+            position=_safe_int(r.get("position")),
             driver_name=name,
             constructor_name=constructor,
             q1_time=r.get("Q1"),
@@ -132,16 +157,16 @@ def fetch_race_results_jolpica(season: int, round_number: int) -> list[RaceResul
         name = f"{driver.get('givenName', '')} {driver.get('familyName', '')}".strip()
         constructor = r.get("Constructor", {}).get("name", "")
         fl = r.get("FastestLap", {})
-        fl_rank = int(fl.get("rank", 0)) if fl.get("rank") else None
+        fl_rank = _safe_int(fl.get("rank")) if fl.get("rank") else None
         results.append(RaceResultEntry(
-            position=int(r.get("position", 0)),
+            position=_safe_int(r.get("position")),
             driver_name=name,
             constructor_name=constructor,
-            grid=int(r.get("grid", 0)),
-            points=float(r.get("points", 0)),
+            grid=_safe_int(r.get("grid")),
+            points=_safe_float(r.get("points")),
             status=r.get("status", "Unknown"),
             fastest_lap_rank=fl_rank,
-            laps=int(r.get("laps", 0)),
+            laps=_safe_int(r.get("laps")),
         ))
     return results
 
@@ -162,16 +187,16 @@ def fetch_sprint_results_jolpica(season: int, round_number: int) -> list[RaceRes
         name = f"{driver.get('givenName', '')} {driver.get('familyName', '')}".strip()
         constructor = r.get("Constructor", {}).get("name", "")
         fl = r.get("FastestLap", {})
-        fl_rank = int(fl.get("rank", 0)) if fl.get("rank") else None
+        fl_rank = _safe_int(fl.get("rank")) if fl.get("rank") else None
         results.append(RaceResultEntry(
-            position=int(r.get("position", 0)),
+            position=_safe_int(r.get("position")),
             driver_name=name,
             constructor_name=constructor,
-            grid=int(r.get("grid", 0)),
-            points=float(r.get("points", 0)),
+            grid=_safe_int(r.get("grid")),
+            points=_safe_float(r.get("points")),
             status=r.get("status", "Unknown"),
             fastest_lap_rank=fl_rank,
-            laps=int(r.get("laps", 0)),
+            laps=_safe_int(r.get("laps")),
         ))
     return results
 
@@ -192,14 +217,14 @@ def fetch_sprint_results_openf1(season: int, round_number: int) -> list[RaceResu
         num = r.get("driver_number")
         name, constructor = drivers_map.get(num, ("Unknown", "Unknown"))
         results.append(RaceResultEntry(
-            position=int(r.get("position", 0)),
+            position=_safe_int(r.get("position")),
             driver_name=name,
             constructor_name=constructor,
             grid=0,
-            points=float(r.get("points", 0)),
+            points=_safe_float(r.get("points")),
             status="DNF" if r.get("dnf") else ("DNS" if r.get("dns") else "Finished"),
             fastest_lap_rank=None,
-            laps=int(r.get("number_of_laps", 0)),
+            laps=_safe_int(r.get("number_of_laps")),
         ))
     return results
 
@@ -337,14 +362,14 @@ def fetch_gp_data_openf1(season: int, round_number: int) -> Optional[GPSessionDa
         num = r.get("driver_number")
         name, constructor = drivers_map.get(num, ("Unknown", "Unknown"))
         race.append(RaceResultEntry(
-            position=int(r.get("position", 0)),
+            position=_safe_int(r.get("position")),
             driver_name=name,
             constructor_name=constructor,
             grid=0,  # not directly in session_result; would need starting_grid call
-            points=float(r.get("points", 0)),
+            points=_safe_float(r.get("points")),
             status="DNF" if r.get("dnf") else ("DNS" if r.get("dns") else "Finished"),
             fastest_lap_rank=None,  # would need laps endpoint
-            laps=int(r.get("number_of_laps", 0)),
+            laps=_safe_int(r.get("number_of_laps")),
         ))
 
     # Qualifying results
@@ -358,7 +383,7 @@ def fetch_gp_data_openf1(season: int, round_number: int) -> Optional[GPSessionDa
                 name, constructor = quali_drivers_map.get(num, ("Unknown", "Unknown"))
                 durations = r.get("duration", [])
                 qualifying.append(QualifyingResult(
-                    position=int(r.get("position", 0)),
+                    position=_safe_int(r.get("position")),
                     driver_name=name,
                     constructor_name=constructor,
                     q1_time=str(durations[0]) if len(durations) > 0 and durations[0] else None,
@@ -470,7 +495,7 @@ def fetch_qualy_data_openf1(season: int, round_number: int) -> Optional[GPSessio
         name, constructor = quali_drivers_map.get(num, ("Unknown", "Unknown"))
         durations = r.get("duration", [])
         qualifying.append(QualifyingResult(
-            position=int(r.get("position", 0)),
+            position=_safe_int(r.get("position")),
             driver_name=name,
             constructor_name=constructor,
             q1_time=str(durations[0]) if len(durations) > 0 and durations[0] else None,

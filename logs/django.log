@@ -1759,3 +1759,54 @@ WARNING 2026-03-07 18:16:18,372 log Not Found: /.well-known/appspecific/com.chro
 WARNING 2026-03-07 18:16:18,374 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198
 WARNING 2026-03-07 18:17:18,107 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
 WARNING 2026-03-07 18:17:18,107 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6198
+WARNING 2026-03-07 19:52:55,449 log Not Found: /media/user_photos/Screenshot_2025-09-18_095839.png
+WARNING 2026-03-07 19:52:55,450 basehttp "GET /media/user_photos/Screenshot_2025-09-18_095839.png HTTP/1.1" 404 6459
+ERROR 2026-03-08 14:22:16,936 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-08 14:22:16,940 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+WARNING 2026-03-08 14:40:55,996 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-08 14:40:55,997 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-08 14:41:07,430 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-08 14:41:07,434 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-08 14:41:07,434 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-08 14:48:17,456 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-08 15:08:44,260 log Not Found: /struts2-showcase/struts/utils.js
+WARNING 2026-03-08 15:08:45,504 log Not Found: /js/
+WARNING 2026-03-08 15:08:46,716 log Not Found: /struts2-showcase/struts/tooltip.gif
+WARNING 2026-03-08 15:08:46,731 log Not Found: /struts2-showcase/struts/domtt.css
+WARNING 2026-03-08 15:08:46,733 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:46,746 log Not Found: /struts2-showcase/struts/domTT.js
+WARNING 2026-03-08 15:08:46,777 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:46,778 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:46,783 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:46,789 log Not Found: /struts2-showcase/struts/inputtransfersselect.js
+WARNING 2026-03-08 15:08:46,795 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:46,813 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:46,820 log Not Found: /struts2-showcase/struts/optiontransferselect.js
+WARNING 2026-03-08 15:08:46,824 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:46,829 log Not Found: /struts2-showcase
+WARNING 2026-03-08 15:08:46,830 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:46,831 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,610 log Not Found: /api/v2/${jndi:dns://MDEDiscoverya97f0d53cbSeenInTheWildGet-8000}
+WARNING 2026-03-08 15:08:47,630 log Not Found: /api/
+WARNING 2026-03-08 15:08:47,637 log Not Found: /index.html
+WARNING 2026-03-08 15:08:47,641 log Not Found: /login
+WARNING 2026-03-08 15:08:47,656 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,660 log Forbidden (CSRF cookie not set.): /
+WARNING 2026-03-08 15:08:47,662 basehttp "POST / HTTP/1.1" 403 2870
+WARNING 2026-03-08 15:08:47,680 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,686 log Not Found: /login
+WARNING 2026-03-08 15:08:47,710 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,731 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,742 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,761 log Not Found: /cgi-bin/
+WARNING 2026-03-08 15:08:47,776 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,792 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,809 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,823 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,839 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,858 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,875 log Not Found: /:undefined
+WARNING 2026-03-08 15:08:47,894 log Not Found: /cgi-bin/
+WARNING 2026-03-08 18:08:16,690 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-08 18:55:56,991 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-08 18:56:55,017 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809

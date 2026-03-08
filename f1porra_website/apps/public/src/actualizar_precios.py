@@ -10,34 +10,41 @@ New approach:
   2. RANK by composite score (recalculated EVERY round — no fixed labels)
   3. MAP ranks → target prices via a geometric curve that creates a
      smooth, continuous distribution across the full price range
-  4. BLEND current prices toward targets (capped step per round)
+  4. BLEND current prices toward targets (asymmetric capped step per round)
   5. APPORTION to integers preserving total price pool exactly
 
 Design principles:
-  - BUDGET TENSION: Top driver ~36M ensures users MUST make tough choices.
-    With 150M budget for 5 drivers + 2 teams, picking 3 top drivers + 1 top
-    team costs ~151M BEFORE the remaining 2 drivers — IMPOSSIBLE.
+  - BUDGET TENSION: Top driver ~41M ensures users MUST make tough choices.
+    With 150M budget for 5 drivers + 2 teams, picking 2 top drivers + 1 top
+    team costs ~138M BEFORE the remaining 3 drivers — IMPOSSIBLE.
     Users must choose: 1-2 premium picks + value picks to fill the roster.
 
   - FULLY DYNAMIC: No fixed groups or labels. Every round, every driver's
     composite score is recomputed from current picks + points.  A back-marker
-    who becomes popular can rise 5M/round, reaching top prices within
-    6-7 rounds.  Designed for regulation-change seasons where the pecking
+    who becomes popular can rise 10M/round, reaching top prices within
+    3-4 rounds.  Designed for regulation-change seasons where the pecking
     order can shift dramatically mid-season.
 
-  - NO TRAPS: Even the cheapest driver gets a meaningful target (~2M), never
-    stuck at 1M floor.  The geometric curve is continuous — there are no hard
+  - CAPPED CHANGES: Absolute caps (+5/−4 drivers, +6/−6 teams) prevent
+    wild swings.  Additionally, proportional caps (max 100% rise, max 20%
+    drop relative to current price) ensure that a −4 hit on a 34M driver
+    (12%) is qualitatively different from −4 on a 10M driver (which is
+    compressed to ~−2 = 20%).  Cheap drivers can at most double per round.
+
+  - NO TRAPS: Even the cheapest driver gets a meaningful target (~1M), never
+    stuck at 0.  The geometric curve is continuous — there are no hard
     boundaries between price ranges.  Ranks shift freely every round.
 
-  - DEMAND-DOMINANT: User picks drive 65% of price changes, on-track
-    performance 35%.  Price reflects what users WANT, not just lap times.
+  - BALANCED SCORING: User picks drive 55% of price changes, on-track
+    performance 45%.  Strong performers rise even with modest demand;
+    popular but underperforming drivers still get priced by their demand.
 
-Example distribution (22 drivers, 250M pool, ratio=0.86):
-  Rank  1–3:   27–36M    (most in-demand — forces heavy budget sacrifice)
-  Rank  4–8:   14–23M    (strong demand — competitive mid picks)
-  Rank  9–14:   6–12M    (moderate demand — value plays)
-  Rank 15–19:   3–5M     (low demand — budget options)
-  Rank 20–22:   2–3M     (least demanded — cheapest)
+Example distribution (22 drivers, 250M pool, ratio=0.84):
+  Rank  1–3:   29–41M    (most in-demand — forces heavy budget sacrifice)
+  Rank  4–8:   14–24M    (strong demand — competitive mid picks)
+  Rank  9–14:   5–12M    (moderate demand — value plays)
+  Rank 15–19:   2–4M     (low demand — budget options)
+  Rank 20–22:   1–2M     (least demanded — cheapest)
 """
 
 from f1porra_website.apps.public.models import (
@@ -54,30 +61,39 @@ from datetime import date
 # =========================================================
 
 # --- Score weights (demand vs. performance) ---
-W_PICKS  = 0.65    # User demand (pick frequency) — primary price driver
-W_POINTS = 0.35    # On-track performance — secondary signal
+# Balanced: demand leads but strong performance alone can push prices up.
+W_PICKS  = 0.55    # User demand (pick frequency) — primary price driver
+W_POINTS = 0.45    # On-track performance — meaningful secondary signal
 
 # --- Target distribution shape (geometric ratio) ---
 # Ratio r determines the spread: rank k target = C·r^k.
 # Lower r = steeper spread.  There are NO hard tier boundaries —
 # the curve is smooth and every rank gets a unique target price.
 # r=1.0 → flat (all equal); r=0.90 → gentle; r=0.85 → steep.
-CURVE_RATIO_DRIVERS = 0.86   # top~36M, bottom~2M (18:1) for 22 drivers
-CURVE_RATIO_TEAMS   = 0.85   # top~56M, bottom~11M (5:1) for 11 teams
+CURVE_RATIO_DRIVERS = 0.84   # top~41M, bottom~1M — allows dominant drivers to reach 40M+
+CURVE_RATIO_TEAMS   = 0.83   # top~57M, bottom~8M — dominant team can reach 55M+
 
 # --- Convergence speed ---
 # Fraction of gap (target − current) closed each round.
-# 0.50 means ~97% converged in 6 rounds.  High values make prices
+# 0.65 means ~95% converged in 4 rounds.  High values make prices
 # responsive to demand shifts (important for regulation-change seasons).
-BLEND_SPEED_DRIVERS = 0.50
-BLEND_SPEED_TEAMS   = 0.50
+BLEND_SPEED_DRIVERS = 0.65
+BLEND_SPEED_TEAMS   = 0.65
 
 # --- Maximum absolute price change per round ---
-# Moderate caps balance responsiveness with stability.
-# A driver can swing up to ±5M/round = ±25M over 5 races.
-# A full reprice from bottom to top takes ~7 rounds.
-MAX_STEP_DRIVERS = 5
-MAX_STEP_TEAMS   = 8
+MAX_STEP_UP_DRIVERS   = 5
+MAX_STEP_DOWN_DRIVERS = 4
+MAX_STEP_UP_TEAMS     = 6
+MAX_STEP_DOWN_TEAMS   = 6
+
+# --- Proportional caps (% of current price) ---
+# The effective cap per entity is  min(absolute_cap, price × pct).
+# This means a −4 on a 34M driver (~12%) is allowed but −4 on a 10M
+# driver (~40%) is trimmed down, preventing disproportionate swings.
+# Rises: a driver can at most double per round (cheap → mid transition).
+# Drops: max 20% of current price per round (protects cheap assets).
+MAX_PCT_UP   = 1.00   # 100% — can at most double per round
+MAX_PCT_DOWN = 0.20   # 20%  — moderate relative drops
 
 # --- Floors & smoothing ---
 MIN_PRICE      = 1
@@ -159,19 +175,19 @@ def _interpolate_target(rank: float, curve: np.ndarray) -> float:
 # =========================================================
 
 def _apportion(current: pd.Series, desired_delta: pd.Series,
-               target_sum: int, max_step: int,
+               target_sum: int, max_step_up: int, max_step_down: int,
                min_price: int = MIN_PRICE) -> pd.Series:
     """
     Convert float deltas to integer deltas while:
       • conserving *target_sum* exactly
-      • respecting per-item ±max_step cap
+      • respecting asymmetric caps: +max_step_up / -max_step_down per item
       • ensuring every new price >= min_price
     """
     cur = current.astype(int).values
     des = desired_delta.astype(float).values.copy()
 
-    lower = np.maximum(-max_step, min_price - cur)   # can't drop below floor
-    upper = np.full_like(cur, max_step)
+    lower = np.maximum(-max_step_down, min_price - cur)  # can't drop below floor
+    upper = np.full_like(cur, max_step_up)
 
     des = np.clip(des, lower, upper)
 
@@ -241,13 +257,13 @@ def _apportion(current: pd.Series, desired_delta: pd.Series,
 # =========================================================
 
 def _reprice(df: pd.DataFrame, curve_ratio: float,
-             blend_speed: float, max_step: int,
+             blend_speed: float, max_step_up: int, max_step_down: int,
              entity_label: str = "entity") -> pd.DataFrame:
     """
     Core repricing pipeline:
       1. Composite score from picks + points  →  rank
       2. Geometric target curve               →  target price per rank
-      3. Blend toward target (capped delta)
+      3. Blend toward target (asymmetric capped delta)
       4. Integer apportionment (pool-conserving)
     """
     out = df.copy()
@@ -271,17 +287,27 @@ def _reprice(df: pd.DataFrame, curve_ratio: float,
         lambda r: _interpolate_target(r, curve),
     )
 
-    # 3 — blend toward target (capped)
+    # 3 — blend toward target (absolute + proportional cap)
     current = out["price"].astype(float)
     desired = blend_speed * (out["TargetPrice"] - current)
-    desired = np.clip(desired, -max_step, max_step)
+    # Absolute cap
+    desired = np.clip(desired, -max_step_down, max_step_up)
+    # Proportional cap — min(absolute, price × pct)
+    pct_up   = current * MAX_PCT_UP
+    pct_down = current * MAX_PCT_DOWN
+    desired = np.where(desired >= 0,
+                       np.minimum(desired, pct_up),
+                       np.maximum(desired, -pct_down))
 
     # 4 — integer apportionment
+    # desired may be np.ndarray (from np.where) or pd.Series — normalise
+    desired_arr = np.asarray(desired)
     deltas = _apportion(
         current=out["price"],
-        desired_delta=pd.Series(desired.values, index=out.index),
+        desired_delta=pd.Series(desired_arr, index=out.index),
         target_sum=total_pool,
-        max_step=max_step,
+        max_step_up=max_step_up,
+        max_step_down=max_step_down,
     )
 
     out["DeltaFinal"] = deltas.astype(int)
@@ -322,9 +348,16 @@ def update_points(season_year: int = None, gp_nround: int = None):
     if gp_nround is not None:
         current_gp_n = gp_nround
     else:
+        # Find the latest GP that actually has scored points (not just seeded prices)
         current_gp_n = DriverPoints.objects.filter(
             season=current_season,
+            points__isnull=False,
         ).aggregate(max_nround=Max("gp__nround"))["max_nround"]
+        # Fallback: if no GP has scored points yet, use the latest GP with any DP
+        if current_gp_n is None:
+            current_gp_n = DriverPoints.objects.filter(
+                season=current_season,
+            ).aggregate(max_nround=Max("gp__nround"))["max_nround"]
 
     if current_gp_n is None:
         print("No GP points found for current season.")
@@ -391,12 +424,12 @@ def update_points(season_year: int = None, gp_nround: int = None):
     # ---- reprice ----
     drivers_final = _reprice(
         driver_df, CURVE_RATIO_DRIVERS,
-        BLEND_SPEED_DRIVERS, MAX_STEP_DRIVERS,
+        BLEND_SPEED_DRIVERS, MAX_STEP_UP_DRIVERS, MAX_STEP_DOWN_DRIVERS,
         entity_label="Drivers",
     )
     teams_final = _reprice(
         team_df, CURVE_RATIO_TEAMS,
-        BLEND_SPEED_TEAMS, MAX_STEP_TEAMS,
+        BLEND_SPEED_TEAMS, MAX_STEP_UP_TEAMS, MAX_STEP_DOWN_TEAMS,
         entity_label="Teams",
     )
 

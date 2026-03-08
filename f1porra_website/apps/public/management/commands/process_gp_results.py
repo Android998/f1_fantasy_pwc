@@ -116,11 +116,15 @@ class Command(BaseCommand):
         race_delay = timedelta(hours=options["race_delay"])
         phase = options["phase"]
 
-        try:
-            season = Season.objects.get(year=year)
-        except Season.DoesNotExist:
-            self.stderr.write(self.style.ERROR(f"No season found for year {year}."))
-            return
+        # In watch mode, season is resolved inside the loop (handles year rollover).
+        # For one-shot / specific round, resolve it now.
+        season = None
+        if not options["watch"]:
+            try:
+                season = Season.objects.get(year=year)
+            except Season.DoesNotExist:
+                self.stderr.write(self.style.ERROR(f"No season found for year {year}."))
+                return
 
         # ── Specific round ─────────────────────────────────────────────
         if options["round"]:
@@ -161,13 +165,37 @@ class Command(BaseCommand):
         if options["watch"]:
             interval_sec = options["interval"] * 60
             self.stdout.write(self.style.SUCCESS(
-                f"Watching for pending GPs every {options['interval']} min "
+                f"[GP Watcher] STARTED — checking every {options['interval']} min "
                 f"(qualy delay: {options['qualy_delay']}h, "
-                f"race delay: {options['race_delay']}h)..."
+                f"race delay: {options['race_delay']}h)"
             ))
+            logger.info(
+                "GP Results Watcher STARTED — interval=%d min, qualy_delay=%.1fh, race_delay=%.1fh, year=%s",
+                options["interval"], options["qualy_delay"], options["race_delay"], year,
+            )
+            check_count = 0
             while True:
-                self._run_dual_check(season, qualy_delay, race_delay, options["dry_run"])
-                self.stdout.write(f"Next check in {options['interval']} minutes...")
+                check_count += 1
+                try:
+                    # Re-resolve season each iteration (handles year rollover / late creation)
+                    current_year = options["year"] or timezone.now().year
+                    try:
+                        season = Season.objects.get(year=current_year)
+                    except Season.DoesNotExist:
+                        logger.warning("Watcher check #%d: No season for year %d, will retry next cycle.", check_count, current_year)
+                        self.stdout.write(self.style.WARNING(
+                            f"Watcher check #{check_count}: No season for year {current_year}. Retrying in {options['interval']} min..."
+                        ))
+                        time.sleep(interval_sec)
+                        continue
+
+                    logger.info("Watcher check #%d at %s (season %s)", check_count, timezone.now().isoformat(), season)
+                    self._run_dual_check(season, qualy_delay, race_delay, options["dry_run"])
+
+                except Exception:
+                    logger.exception("Watcher check #%d crashed — will retry next cycle", check_count)
+
+                self.stdout.write(f"Next check (#{check_count + 1}) in {options['interval']} minutes...")
                 time.sleep(interval_sec)
         else:
             self._run_dual_check(season, qualy_delay, race_delay, options["dry_run"])
@@ -225,9 +253,9 @@ class Command(BaseCommand):
 
     def _print_result(self, result):
         if result.success:
-            self.stdout.write(self.style.SUCCESS(f"  ✓ {result}"))
+            self.stdout.write(self.style.SUCCESS(f"  OK {result}"))
         else:
-            self.stderr.write(self.style.ERROR(f"  ✗ {result}"))
+            self.stderr.write(self.style.ERROR(f"  FAIL {result}"))
             for err in result.errors:
                 self.stderr.write(self.style.ERROR(f"    Error: {err}"))
         for warn in result.warnings:
