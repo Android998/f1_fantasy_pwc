@@ -1810,3 +1810,48 @@ WARNING 2026-03-08 15:08:47,894 log Not Found: /cgi-bin/
 WARNING 2026-03-08 18:08:16,690 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
 WARNING 2026-03-08 18:55:56,991 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
 WARNING 2026-03-08 18:56:55,017 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+ERROR 2026-03-14 16:22:02,885 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-14 16:22:02,901 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-14 16:22:02,901 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-14 16:22:02,904 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-14 16:22:04,787 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-14 16:22:04,788 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-14 16:22:04,792 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2026-03-14 16:22:04,792 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+WARNING 2026-03-14 16:22:29,823 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-14 16:22:41,754 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-14 16:22:41,755 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6591
+WARNING 2026-03-14 16:25:52,610 log Not Found: /favicon.ico
+WARNING 2026-03-14 16:25:52,611 basehttp "GET /favicon.ico HTTP/1.1" 404 6480
+WARNING 2026-03-14 16:25:58,477 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-14 16:25:58,477 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-14 16:26:06,659 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-14 16:26:06,660 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-14 16:26:28,815 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-14 16:26:28,819 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-14 16:26:56,229 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-14 16:26:56,230 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-14 16:27:07,895 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-14 16:27:07,897 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-14 16:27:07,898 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-14 16:29:31,123 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-14 16:29:31,131 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6591
+WARNING 2026-03-14 16:35:52,307 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-14 16:35:52,308 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6591
+WARNING 2026-03-14 16:35:52,311 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-14 16:35:52,312 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-14 16:35:52,334 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-14 16:35:52,357 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-14 16:36:03,511 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-14 16:36:03,512 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6591
+WARNING 2026-03-14 16:43:09,734 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-14 16:43:09,737 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-14 16:43:09,738 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6591
+WARNING 2026-03-14 16:43:09,738 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-14 16:43:09,771 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-14 16:47:14,551 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-14 16:47:14,552 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6591
+WARNING 2026-03-14 16:47:14,560 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-14 16:47:14,562 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-14 16:47:14,586 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-14 16:47:14,616 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809

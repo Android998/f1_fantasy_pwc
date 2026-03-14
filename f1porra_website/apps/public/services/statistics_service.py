@@ -1602,53 +1602,66 @@ def _solve_optimal_lineup_single(
     constructor_rows: list[TeamPoints],
     budget: int,
 ) -> dict[str, Any] | None:
-    best: dict[str, Any] | None = None
+    # Precompute float values once to avoid repeated conversions
+    d_price = {id(r): float(r.price or 0) for r in driver_rows}
+    d_points = {id(r): float(r.points or 0) for r in driver_rows}
+
+    # Precompute constructor combos with their costs/points
+    con_combos: list[tuple[tuple[TeamPoints, ...], float, float]] = []
+    for combo in combinations(constructor_rows, 2):
+        cost = sum(float(r.price or 0) for r in combo)
+        pts = sum(float(r.points or 0) for r in combo)
+        con_combos.append((combo, cost, pts))
+
+    min_con_cost = min((c[1] for c in con_combos), default=0)
+
+    best_points = -1.0
+    best_cost = float("inf")
+    best_result: dict[str, Any] | None = None
 
     for driver_combo in combinations(driver_rows, 5):
-        drivers_cost = sum(float(row.price or 0) for row in driver_combo)
-        if drivers_cost > budget:
+        drivers_cost = sum(d_price[id(r)] for r in driver_combo)
+        # Early prune: skip if drivers + cheapest constructors exceed budget
+        if drivers_cost + min_con_cost > budget:
             continue
+
+        # Sort drivers by points (desc) to determine captain
         sorted_drivers = sorted(
             driver_combo,
-            key=lambda row: (
-                float(row.points or 0),
-                float(row.price or 0),
-                row.driver.name.lower(),
-            ),
+            key=lambda row: (d_points[id(row)], d_price[id(row)], row.driver.name.lower()),
             reverse=True,
         )
-        captain = sorted_drivers[0]
-        drivers_points_base = sum(float(row.points or 0) for row in sorted_drivers)
-        captain_points = float(captain.points or 0)
-        drivers_points = drivers_points_base + captain_points  # x2 for first selected driver
+        captain_pts = d_points[id(sorted_drivers[0])]
+        drivers_pts_base = sum(d_points[id(r)] for r in sorted_drivers)
+        drivers_pts_total = drivers_pts_base + captain_pts  # x2 for captain
 
-        for constructor_combo in combinations(constructor_rows, 2):
-            constructors_cost = sum(float(row.price or 0) for row in constructor_combo)
-            total_cost = drivers_cost + constructors_cost
-            if total_cost > budget:
+        remaining = budget - drivers_cost
+
+        for combo, c_cost, c_pts in con_combos:
+            if c_cost > remaining:
                 continue
 
-            constructors_points = sum(float(row.points or 0) for row in constructor_combo)
-            total_points = drivers_points + constructors_points
-            tie_break_key = (
-                total_points,
-                -total_cost,
-                sorted(row.driver.name for row in sorted_drivers),
-                sorted(row.team.name for row in constructor_combo),
-            )
+            total_points = drivers_pts_total + c_pts
+            total_cost = drivers_cost + c_cost
 
-            if best is None or tie_break_key > best["key"]:
-                best = {
-                    "key": tie_break_key,
+            if total_points > best_points or (
+                total_points == best_points and total_cost < best_cost
+            ):
+                best_points = total_points
+                best_cost = total_cost
+                best_result = {
                     "drivers": list(sorted_drivers),
-                    "constructors": list(constructor_combo),
+                    "constructors": list(combo),
                     "points": total_points,
-                    "drivers_points_base": drivers_points_base,
-                    "captain_points": captain_points,
+                    "drivers_points_base": drivers_pts_base,
+                    "captain_points": captain_pts,
                     "cost": total_cost,
                 }
 
-    return best
+    if best_result is not None:
+        best_result["key"] = (best_result["points"], -best_result["cost"])
+
+    return best_result
 
 
 def _serialize_driver_pick(
