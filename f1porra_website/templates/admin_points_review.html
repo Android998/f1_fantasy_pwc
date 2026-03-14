@@ -78,7 +78,8 @@
                     <th rowspan="2">Driver</th>
                     <th colspan="5" class="section-header" style="border-bottom:2px solid #e94560;">Qualifying</th>
                     <th colspan="5" class="section-header" style="border-bottom:2px solid #3282b8;">Race</th>
-                    <th colspan="5" class="section-header" style="border-bottom:2px solid #f5a623;">Sprint</th>
+                    {% if selected_gp.is_sprint %}<th colspan="5" class="section-header" style="border-bottom:2px solid #f5a623;">Sprint Qualy</th>{% endif %}
+                    {% if selected_gp.is_sprint %}<th colspan="5" class="section-header" style="border-bottom:2px solid #ff8c00;">Sprint Race</th>{% endif %}
                     <th colspan="4" class="section-header" style="border-bottom:2px solid #53d769;">Totals</th>
                 </tr>
                 <tr>
@@ -94,12 +95,20 @@
                     <th>TM</th>
                     <th>DNF</th>
                     <th class="subtotal">R</th>
-                    <!-- Sprint -->
+                    {% if selected_gp.is_sprint %}
+                    <!-- Sprint Qualy -->
+                    <th>Part.</th>
+                    <th>Pos</th>
+                    <th>TM</th>
+                    <th>DNS</th>
+                    <th class="subtotal">SQ</th>
+                    <!-- Sprint Race -->
                     <th>Pos</th>
                     <th>Gained</th>
                     <th>TM</th>
                     <th>DNF</th>
-                    <th class="subtotal">S</th>
+                    <th class="subtotal">SR</th>
+                    {% endif %}
                     <!-- Totals -->
                     <th>Auto</th>
                     <th>Adj</th>
@@ -123,12 +132,20 @@
                     <td>{{ d.race_teammate }}</td>
                     <td>{{ d.race_dnf_penalty }}</td>
                     <td class="subtotal">{{ d.race_total }}</td>
-                    <!-- Sprint -->
+                    {% if selected_gp.is_sprint %}
+                    <!-- Sprint Qualy -->
+                    <td>{{ d.sprint_qualy_participation }}</td>
+                    <td>{{ d.sprint_qualy_position }}</td>
+                    <td>{{ d.sprint_qualy_teammate }}</td>
+                    <td>{{ d.sprint_qualy_dns_penalty }}</td>
+                    <td class="subtotal">{{ d.sprint_qualy_total }}</td>
+                    <!-- Sprint Race -->
                     <td>{{ d.sprint_position_pts }}</td>
                     <td>{{ d.sprint_positions_gained }}</td>
                     <td>{{ d.sprint_teammate }}</td>
                     <td>{{ d.sprint_dnf_penalty }}</td>
                     <td class="subtotal">{{ d.sprint_total }}</td>
+                    {% endif %}
                     <!-- Totals -->
                     <td>{{ d.auto_total }}</td>
                     <td><input type="number" name="driver_adj_{{ d.id }}" value="{{ d.admin_adjustment }}"></td>
@@ -153,7 +170,8 @@
                     <th rowspan="2">Team</th>
                     <th colspan="3" class="section-header" style="border-bottom:2px solid #e94560;">Qualifying</th>
                     <th colspan="2" class="section-header" style="border-bottom:2px solid #3282b8;">Race</th>
-                    <th colspan="2" class="section-header" style="border-bottom:2px solid #f5a623;">Sprint</th>
+                    {% if selected_gp.is_sprint %}<th colspan="3" class="section-header" style="border-bottom:2px solid #f5a623;">Sprint Qualy</th>{% endif %}
+                    {% if selected_gp.is_sprint %}<th colspan="2" class="section-header" style="border-bottom:2px solid #ff8c00;">Sprint Race</th>{% endif %}
                     <th colspan="4" class="section-header" style="border-bottom:2px solid #53d769;">Totals</th>
                 </tr>
                 <tr>
@@ -164,9 +182,15 @@
                     <!-- Race -->
                     <th>Drv Pts</th>
                     <th class="subtotal">R</th>
-                    <!-- Sprint -->
+                    {% if selected_gp.is_sprint %}
+                    <!-- Sprint Qualy -->
                     <th>Drv Pts</th>
-                    <th class="subtotal">S</th>
+                    <th>Bonus</th>
+                    <th class="subtotal">SQ</th>
+                    <!-- Sprint Race -->
+                    <th>Drv Pts</th>
+                    <th class="subtotal">SR</th>
+                    {% endif %}
                     <!-- Totals -->
                     <th>Auto</th>
                     <th>Adj</th>
@@ -185,9 +209,15 @@
                     <!-- Race -->
                     <td>{{ t.race_driver_pts_sum }}</td>
                     <td class="subtotal">{{ t.race_total }}</td>
-                    <!-- Sprint -->
+                    {% if selected_gp.is_sprint %}
+                    <!-- Sprint Qualy -->
+                    <td>{{ t.sprint_qualy_driver_pts_sum }}</td>
+                    <td>{{ t.sprint_qualy_team_bonus }}</td>
+                    <td class="subtotal">{{ t.sprint_qualy_total }}</td>
+                    <!-- Sprint Race -->
                     <td>{{ t.sprint_driver_pts_sum }}</td>
                     <td class="subtotal">{{ t.sprint_total }}</td>
+                    {% endif %}
                     <!-- Totals -->
                     <td>{{ t.auto_total }}</td>
                     <td><input type="number" name="team_adj_{{ t.id }}" value="{{ t.admin_adjustment }}"></td>

@@ -1030,6 +1030,7 @@
 .bote-table thead th {
     padding-left: 1.2rem;
     padding-right: 1.2rem;
+    font-family: "Formula1Regular";
     font-size: 1.22rem;
     line-height: 1.15;
     text-align: center;
@@ -1038,4 +1039,18 @@
 .bote-table thead th.bote-col-user,
 .bote-table thead th.bote-col-team {
     text-align: left;
+}
+
+.bote-table tbody td {
+    font-family: "Formula1Bold";
+    font-size: clamp(0.65rem, 1vw, 1rem);
+}
+
+.bote-table tbody td.user-name,
+.bote-table tbody td.team-name {
+    font-family: "Formula1Regular";
+}
+
+.bote-table tbody td.points {
+    font-family: "Formula1Bold";
 }

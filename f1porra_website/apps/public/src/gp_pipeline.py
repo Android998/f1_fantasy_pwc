@@ -362,9 +362,37 @@ def compute_qualy_fantasy_points(
             team_q["TeamSprintRacePoints"] = team_q["TeamSprintRacePoints"].fillna(0)
             team_q["Total Points"] = team_q["Total Points"] + team_q["TeamSprintRacePoints"]
 
+        # ── Sprint qualifying points ───────────────────────────────────
+        sq_driver_pts, sq_team_pts = _compute_sprint_qualy_points(data)
+
+        if not sq_driver_pts.empty:
+            sq_merge_cols = [c for c in sq_driver_pts.columns if c != "Constructor"]
+            driver_total = driver_total.merge(
+                sq_driver_pts[sq_merge_cols],
+                on="Driver", how="left",
+            )
+            driver_total["SprintQualyPoints"] = driver_total["SprintQualyPoints"].fillna(0)
+            for sc in ["SQParticipation", "SQReverse", "SQTeammate", "SQDNSPenalty"]:
+                if sc in driver_total.columns:
+                    driver_total[sc] = driver_total[sc].fillna(0)
+            driver_total["Total Points"] = driver_total["Total Points"] + driver_total["SprintQualyPoints"]
+
+        if not sq_team_pts.empty:
+            team_q = team_q.merge(
+                sq_team_pts[["Constructor", "TeamSprintQualyPoints", "TeamSQBonus", "driver_sq_pts"]],
+                on="Constructor", how="left",
+            )
+            team_q["TeamSprintQualyPoints"] = team_q["TeamSprintQualyPoints"].fillna(0)
+            team_q["TeamSQBonus"] = team_q["TeamSQBonus"].fillna(0)
+            team_q["driver_sq_pts"] = team_q["driver_sq_pts"].fillna(0)
+            team_q["Total Points"] = team_q["Total Points"] + team_q["TeamSprintQualyPoints"]
+
     return driver_total, team_q[["Constructor", "Total Points", "TeamQualyBonus",
                                   "driver_q_pts"] + (
                                   ["TeamSprintRacePoints"] if "TeamSprintRacePoints" in team_q.columns else []
+                                 ) + (
+                                  ["TeamSprintQualyPoints", "TeamSQBonus", "driver_sq_pts"]
+                                  if "TeamSprintQualyPoints" in team_q.columns else []
                                  )]
 
 
@@ -442,6 +470,87 @@ def _compute_sprint_race_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.D
 
     return sdf[["Driver", "Constructor", "SprintRacePoints",
                 "SprintPosPts", "SprintPosGained", "SprintTeammate", "SprintDNF"]], team_s
+
+
+def _compute_sprint_qualy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Compute sprint qualifying (shootout) fantasy points.
+
+    Derived from SprintGrid positions in the sprint race results since
+    no API provides sprint qualifying data directly.
+
+    Same scoring as regular qualifying:
+    - Participation: P1-P10 = 3 (SQ3), P11-P15 = 2 (SQ2), P16+ = 1 (SQ1)
+    - Reverse grid: top 10 get 10,9,...,1 points
+    - Teammate bonus: +1 to driver with better sprint grid position
+    - DNS penalty: -10 if grid = 0 (DNS)
+    - Team bonus: both in top 10 = 5, both in top 15 = 3, else = 1
+
+    Returns (driver_sprint_qualy_df, team_sprint_qualy_df).
+    """
+    if not data.sprint_race:
+        return (
+            pd.DataFrame(columns=["Driver", "Constructor", "SprintQualyPoints"]),
+            pd.DataFrame(columns=["Constructor", "TeamSprintQualyPoints"]),
+        )
+
+    sq_rows = []
+    for r in data.sprint_race:
+        grid = r.grid
+        sq_rows.append({
+            "Driver": _norm_driver(r.driver_name),
+            "Constructor": _norm_constructor(r.constructor_name),
+            "SprintGrid": grid,
+        })
+    sqdf = pd.DataFrame(sq_rows)
+
+    # Participation: infer SQ1/SQ2/SQ3 from grid position
+    def sq_participation(grid):
+        if grid <= 0:
+            return 1  # DNS — will get -10 penalty separately
+        if grid <= 10:
+            return 3  # made SQ3
+        if grid <= 15:
+            return 2  # made SQ2
+        return 1       # SQ1 only
+
+    sqdf["SQParticipation"] = sqdf["SprintGrid"].apply(sq_participation)
+
+    # Reverse grid: top 10 get points
+    sqdf["SQReverse"] = sqdf["SprintGrid"].apply(
+        lambda p: max(0, 11 - p) if 0 < p <= 10 else 0
+    )
+
+    # Teammate bonus: driver with better (lower) grid position gets +1
+    sqdf["SQTeammate"] = sqdf.groupby("Constructor")["SprintGrid"].transform(
+        lambda x: (x == x[x > 0].min()).astype(int) if (x > 0).any() else 0
+    )
+
+    # DNS penalty: -10 if grid = 0
+    sqdf["SQDNSPenalty"] = sqdf["SprintGrid"].apply(lambda g: -10 if g <= 0 else 0)
+
+    # Total sprint qualy points per driver
+    sqdf["SprintQualyPoints"] = (
+        sqdf["SQParticipation"] + sqdf["SQReverse"]
+        + sqdf["SQTeammate"] + sqdf["SQDNSPenalty"]
+    )
+
+    # Team sprint qualifying
+    team_sq = sqdf.groupby("Constructor").agg(
+        sq3_count=("SprintGrid", lambda x: (x.between(1, 10)).sum()),
+        sq2_count=("SprintGrid", lambda x: (x.between(1, 15)).sum()),
+        driver_sq_pts=("SprintQualyPoints", "sum"),
+    ).reset_index()
+    team_sq["TeamSQBonus"] = team_sq.apply(
+        lambda r: _team_quali_bonus(int(r["sq3_count"]), int(r["sq2_count"])), axis=1
+    )
+    team_sq["TeamSprintQualyPoints"] = team_sq["driver_sq_pts"] + team_sq["TeamSQBonus"]
+
+    return (
+        sqdf[["Driver", "Constructor", "SprintQualyPoints",
+              "SQParticipation", "SQReverse", "SQTeammate", "SQDNSPenalty"]],
+        team_sq[["Constructor", "TeamSprintQualyPoints", "TeamSQBonus", "driver_sq_pts"]],
+    )
 
 
 def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -656,6 +765,31 @@ def compute_fantasy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.DataFr
             team_total["TeamSprintRacePoints"] = team_total["TeamSprintRacePoints"].fillna(0)
             team_total["Total Points"] = team_total["Total Points"] + team_total["TeamSprintRacePoints"]
 
+        # ── Sprint qualifying points ───────────────────────────────────
+        sq_driver_pts, sq_team_pts = _compute_sprint_qualy_points(data)
+
+        if not sq_driver_pts.empty and not driver_total.empty:
+            sq_merge_cols = [c for c in sq_driver_pts.columns if c != "Constructor"]
+            driver_total = driver_total.merge(
+                sq_driver_pts[sq_merge_cols],
+                on="Driver", how="left",
+            )
+            driver_total["SprintQualyPoints"] = driver_total["SprintQualyPoints"].fillna(0)
+            for sc in ["SQParticipation", "SQReverse", "SQTeammate", "SQDNSPenalty"]:
+                if sc in driver_total.columns:
+                    driver_total[sc] = driver_total[sc].fillna(0)
+            driver_total["Total Points"] = driver_total["Total Points"] + driver_total["SprintQualyPoints"]
+
+        if not sq_team_pts.empty and not team_total.empty:
+            team_total = team_total.merge(
+                sq_team_pts[["Constructor", "TeamSprintQualyPoints", "TeamSQBonus", "driver_sq_pts"]],
+                on="Constructor", how="left",
+            )
+            team_total["TeamSprintQualyPoints"] = team_total["TeamSprintQualyPoints"].fillna(0)
+            team_total["TeamSQBonus"] = team_total["TeamSQBonus"].fillna(0)
+            team_total["driver_sq_pts"] = team_total["driver_sq_pts"].fillna(0)
+            team_total["Total Points"] = team_total["Total Points"] + team_total["TeamSprintQualyPoints"]
+
     return driver_total, team_total
 
 
@@ -749,6 +883,10 @@ def save_gp_points_detail(
                     "sprint_positions_gained": _val(row, "SprintPosGained"),
                     "sprint_teammate": _val(row, "SprintTeammate"),
                     "sprint_dnf_penalty": _val(row, "SprintDNF"),
+                    "sprint_qualy_participation": _val(row, "SQParticipation"),
+                    "sprint_qualy_position": _val(row, "SQReverse"),
+                    "sprint_qualy_teammate": _val(row, "SQTeammate"),
+                    "sprint_qualy_dns_penalty": _val(row, "SQDNSPenalty"),
                     "admin_adjustment": admin_adj,
                     "admin_note": admin_note,
                 },
@@ -783,6 +921,8 @@ def save_gp_points_detail(
                     "qualy_team_bonus": _val(row, "TeamQualyBonus"),
                     "race_driver_pts_sum": _val(row, "TeamRacePoints"),
                     "sprint_driver_pts_sum": _val(row, "TeamSprintRacePoints"),
+                    "sprint_qualy_driver_pts_sum": _val(row, "driver_sq_pts"),
+                    "sprint_qualy_team_bonus": _val(row, "TeamSQBonus"),
                     "admin_adjustment": admin_adj,
                     "admin_note": admin_note,
                 },

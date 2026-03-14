@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block content %}
+<link href="{% static 'css/viewteam.css' %}?v=3" rel="stylesheet">
 <link href="{% static 'css/statistics.css' %}?v=2" rel="stylesheet">
 <div class="main-standings statistics-page optimal-team-page">
     <div class="top-filters stats-top-filters">
@@ -85,122 +86,102 @@
                 </div>
             </div>
 
-            <div class="main-view-porra optimal-main-view-porra">
-                <div class="left-view-porra">
-                    <div class="section-team">
-                        <div class="pole-position-team">
-                            <div class="section-name-team"><span>Poleman</span></div>
+            <div class="vt-content-layout">
+                <!-- LEFT PANEL — Bonus picks -->
+                <div class="vt-left-panel">
+                    <div class="vt-bonus-grid">
+                        <!-- Poleman -->
+                        <div class="vt-bonus-card">
+                            <div class="vt-bonus-label pole-label">Poleman</div>
                             {% with p=optimal_team.bonus_selections.poleman %}
-                            <div class="view-selection-basic" style="border: 3px solid {{ p.team_color|default:'#999' }};border-radius: 5px;">
-                                <div style="align-self: auto; background-color: {{ p.team_color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                            <div class="vt-bonus-body" style="border-color: {{ p.team_color|default:'#999' }};">
+                                <div class="vt-bonus-photo" style="background-color: {{ p.team_color|default:'#999' }};">
+                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" alt="{{ p.name|default:'-' }}">{% endif %}
                                 </div>
-                                <div class="driver-selected-data-team">
-                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
-                                        <span>{{ p.name|default:"-" }}</span>
-                                    </div>
+                                <div class="vt-bonus-info">
+                                    <span class="vt-bonus-name">{{ p.name|default:"-" }}</span>
                                     <hr class="gray-line-driver">
-                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.poleman }}</span></div>
+                                    <div class="vt-bonus-pts"><span>Points</span><span>{{ optimal_team.bonus_points.poleman }}</span></div>
                                 </div>
                             </div>
                             {% endwith %}
                         </div>
-                    </div>
-
-                    <div class="section-team">
-                        <div class="first-place-team">
-                            <div class="section-name-team"><span>1st Position</span></div>
+                        <!-- 1st Position -->
+                        <div class="vt-bonus-card">
+                            <div class="vt-bonus-label first-label">1st Position</div>
                             {% with p=optimal_team.bonus_selections.first_pos %}
-                            <div class="view-selection-basic" style="border: 3px solid {{ p.team_color|default:'#999' }};border-radius: 5px;">
-                                <div style="align-self: auto; background-color: {{ p.team_color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                            <div class="vt-bonus-body" style="border-color: {{ p.team_color|default:'#999' }};">
+                                <div class="vt-bonus-photo" style="background-color: {{ p.team_color|default:'#999' }};">
+                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" alt="{{ p.name|default:'-' }}">{% endif %}
                                 </div>
-                                <div class="driver-selected-data-team">
-                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
-                                        <span>{{ p.name|default:"-" }}</span>
-                                    </div>
+                                <div class="vt-bonus-info">
+                                    <span class="vt-bonus-name">{{ p.name|default:"-" }}</span>
                                     <hr class="gray-line-driver">
-                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.first_pos }}</span></div>
+                                    <div class="vt-bonus-pts"><span>Points</span><span>{{ optimal_team.bonus_points.first_pos }}</span></div>
                                 </div>
                             </div>
                             {% endwith %}
                         </div>
-                    </div>
-
-                    <div class="section-team">
-                        <div class="second-place-team">
-                            <div class="section-name-team"><span>2nd Position</span></div>
+                        <!-- 2nd Position -->
+                        <div class="vt-bonus-card">
+                            <div class="vt-bonus-label second-label">2nd Position</div>
                             {% with p=optimal_team.bonus_selections.second_pos %}
-                            <div class="view-selection-basic" style="border: 3px solid {{ p.team_color|default:'#999' }};border-radius: 5px;">
-                                <div style="align-self: auto; background-color: {{ p.team_color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                            <div class="vt-bonus-body" style="border-color: {{ p.team_color|default:'#999' }};">
+                                <div class="vt-bonus-photo" style="background-color: {{ p.team_color|default:'#999' }};">
+                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" alt="{{ p.name|default:'-' }}">{% endif %}
                                 </div>
-                                <div class="driver-selected-data-team">
-                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
-                                        <span>{{ p.name|default:"-" }}</span>
-                                    </div>
+                                <div class="vt-bonus-info">
+                                    <span class="vt-bonus-name">{{ p.name|default:"-" }}</span>
                                     <hr class="gray-line-driver">
-                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.second_pos }}</span></div>
+                                    <div class="vt-bonus-pts"><span>Points</span><span>{{ optimal_team.bonus_points.second_pos }}</span></div>
                                 </div>
                             </div>
                             {% endwith %}
                         </div>
-                    </div>
-
-                    <div class="section-team">
-                        <div class="third-place-team">
-                            <div class="section-name-team"><span>3rd Position</span></div>
+                        <!-- 3rd Position -->
+                        <div class="vt-bonus-card">
+                            <div class="vt-bonus-label third-label">3rd Position</div>
                             {% with p=optimal_team.bonus_selections.third_pos %}
-                            <div class="view-selection-basic" style="border: 3px solid {{ p.team_color|default:'#999' }};border-radius: 5px;">
-                                <div style="align-self: auto; background-color: {{ p.team_color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                            <div class="vt-bonus-body" style="border-color: {{ p.team_color|default:'#999' }};">
+                                <div class="vt-bonus-photo" style="background-color: {{ p.team_color|default:'#999' }};">
+                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" alt="{{ p.name|default:'-' }}">{% endif %}
                                 </div>
-                                <div class="driver-selected-data-team">
-                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
-                                        <span>{{ p.name|default:"-" }}</span>
-                                    </div>
+                                <div class="vt-bonus-info">
+                                    <span class="vt-bonus-name">{{ p.name|default:"-" }}</span>
                                     <hr class="gray-line-driver">
-                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.third_pos }}</span></div>
+                                    <div class="vt-bonus-pts"><span>Points</span><span>{{ optimal_team.bonus_points.third_pos }}</span></div>
                                 </div>
                             </div>
                             {% endwith %}
                         </div>
-                    </div>
-
-                    <div class="section-team">
-                        <div class="fastest-lap-team">
-                            <div class="section-name-team"><span>Fast Lap</span></div>
+                        <!-- Fast Lap -->
+                        <div class="vt-bonus-card">
+                            <div class="vt-bonus-label fast-label">Fast Lap</div>
                             {% with p=optimal_team.bonus_selections.fast_lap %}
-                            <div class="view-selection-basic" style="border: 3px solid {{ p.team_color|default:'#999' }};border-radius: 5px;">
-                                <div style="align-self: auto; background-color: {{ p.team_color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                            <div class="vt-bonus-body" style="border-color: {{ p.team_color|default:'#999' }};">
+                                <div class="vt-bonus-photo" style="background-color: {{ p.team_color|default:'#999' }};">
+                                    {% if p and p.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ p.photo_link }}" alt="{{ p.name|default:'-' }}">{% endif %}
                                 </div>
-                                <div class="driver-selected-data-team">
-                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
-                                        <span>{{ p.name|default:"-" }}</span>
-                                    </div>
+                                <div class="vt-bonus-info">
+                                    <span class="vt-bonus-name">{{ p.name|default:"-" }}</span>
                                     <hr class="gray-line-driver">
-                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.fast_lap }}</span></div>
+                                    <div class="vt-bonus-pts"><span>Points</span><span>{{ optimal_team.bonus_points.fast_lap }}</span></div>
                                 </div>
                             </div>
                             {% endwith %}
                         </div>
-                    </div>
-
-                    <div class="section-team">
-                        <div class="best-team-team">
-                            <div class="section-name-team"><span>Best Team</span></div>
+                        <!-- Best Team -->
+                        <div class="vt-bonus-card">
+                            <div class="vt-bonus-label team-label">Best Team</div>
                             {% with t=optimal_team.bonus_selections.team_winner %}
-                            <div class="view-selection-basic" style="border: 3px solid {{ t.color|default:'#999' }};border-radius: 5px;">
-                                <div style="align-self: auto; background-color: {{ t.color|default:'#999' }}; display:flex; justify-content:center; align-items:center; padding:1%;">
-                                    {% if t and t.photo_link %}<img src="{% static 'theme/assets/teams/' %}{{ t.photo_link }}" style="width: 100%; max-width: 5em; height: auto;">{% endif %}
+                            <div class="vt-bonus-body" style="border-color: {{ t.color|default:'#999' }};">
+                                <div class="vt-bonus-photo" style="background-color: {{ t.color|default:'#999' }};">
+                                    {% if t and t.photo_link %}<img src="{% static 'theme/assets/teams/' %}{{ t.photo_link }}" alt="{{ t.name|default:'-' }}">{% endif %}
                                 </div>
-                                <div class="driver-selected-data-team">
-                                    <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
-                                        <span>{{ t.name|default:"-" }}</span>
-                                    </div>
+                                <div class="vt-bonus-info">
+                                    <span class="vt-bonus-name">{{ t.name|default:"-" }}</span>
                                     <hr class="gray-line-driver">
-                                    <div class="driver-selected-points"><span>Points</span><span>{{ optimal_team.bonus_points.team_winner }}</span></div>
+                                    <div class="vt-bonus-pts"><span>Points</span><span>{{ optimal_team.bonus_points.team_winner }}</span></div>
                                 </div>
                             </div>
                             {% endwith %}
@@ -208,91 +189,76 @@
                     </div>
                 </div>
 
-                <div class="right-view-porra">
-                    <div class="show-points">
-                        <div class="cost-cap">
-                            <span style="font-family: 'Formula1Regular';text-transform: uppercase;font-size:0.8em;">Cost Cap:</span>
-                            <span style="font-family: 'Formula1Bold';">{{ optimal_team.total_cost }}</span>
-                        </div>
-                        <div class="total-points">
-                            <span style="font-family: 'Formula1Regular';font-size:0.8em;">Total Points:</span>
-                            <span style="font-family: 'Formula1Bold'; align-self: flex-end;">{{ optimal_team.total_points }} pts</span>
+                <!-- RIGHT PANEL — Stats + driver/team cards -->
+                <div class="vt-right-panel">
+                    <div class="vt-top-bar">
+                        <div class="vt-stats">
+                            <div class="vt-stat">
+                                <span class="vt-stat-label">Cost Cap:</span>
+                                <span class="vt-stat-value">${{ optimal_team.total_cost }}M</span>
+                            </div>
+                            <div class="vt-stat">
+                                <span class="vt-stat-label">Total Points:</span>
+                                <span class="vt-stat-value">{{ optimal_team.total_points }} pts</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="driver-selected-li">
-                        {% for d in optimal_team.drivers %}
-                            {% if forloop.counter <= 2 %}
-                            <li>
-                                <div {% if d.is_captain %}id="selection1"{% endif %} class="selected-div">
-                                    <div style="background-color:{{ d.team_color|default:'#999' }};" class="driver-selected-photo">
-                                        <div>
-                                            {% if d.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ d.photo_link }}" style="width: 100%; max-width: 12em; height: auto;">{% endif %}
-                                        </div>
+                    <div class="vt-cards-section">
+                        <!-- Row 1: first 2 drivers (captain + driver 2) -->
+                        <div class="vt-cards-row">
+                            {% for d in optimal_team.drivers %}
+                                {% if forloop.counter <= 2 %}
+                                <div class="vt-card {% if d.is_captain %}vt-card-captain{% endif %}">
+                                    <div class="vt-card-photo" style="background-color:{{ d.team_color|default:'#999' }};">
+                                        {% if d.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ d.photo_link }}" alt="{{ d.name }}">{% endif %}
                                     </div>
-                                    <div class="driver-selected-data-team">
-                                        <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
-                                            <span>{{ d.name }}{% if d.is_captain %} (x2){% endif %}</span>
-                                        </div>
+                                    <div class="vt-card-info">
+                                        <span class="vt-card-name">{{ d.name }}</span>
                                         <hr class="gray-line-driver">
-                                        <div class="driver-selected-price"><span>Price</span><span>{{ d.price }}</span></div>
-                                        <div class="driver-selected-price"><span>Points</span><span>{{ d.effective_points }}</span></div>
+                                        <div class="vt-card-pts"><span>Price</span><span>{{ d.price }}</span></div>
+                                        <div class="vt-card-pts"><span>Points</span><span>{{ d.effective_points }}</span></div>
                                     </div>
                                 </div>
-                            </li>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-
-                    <div class="driver-selected-li">
-                        {% for d in optimal_team.drivers %}
-                            {% if forloop.counter > 2 %}
-                            <li>
-                                <div {% if d.is_captain %}id="selection1"{% endif %} class="selected-div">
-                                    <div style="background-color:{{ d.team_color|default:'#999' }};" class="driver-selected-photo">
-                                        <div>
-                                            {% if d.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ d.photo_link }}" style="width: 100%; max-width: 12em; height: auto;">{% endif %}
-                                        </div>
-                                    </div>
-                                    <div class="driver-selected-data-team">
-                                        <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
-                                            <span>{{ d.name }}{% if d.is_captain %} (x2){% endif %}</span>
-                                        </div>
-                                        <hr class="gray-line-driver">
-                                        <div class="driver-selected-price"><span>Price</span><span>{{ d.price }}</span></div>
-                                        <div class="driver-selected-price"><span>Points</span><span>{{ d.effective_points }}</span></div>
-                                    </div>
-                                </div>
-                            </li>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-
-                    <hr class="gray-line" style="margin:2% 0 0 0;">
-                    <div class="driver-selected-li">
-                        {% for c in optimal_team.constructors %}
-                        <div class="team-selected-li">
-                            <li>
-                                <div class="selected-div">
-                                    <div style="background-color: {{ c.color|default:'#999' }}" class="driver-selected-photo">
-                                        <div>
-                                            {% if c.photo_link %}<img src="{% static 'theme/assets/teams/' %}{{ c.photo_link }}" style="width: 100%; max-width: 100%; height: auto;">{% endif %}
-                                        </div>
-                                    </div>
-                                    <div class="driver-selected-data-team">
-                                        <div style="height:100%;width: 100%;padding: 2%;text-transform: uppercase;font-size: 0.9em;">
-                                            <span>{{ c.name }}</span>
-                                        </div>
-                                        <hr class="gray-line-driver">
-                                        <div class="driver-selected-price"><span>Price</span><span>{{ c.price }}</span></div>
-                                        <div class="driver-selected-price"><span>Points</span><span>{{ c.points }}</span></div>
-                                    </div>
-                                </div>
-                            </li>
+                                {% endif %}
+                            {% endfor %}
                         </div>
-                        {% endfor %}
+                        <!-- Row 2: drivers 3-5 -->
+                        <div class="vt-cards-row">
+                            {% for d in optimal_team.drivers %}
+                                {% if forloop.counter > 2 %}
+                                <div class="vt-card {% if d.is_captain %}vt-card-captain{% endif %}">
+                                    <div class="vt-card-photo" style="background-color:{{ d.team_color|default:'#999' }};">
+                                        {% if d.photo_link %}<img src="{% static 'theme/assets/drivers/' %}{{ d.photo_link }}" alt="{{ d.name }}">{% endif %}
+                                    </div>
+                                    <div class="vt-card-info">
+                                        <span class="vt-card-name">{{ d.name }}</span>
+                                        <hr class="gray-line-driver">
+                                        <div class="vt-card-pts"><span>Price</span><span>{{ d.price }}</span></div>
+                                        <div class="vt-card-pts"><span>Points</span><span>{{ d.effective_points }}</span></div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <hr class="vt-divider">
+                        <!-- Constructor cards -->
+                        <div class="vt-cards-row vt-teams-row">
+                            {% for c in optimal_team.constructors %}
+                            <div class="vt-card vt-card-team">
+                                <div class="vt-card-photo" style="background-color: {{ c.color|default:'#999' }};">
+                                    {% if c.photo_link %}<img src="{% static 'theme/assets/teams/' %}{{ c.photo_link }}" alt="{{ c.name }}" class="vt-team-img">{% endif %}
+                                </div>
+                                <div class="vt-card-info">
+                                    <span class="vt-card-name">{{ c.name }}</span>
+                                    <hr class="gray-line-driver">
+                                    <div class="vt-card-pts"><span>Price</span><span>{{ c.price }}</span></div>
+                                    <div class="vt-card-pts"><span>Points</span><span>{{ c.points }}</span></div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
-
                 </div>
             </div>
         {% endif %}

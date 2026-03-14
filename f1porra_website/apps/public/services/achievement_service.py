@@ -359,14 +359,17 @@ def recompute_achievements(*, rebuild: bool = False) -> None:
 
             prev_bottom2 = {uid for uid, points in points_by_user.items() if points <= bottom2_thresh}
 
-        # Season-end achievements
-        if cum_points:
+        # Season-end achievements — only unlock when ALL GPs in the season have been scored
+        total_season_gps = GrandPrix.objects.filter(season=season).count()
+        season_complete = len(gps) >= total_season_gps and total_season_gps > 0
+
+        if season_complete and cum_points:
             max_points = max(cum_points.values())
             for uid, total_points in cum_points.items():
                 if total_points == max_points:
                     unlock(uid, "world_champion", season=season, gp=last_gp)
 
-        if members_by_team:
+        if season_complete and members_by_team:
             team_totals: dict[int, float] = defaultdict(float)
             for uid, total_points in cum_points.items():
                 team_id = team_by_user_id.get(uid)
@@ -380,6 +383,7 @@ def recompute_achievements(*, rebuild: bool = False) -> None:
                         for member_id in members_by_team.get(team_id, []):
                             unlock(member_id, "constructor_legend", season=season, gp=last_gp)
 
-        for uid in user_ids:
-            if wins_count.get(uid, 0) == 0 and second_count.get(uid, 0) >= 3:
-                unlock(uid, "almost_there", season=season, gp=last_gp)
+        if season_complete:
+            for uid in user_ids:
+                if wins_count.get(uid, 0) == 0 and second_count.get(uid, 0) >= 3:
+                    unlock(uid, "almost_there", season=season, gp=last_gp)
