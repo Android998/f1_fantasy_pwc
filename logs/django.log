@@ -1855,3 +1855,8 @@ WARNING 2026-03-14 16:47:14,560 log Not Found: /media/user_photos/pirata5.jpg
 WARNING 2026-03-14 16:47:14,562 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
 WARNING 2026-03-14 16:47:14,586 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
 WARNING 2026-03-14 16:47:14,616 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809
+WARNING 2026-03-14 16:49:22,394 log Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING 2026-03-14 16:49:22,396 basehttp "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 6591
+WARNING 2026-03-14 16:49:22,409 log Not Found: /media/user_photos/pirata5.jpg
+WARNING 2026-03-14 16:49:22,410 basehttp "GET /media/user_photos/pirata5.jpg HTTP/1.1" 404 6768
+WARNING 2026-03-14 16:49:22,440 basehttp "GET /static/theme/assets/drivers/ HTTP/1.1" 404 1809

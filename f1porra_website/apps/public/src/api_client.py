@@ -553,15 +553,43 @@ def fetch_qualy_data(season: int, round_number: int) -> Optional[GPSessionData]:
 # Unified fetcher with fallback
 # ---------------------------------------------------------------------------
 
+def _fetch_fastest_lap_openf1(season: int, round_number: int) -> Optional[str]:
+    """Fetch fastest lap driver from OpenF1 laps endpoint. Used as fallback."""
+    race_key = _openf1_find_session_key(season, round_number, "Race")
+    if not race_key:
+        return None
+    drivers_map = _openf1_get_drivers_map(race_key)
+    laps_data = _openf1_get(f"laps?session_key={race_key}")
+    if not laps_data or not isinstance(laps_data, list):
+        return None
+    valid_laps = [lap for lap in laps_data if lap.get("lap_duration") is not None]
+    if valid_laps:
+        fastest = min(valid_laps, key=lambda lap: lap["lap_duration"])
+        fl_num = fastest.get("driver_number")
+        if fl_num in drivers_map:
+            return drivers_map[fl_num][0]
+    return None
+
+
 def fetch_gp_data(season: int, round_number: int) -> Optional[GPSessionData]:
     """
     Try Jolpica first (richer data). Fall back to OpenF1 if unavailable.
+    If Jolpica data is missing the fastest lap, tries OpenF1 laps endpoint.
     Returns None if neither API has data yet.
     """
     logger.info("Fetching GP data for %s round %s from Jolpica...", season, round_number)
     data = fetch_gp_data_jolpica(season, round_number)
     if data:
         logger.info("Successfully fetched from Jolpica.")
+        # Fallback: if Jolpica didn't include fastest lap, try OpenF1
+        if not data.fastest_lap_driver:
+            logger.info("Jolpica missing fastest lap, trying OpenF1 laps endpoint...")
+            fl = _fetch_fastest_lap_openf1(season, round_number)
+            if fl:
+                data.fastest_lap_driver = fl
+                logger.info("Fastest lap from OpenF1 fallback: %s", fl)
+            else:
+                logger.warning("Fastest lap unavailable from both APIs for round %s.", round_number)
         return data
 
     logger.info("Jolpica unavailable, trying OpenF1...")

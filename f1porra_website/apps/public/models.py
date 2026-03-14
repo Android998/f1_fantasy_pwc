@@ -205,15 +205,22 @@ class DriverGPPointsDetail(models.Model):
     race_dnf_penalty = models.IntegerField(default=0, help_text="-10 if DNF")
     race_total = models.IntegerField(default=0, help_text="Sum of race components")
 
-    # Sprint breakdown (0 on non-sprint weekends)
+    # Sprint race breakdown (0 on non-sprint weekends)
     sprint_position_pts = models.IntegerField(default=0, help_text="Sprint position points (8,7,...)")
     sprint_positions_gained = models.IntegerField(default=0, help_text="Sprint positions gained")
     sprint_teammate = models.IntegerField(default=0, help_text="Sprint teammate bonus (0 or 2)")
     sprint_dnf_penalty = models.IntegerField(default=0, help_text="-10 if sprint DNF")
-    sprint_total = models.IntegerField(default=0, help_text="Sum of sprint components")
+    sprint_total = models.IntegerField(default=0, help_text="Sum of sprint race components")
+
+    # Sprint qualifying breakdown (0 on non-sprint weekends)
+    sprint_qualy_participation = models.IntegerField(default=0, help_text="1=SQ1, 2=SQ2, 3=SQ3")
+    sprint_qualy_position = models.IntegerField(default=0, help_text="Reverse-grid points from sprint qualy")
+    sprint_qualy_teammate = models.IntegerField(default=0, help_text="Sprint qualy teammate bonus (0 or 1)")
+    sprint_qualy_dns_penalty = models.IntegerField(default=0, help_text="-10 if sprint qualy DNS")
+    sprint_qualy_total = models.IntegerField(default=0, help_text="Sum of sprint qualy components")
 
     # Totals
-    auto_total = models.IntegerField(default=0, help_text="Automatic total (qualy + race + sprint)")
+    auto_total = models.IntegerField(default=0, help_text="Automatic total (qualy + race + sprint qualy + sprint race)")
     admin_adjustment = models.IntegerField(default=0, help_text="Manual adjustment by admin")
     final_total = models.IntegerField(default=0, help_text="auto_total + admin_adjustment")
     admin_note = models.TextField(blank=True, default="", help_text="Explanation for admin adjustment")
@@ -233,7 +240,11 @@ class DriverGPPointsDetail(models.Model):
             self.sprint_position_pts + self.sprint_positions_gained
             + self.sprint_teammate + self.sprint_dnf_penalty
         )
-        self.auto_total = self.qualy_total + self.race_total + self.sprint_total
+        self.sprint_qualy_total = (
+            self.sprint_qualy_participation + self.sprint_qualy_position
+            + self.sprint_qualy_teammate + self.sprint_qualy_dns_penalty
+        )
+        self.auto_total = self.qualy_total + self.race_total + self.sprint_total + self.sprint_qualy_total
         self.final_total = self.auto_total + self.admin_adjustment
 
     def __str__(self):
@@ -267,9 +278,14 @@ class TeamGPPointsDetail(models.Model):
     race_driver_pts_sum = models.IntegerField(default=0, help_text="Sum of both drivers' race points")
     race_total = models.IntegerField(default=0, help_text="Team race total")
 
-    # Sprint breakdown
-    sprint_driver_pts_sum = models.IntegerField(default=0, help_text="Sum of sprint points")
-    sprint_total = models.IntegerField(default=0, help_text="Team sprint total")
+    # Sprint race breakdown
+    sprint_driver_pts_sum = models.IntegerField(default=0, help_text="Sum of sprint race points")
+    sprint_total = models.IntegerField(default=0, help_text="Team sprint race total")
+
+    # Sprint qualifying breakdown
+    sprint_qualy_driver_pts_sum = models.IntegerField(default=0, help_text="Sum of sprint qualy points")
+    sprint_qualy_team_bonus = models.IntegerField(default=0, help_text="Sprint qualy team bonus (1/3/5)")
+    sprint_qualy_total = models.IntegerField(default=0, help_text="Team sprint qualy total")
 
     # Totals
     auto_total = models.IntegerField(default=0, help_text="Automatic total (qualy + race + sprint)")
@@ -283,7 +299,8 @@ class TeamGPPointsDetail(models.Model):
         self.qualy_total = self.qualy_driver_pts_sum + self.qualy_team_bonus
         self.race_total = self.race_driver_pts_sum
         self.sprint_total = self.sprint_driver_pts_sum
-        self.auto_total = self.qualy_total + self.race_total + self.sprint_total
+        self.sprint_qualy_total = self.sprint_qualy_driver_pts_sum + self.sprint_qualy_team_bonus
+        self.auto_total = self.qualy_total + self.race_total + self.sprint_total + self.sprint_qualy_total
         self.final_total = self.auto_total + self.admin_adjustment
 
     def __str__(self):
