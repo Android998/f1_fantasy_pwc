@@ -3,7 +3,13 @@ from .models import GrandPrix, Driver, Team, TeamPoints, DriverPoints, Porra, Ra
 
 
 # Register your models here.
-admin.site.register(GrandPrix)
+class GrandPrixAdmin(admin.ModelAdmin):
+    list_display = ('country', 'nround', 'api_round', 'season', 'is_sprint', 'qualy_date', 'gp_date')
+    list_editable = ('api_round',)
+    list_filter = ('season',)
+    ordering = ('season', 'nround')
+
+admin.site.register(GrandPrix, GrandPrixAdmin)
 admin.site.register(Driver)
 admin.site.register(Team)
 admin.site.register(TeamPoints)

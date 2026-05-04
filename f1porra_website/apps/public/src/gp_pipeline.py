@@ -1061,12 +1061,13 @@ def run_qualy_pipeline(gp: GrandPrix, retry_count: int = 3,
     if not nround:
         result.errors.append("GP has no round number.")
         return result
+    api_round = gp.effective_api_round
 
     # Step 1 — Fetch qualifying data
-    logger.info("═══ QUALY Pipeline start: %s (round %d) ═══", gp, nround)
+    logger.info("═══ QUALY Pipeline start: %s (round %d, API round %d) ═══", gp, nround, api_round)
     qualy_data = None
     for attempt in range(1, retry_count + 1):
-        qualy_data = fetch_qualy_data(season.year, nround)
+        qualy_data = fetch_qualy_data(season.year, api_round)
         if qualy_data:
             break
         logger.warning("Qualy attempt %d/%d: No data yet, will retry in %ds...",
@@ -1152,12 +1153,13 @@ def run_race_pipeline(gp: GrandPrix, retry_count: int = 3,
     if not nround:
         result.errors.append("GP has no round number.")
         return result
+    api_round = gp.effective_api_round
 
     # Step 1 — Fetch full GP data (qualy + race)
-    logger.info("═══ RACE Pipeline start: %s (round %d) ═══", gp, nround)
+    logger.info("═══ RACE Pipeline start: %s (round %d, API round %d) ═══", gp, nround, api_round)
     gp_data = None
     for attempt in range(1, retry_count + 1):
-        gp_data = fetch_gp_data(season.year, nround)
+        gp_data = fetch_gp_data(season.year, api_round)
         if gp_data:
             break
         logger.warning("Race attempt %d/%d: No data yet, will retry in %ds...",
@@ -1255,12 +1257,13 @@ def run_gp_pipeline(gp: GrandPrix, retry_count: int = 3) -> PipelineResult:
     if not nround:
         result.errors.append("GP has no round number.")
         return result
+    api_round = gp.effective_api_round
 
     # Step 1 — Fetch data from API
-    logger.info("═══ Pipeline start: %s (round %d) ═══", gp, nround)
+    logger.info("═══ Pipeline start: %s (round %d, API round %d) ═══", gp, nround, api_round)
     gp_data = None
     for attempt in range(1, retry_count + 1):
-        gp_data = fetch_gp_data(season.year, nround)
+        gp_data = fetch_gp_data(season.year, api_round)
         if gp_data:
             break
         logger.warning("Attempt %d/%d: No data yet, will retry...", attempt, retry_count)

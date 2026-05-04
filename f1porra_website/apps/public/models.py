@@ -21,6 +21,10 @@ class GrandPrix(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, null=True, blank=True)
     country = models.CharField(max_length=64)
     nround = models.PositiveIntegerField(blank=True, null=True)
+    api_round = models.PositiveIntegerField(
+        blank=True, null=True,
+        help_text="Round number used by external APIs (Jolpica/OpenF1). Defaults to nround if not set.",
+    )
     name = models.CharField(max_length=64)
     last_edit_date = models.DateTimeField(blank=True, null=True)
     qualy_date = models.DateTimeField(blank=True, null=True)
@@ -36,6 +40,11 @@ class GrandPrix(models.Model):
 
     def __str__(self):
         return self.season.name + " - " + self.country or str(self.season.name + " - " + self.name)
+
+    @property
+    def effective_api_round(self):
+        """Return the round number to use for API queries."""
+        return self.api_round if self.api_round is not None else self.nround
 
 #
 # TEAM
