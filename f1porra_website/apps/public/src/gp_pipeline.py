@@ -805,6 +805,7 @@ def save_gp_points(
 ) -> None:
     """Persist computed fantasy points into DriverPoints and TeamPoints."""
     with transaction.atomic():
+        seen_driver_ids = []
         for _, row in driver_df.iterrows():
             driver = _resolve_driver(season, row["Driver"])
             if not driver:
@@ -815,8 +816,26 @@ def save_gp_points(
                 gp=gp,
                 defaults={"points": int(row["Total Points"])},
             )
+            seen_driver_ids.append(driver.id)
             logger.info("DriverPoints: %s → %d pts", driver.name, int(row["Total Points"]))
 
+        # Drivers who did not take part score nothing; never leave stale values behind.
+        # Skipped when nothing resolved, so a name-mapping failure can't wipe the GP.
+        if seen_driver_ids:
+            stale_drivers = DriverPoints.objects.filter(season=season, gp=gp).exclude(
+                driver_id__in=seen_driver_ids
+            )
+            for dp in stale_drivers:
+                logger.info("DriverPoints: %s did not participate → 0 pts (was %s)",
+                            dp.driver.name, dp.points)
+            stale_drivers.update(points=0)
+            DriverGPPointsDetail.objects.filter(season=season, gp=gp).exclude(
+                driver_id__in=seen_driver_ids
+            ).delete()
+        else:
+            logger.warning("No drivers resolved for %s — skipping stale cleanup.", gp)
+
+        seen_team_ids = []
         for _, row in team_df.iterrows():
             team = _resolve_team(season, row["Constructor"])
             if not team:
@@ -827,7 +846,22 @@ def save_gp_points(
                 gp=gp,
                 defaults={"points": int(row["Total Points"])},
             )
+            seen_team_ids.append(team.id)
             logger.info("TeamPoints: %s → %d pts", team.name, int(row["Total Points"]))
+
+        if seen_team_ids:
+            stale_teams = TeamPoints.objects.filter(season=season, gp=gp).exclude(
+                team_id__in=seen_team_ids
+            )
+            for tp in stale_teams:
+                logger.info("TeamPoints: %s did not participate → 0 pts (was %s)",
+                            tp.team.name, tp.points)
+            stale_teams.update(points=0)
+            TeamGPPointsDetail.objects.filter(season=season, gp=gp).exclude(
+                team_id__in=seen_team_ids
+            ).delete()
+        else:
+            logger.warning("No teams resolved for %s — skipping stale cleanup.", gp)
 
 
 # ---------------------------------------------------------------------------

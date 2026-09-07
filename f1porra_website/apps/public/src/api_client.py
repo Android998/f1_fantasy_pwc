@@ -300,27 +300,74 @@ def _openf1_get(path: str) -> Optional[list | dict]:
     return None
 
 
-def _openf1_find_session_key(season: int, round_number: int, session_type: str) -> Optional[int]:
-    """Find an OpenF1 session_key for a given meeting + session type."""
-    # First, find the meeting
+def _jolpica_round_date(season: int, round_number: int) -> Optional[str]:
+    """Return the race date (YYYY-MM-DD) for a round from the Jolpica schedule."""
+    data = _jolpica_get(f"{season}/{round_number}.json")
+    if not data:
+        return None
+    races = data.get("MRData", {}).get("RaceTable", {}).get("Races", [])
+    if not races:
+        return None
+    return races[0].get("date")
+
+
+def _openf1_find_meeting_key(season: int, round_number: int) -> Optional[int]:
+    """
+    Resolve the OpenF1 meeting_key for a championship round.
+
+    OpenF1's meeting list is not a clean round index: it includes pre-season
+    testing, cancelled events and occasional replacement races. Matching on the
+    Jolpica race date is therefore the only reliable mapping.
+    """
     meetings = _openf1_get(f"meetings?year={season}")
     if not meetings or not isinstance(meetings, list):
         return None
 
-    # Meetings are returned in order; match by round number (meeting_key order)
-    if round_number < 1 or round_number > len(meetings):
-        return None
+    race_date = _jolpica_round_date(season, round_number)
+    if race_date:
+        for m in meetings:
+            if m.get("is_cancelled"):
+                continue
+            start = str(m.get("date_start", ""))[:10]
+            end = str(m.get("date_end", ""))[:10]
+            if start and end and start <= race_date <= end:
+                return m.get("meeting_key")
+        logger.warning("No OpenF1 meeting covering %s (season %s round %s)",
+                       race_date, season, round_number)
 
-    meeting_key = meetings[round_number - 1].get("meeting_key")
+    # Fallback: index into real championship meetings only.
+    championship = [
+        m for m in meetings
+        if not m.get("is_cancelled")
+        and "testing" not in str(m.get("meeting_name", "")).lower()
+    ]
+    if 1 <= round_number <= len(championship):
+        logger.warning("Falling back to positional OpenF1 meeting lookup for round %s", round_number)
+        return championship[round_number - 1].get("meeting_key")
+    return None
+
+
+def _openf1_find_session_key(season: int, round_number: int, session_name: str) -> Optional[int]:
+    """
+    Find an OpenF1 session_key for a given meeting + session.
+
+    ``session_name`` must be the exact OpenF1 name — "Race", "Qualifying",
+    "Sprint" or "Sprint Qualifying". Filtering by ``session_type`` is unsafe:
+    on sprint weekends the Sprint also has ``session_type="Race"`` and Sprint
+    Qualifying also has ``session_type="Qualifying"``.
+    """
+    meeting_key = _openf1_find_meeting_key(season, round_number)
     if not meeting_key:
         return None
 
-    # Now find the session
-    sessions = _openf1_get(f"sessions?meeting_key={meeting_key}&session_type={session_type}")
+    sessions = _openf1_get(f"sessions?meeting_key={meeting_key}")
     if not sessions or not isinstance(sessions, list):
         return None
 
-    return sessions[0].get("session_key")
+    for s in sessions:
+        if str(s.get("session_name", "")).strip().lower() == session_name.strip().lower():
+            return s.get("session_key")
+    return None
 
 
 def _openf1_get_drivers_map(session_key: int) -> dict[int, tuple[str, str]]:
