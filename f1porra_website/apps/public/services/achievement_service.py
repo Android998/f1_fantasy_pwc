@@ -360,7 +360,9 @@ def recompute_achievements(*, rebuild: bool = False) -> None:
             prev_bottom2 = {uid for uid, points in points_by_user.items() if points <= bottom2_thresh}
 
         # Season-end achievements — only unlock when ALL GPs in the season have been scored
-        total_season_gps = GrandPrix.objects.filter(season=season).count()
+        total_season_gps = GrandPrix.objects.filter(
+            season=season, is_cancelled=False,
+        ).count()
         season_complete = len(gps) >= total_season_gps and total_season_gps > 0
 
         if season_complete and cum_points:

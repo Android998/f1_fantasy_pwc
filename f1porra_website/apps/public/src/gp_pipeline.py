@@ -26,6 +26,7 @@ This module is API-driven: no Excel file needed.
 """
 import logging
 import time as _time
+import unicodedata
 from datetime import date
 from typing import Optional
 
@@ -76,6 +77,12 @@ CONSTRUCTOR_NAME_MAP: dict[str, str] = {
 
 def _norm_driver(name: str) -> str:
     return DRIVER_NAME_MAP.get(name, name).strip()
+
+
+def _match_key(name: str) -> str:
+    """Comparison key: Jolpica writes 'Pierre Gasly', OpenF1 'Pierre GASLY'."""
+    decomposed = unicodedata.normalize("NFKD", _norm_driver(name or ""))
+    return "".join(c for c in decomposed if not unicodedata.combining(c)).casefold()
 
 
 def _norm_constructor(name: str) -> str:
@@ -227,12 +234,12 @@ def _inject_missing_qualy_drivers(
     if not all_drivers:
         return qdf
 
-    existing = set(qdf["Driver"]) if not qdf.empty else set()
+    existing = {_match_key(name) for name in qdf["Driver"]} if not qdf.empty else set()
     back_of_grid = (int(qdf["Position"].max()) + 1) if not qdf.empty else 1
 
     dns_rows = []
     for driver, constructor in sorted(all_drivers.items()):
-        if driver not in existing:
+        if _match_key(driver) not in existing:
             dns_rows.append({
                 "Driver": driver,
                 "Constructor": constructor,
@@ -989,6 +996,15 @@ def compute_porra_points_for_gp(season: Season, gp: GrandPrix) -> None:
     team_points_qs = TeamPoints.objects.filter(season=season, gp=gp)
 
     for porra in porras:
+        if not porra.is_complete:
+            logger.info(
+                "Porra incompleta de %s en %s (falta: %s) — puntua 0",
+                porra.user.username, gp, ", ".join(porra.missing_picks()),
+            )
+            porra.points = 0
+            porra.save()
+            continue
+
         total = 0
 
         # --- Prediction section ---
