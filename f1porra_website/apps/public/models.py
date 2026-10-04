@@ -30,6 +30,10 @@ class GrandPrix(models.Model):
     qualy_date = models.DateTimeField(blank=True, null=True)
     gp_date = models.DateTimeField(blank=True, null=True)
     is_sprint = models.BooleanField(default=False)
+    is_cancelled = models.BooleanField(
+        default=False,
+        help_text="Race dropped from the calendar; kept to preserve the original round numbering.",
+    )
     photo_link = models.CharField(max_length=300, blank=True, null=True)
     country_link = models.CharField(max_length=300, blank=True, null=True)
     gp_photo = models.CharField(max_length=300, blank=True, null=True)
@@ -155,6 +159,19 @@ class Porra(models.Model):
     team2 = models.ForeignKey(Team, to_field='id', on_delete=models.SET_NULL, blank=True, null=True, related_name='team2')
     triple_points_chip = models.BooleanField(default=False)
     points = models.IntegerField(blank=True, null=True)
+
+    REQUIRED_PICKS = (
+        'poleman', 'first_pos', 'second_pos', 'third_pos', 'fast_lap', 'team_winner',
+        'driver1', 'driver2', 'driver3', 'driver4', 'driver5', 'team1', 'team2',
+    )
+
+    def missing_picks(self):
+        return [f for f in self.REQUIRED_PICKS if getattr(self, f + '_id') is None]
+
+    @property
+    def is_complete(self):
+        """A partial porra can be saved, but the rules score it as zero."""
+        return not self.missing_picks()
 
 
 class BlockChip(models.Model):

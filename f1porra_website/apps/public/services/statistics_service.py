@@ -435,11 +435,20 @@ def build_teams_matrix_payload(
     scores_by_team: dict[int, dict[int, float]] = defaultdict(dict)
     gp_scores: dict[int, list[tuple[int, float]]] = defaultdict(list)
 
+    rounds_by_gp_id = dict(
+        GrandPrix.objects.filter(id__in=gp_ids).values_list("id", "nround")
+    )
+    weights_cache: dict[int | None, dict[int, float]] = {}
+
     for porra in porras:
         team_id = team_by_user_id.get(porra.user_id)
         if team_id is None:
             continue
-        points = float(porra.points or 0.0)
+        nround = rounds_by_gp_id.get(porra.gp_id)
+        if nround not in weights_cache:
+            weights_cache[nround] = team_score_weights(season=season, nround=nround)
+        weight = weights_cache[nround].get(porra.user_id, 1.0)
+        points = float(porra.points or 0.0) * weight
         scores_by_team[team_id][porra.gp_id] = scores_by_team[team_id].get(porra.gp_id, 0.0) + points
 
     for team_id, scores in scores_by_team.items():
@@ -1014,6 +1023,39 @@ def _build_users_team_maps(
         members_by_team_id[profile.users_team_id].append(profile.user.username)
 
     return team_by_user_id, team_names_by_id, members_by_team_id
+
+
+def _has_quit(profile, nround) -> bool:
+    quit_gp = profile.abandoned_from_gp
+    if quit_gp is None or nround is None:
+        return False
+    return quit_gp.nround is not None and nround >= quit_gp.nround
+
+
+def team_score_weights(*, season: Season, nround: int | None = None) -> dict[int, float]:
+    """
+    Map user_id -> weight their score carries in their team total at ``nround``.
+
+    Losing a team-mate must not halve a team: whoever stays carries the squad,
+    so their score is scaled back up to the original squad size. Once every
+    member has quit the team stops scoring altogether.
+    """
+    squads: dict[int, list] = defaultdict(list)
+    profiles = UserProfile.objects.filter(
+        season=season, users_team__isnull=False,
+    ).select_related("abandoned_from_gp")
+    for profile in profiles:
+        squads[profile.users_team_id].append(profile)
+
+    weights: dict[int, float] = {}
+    for squad in squads.values():
+        active = [profile for profile in squad if not _has_quit(profile, nround)]
+        if not active:
+            continue
+        factor = len(squad) / len(active)
+        for profile in active:
+            weights[profile.user_id] = factor
+    return weights
 
 
 def _compute_teammate_h2h(

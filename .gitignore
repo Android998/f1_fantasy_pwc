@@ -10,3 +10,6 @@ __pycache__/
 *.env
 .venv/
 djangoapp/
+
+# Volcados puntuales de datos de produccion
+logs/backup_*.json
