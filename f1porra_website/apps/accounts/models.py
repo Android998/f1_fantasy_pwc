@@ -37,6 +37,11 @@ class UserProfile(models.Model):
     users_team = models.ForeignKey(UsersTeam, on_delete=models.SET_NULL, null=True, blank=True)
     season = models.ForeignKey(Season, on_delete=models.CASCADE, null=True, blank=True)
     featured_achievement = models.ForeignKey(Achievement, on_delete=models.SET_NULL, null=True, blank=True)
+    abandoned_from_gp = models.ForeignKey(
+        'public.GrandPrix', on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="First GP the participant quit at. From this round on they are out of the "
+                  "standings and pay no penalties; leave empty for someone who merely forgot.",
+    )
 
     class Meta:
         unique_together = [['user', 'season']]

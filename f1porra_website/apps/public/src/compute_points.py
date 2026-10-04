@@ -26,6 +26,12 @@ def compute_porra_points():
         total_points = 0
         print(f"\nProcessing Porra for user: {porra.user.username}, GP: {porra.gp.name}")
 
+        if not porra.is_complete:
+            print(f"  Incomplete porra (missing: {', '.join(porra.missing_picks())}) — scoring 0")
+            porra.points = 0
+            porra.save()
+            continue
+
         # Race Results Section
         # Poleman
         if porra.poleman == race_results.poleman:
@@ -73,7 +79,7 @@ def compute_porra_points():
                     continue
 
                 driver_point = driver_points.filter(driver=driver).first()
-                if driver_point:
+                if driver_point and driver_point.points is not None:
                     if i == 1:
                         multiplier = 3 if porra.triple_points_chip else 2
                         total_points += driver_point.points * multiplier
@@ -86,6 +92,9 @@ def compute_porra_points():
                 if blocked_team_id and team.id == blocked_team_id:
                     continue
 
+                team_point = team_points.filter(team=team).first()
+                if team_point and team_point.points is not None:
+                    total_points += team_point.points
 
         # Print total points for the user
         print(f"Total points for user {porra.user.username}: {total_points}")

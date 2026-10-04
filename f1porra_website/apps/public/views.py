@@ -26,6 +26,7 @@ from f1porra_website.apps.public.services import (
     build_trends_payload,
 )
 from f1porra_website.apps.public.services.achievement_service import sync_achievements
+from f1porra_website.apps.public.services.statistics_service import team_score_weights
 from f1porra_website.apps.public.models import Achievement, UserAchievement
 from django.contrib.auth.models import User
 import logging
@@ -148,36 +149,58 @@ def _now_madrid():
 def _now_utc_from_madrid():
     return _now_madrid().astimezone(pytz.UTC)
 
+CHIP_WINDOW_SIZE = 12
+# The season is split into exactly this many chip windows; any rounds beyond the
+# last full window are absorbed into it instead of opening a new one.
+CHIP_WINDOW_COUNT = 2
+
+
 def _chip_window(nround):
     if not nround:
         return None
     nround = validate_positive_int(nround)
     if nround is None:
         return None
-    return (nround - 1) // 12
+    return min((nround - 1) // CHIP_WINDOW_SIZE, CHIP_WINDOW_COUNT - 1)
+
+
+def _chip_window_bounds(nround):
+    """Return (exclusive_low, inclusive_high) round bounds; high is None on the last window."""
+    window = _chip_window(nround)
+    if window is None:
+        return None, None
+    low = window * CHIP_WINDOW_SIZE
+    high = None if window == CHIP_WINDOW_COUNT - 1 else (window + 1) * CHIP_WINDOW_SIZE
+    return low, high
 
 
 def _triple_chip_available(user, gp):
     if not gp or not gp.nround:
         return False
-    return not Porra.objects.filter(
+    low, high = _chip_window_bounds(gp.nround)
+    used = Porra.objects.filter(
         season=get_current_season(),
         user=user,
-        gp__nround__gt=_chip_window(gp.nround) * 12,
-        gp__nround__lte=(_chip_window(gp.nround) + 1) * 12,
+        gp__nround__gt=low,
         triple_points_chip=True,
-    ).exists()
+    )
+    if high is not None:
+        used = used.filter(gp__nround__lte=high)
+    return not used.exists()
 
 
 def _block_chip_available(user, gp):
     if not gp or not gp.nround:
         return False
-    return not BlockChip.objects.filter(
+    low, high = _chip_window_bounds(gp.nround)
+    used = BlockChip.objects.filter(
         season=get_current_season(),
         blocker=user,
-        gp__nround__gt=_chip_window(gp.nround) * 12,
-        gp__nround__lte=(_chip_window(gp.nround) + 1) * 12,
-    ).exists()
+        gp__nround__gt=low,
+    )
+    if high is not None:
+        used = used.filter(gp__nround__lte=high)
+    return not used.exists()
 
 
 def _block_chip_deadline_passed(gp, now):
@@ -263,22 +286,45 @@ def _budget_cap_for_user(user):
     current_season = get_current_season()
     user_profile = UserProfile.objects.get(user=user, season=current_season)
     user_team = user_profile.users_team
+    if user_team is None:
+        return 150.0
 
-    users_teams = UsersTeam.objects.annotate(
-        total_points=Coalesce(
-            Sum(
-                'userprofile__user__porra__points',
-                filter=Q(
-                    userprofile__season=current_season,
-                    userprofile__user__porra__season=current_season,
-                ),
-            ),
-            Value(0),
-        )
-    ).order_by('total_points')
-    last_users_team = users_teams.first() if users_teams.exists() else None
+    # Teams from past seasons have no points this year and would otherwise rank last.
+    current_team_ids = set(
+        UserProfile.objects.filter(
+            season=current_season, users_team__isnull=False,
+        ).values_list('users_team_id', flat=True)
+    )
+    if not current_team_ids:
+        return 150.0
 
-    return 160.0 if user_team == last_users_team else 150.0
+    latest_round = (
+        Porra.objects.filter(season=current_season, points__isnull=False)
+        .aggregate(latest=Max('gp__nround'))['latest']
+    )
+    weights = team_score_weights(season=current_season, nround=latest_round)
+
+    totals = defaultdict(float)
+    for team_id in current_team_ids:
+        totals[team_id] = 0.0
+    scored = (
+        Porra.objects.filter(season=current_season, points__isnull=False)
+        .values_list('user_id', 'points')
+    )
+    team_by_user = dict(
+        UserProfile.objects.filter(
+            season=current_season, users_team__isnull=False,
+        ).values_list('user_id', 'users_team_id')
+    )
+    for user_id, points in scored:
+        team_id = team_by_user.get(user_id)
+        if team_id is not None:
+            totals[team_id] += float(points or 0) * weights.get(user_id, 1.0)
+
+    worst = min(totals.values())
+    last_team_ids = {team_id for team_id, total in totals.items() if total == worst}
+
+    return 160.0 if user_team.id in last_team_ids else 150.0
 
 
 # Security: Add rate limiting decorator (simple implementation)
@@ -541,6 +587,18 @@ def bote(request):
 
     participant_ids = set(porra_user_ids)
 
+    # Quitting is permanent: from that round on the user leaves the standings.
+    # Forgetting a single GP is not quitting — it scores 0 and is penalised.
+    abandoned_from_round = {
+        profile.user_id: profile.abandoned_from_gp.nround
+        for profile in season_profiles
+        if profile.abandoned_from_gp_id and profile.abandoned_from_gp.nround
+    }
+
+    def is_active_in(user_id, gp):
+        quit_round = abandoned_from_round.get(user_id)
+        return quit_round is None or (gp.nround or 0) < quit_round
+
     penalties = {
         user_id: {"last2": 0.0, "last_team": 0.0}
         for user_id in participant_ids
@@ -554,19 +612,27 @@ def bote(request):
     cumulative_team_points = {team_id: 0.0 for team_id in team_member_ids.keys()}
 
     for gp in gps:
-        gp_entries = list(
-            Porra.objects.filter(season=season, gp=gp, points__isnull=False)
-            .values("user_id", "points")
-        )
-        if not gp_entries:
+        scored = {
+            entry["user_id"]: float(entry["points"] or 0.0)
+            for entry in Porra.objects.filter(
+                season=season, gp=gp, points__isnull=False
+            ).values("user_id", "points")
+        }
+        # Missing porra means no score at all for that GP, so it counts as 0.
+        gp_scores = {
+            user_id: scored.get(user_id, 0.0)
+            for user_id in participant_ids
+            if is_active_in(user_id, gp)
+        }
+        if not gp_scores:
             continue
 
         # LAST 2 penalties:
         # - Last position: each tied user pays 3€
         # - Penultimate position tie: tied users split 3€ (3/N each)
-        unique_scores = sorted({float(entry["points"] or 0.0) for entry in gp_entries})
+        unique_scores = sorted(set(gp_scores.values()))
         worst_score = unique_scores[0]
-        worst_users = [entry["user_id"] for entry in gp_entries if float(entry["points"] or 0.0) == worst_score]
+        worst_users = [user_id for user_id, points in gp_scores.items() if points == worst_score]
         if len(worst_users) > 1:
             split_last_penalty = 6.0 / len(worst_users)
             for user_id in worst_users:
@@ -580,9 +646,9 @@ def bote(request):
             if len(unique_scores) > 1:
                 penultimate_score = unique_scores[1]
                 penultimate_users = [
-                    entry["user_id"]
-                    for entry in gp_entries
-                    if float(entry["points"] or 0.0) == penultimate_score
+                    user_id
+                    for user_id, points in gp_scores.items()
+                    if points == penultimate_score
                 ]
                 if penultimate_users:
                     split_penalty = 3.0 / len(penultimate_users)
@@ -594,12 +660,12 @@ def bote(request):
 
         # LAST TEAM penalties (accumulated standings after each GP):
         # penalize all members of the team that is last in cumulative team points.
+        weights = team_score_weights(season=season, nround=gp.nround)
         gp_team_points = defaultdict(float)
-        for entry in gp_entries:
-            user_id = entry["user_id"]
+        for user_id, points in gp_scores.items():
             profile = profile_by_user_id.get(user_id)
             if profile and profile.users_team_id:
-                gp_team_points[profile.users_team_id] += float(entry["points"] or 0.0)
+                gp_team_points[profile.users_team_id] += points * weights.get(user_id, 1.0)
 
         for team_id in cumulative_team_points.keys():
             cumulative_team_points[team_id] += gp_team_points.get(team_id, 0.0)
@@ -613,6 +679,8 @@ def bote(request):
             ]
             for team_id in last_team_ids:
                 for user_id in team_member_ids.get(team_id, []):
+                    if not is_active_in(user_id, gp):
+                        continue
                     penalties.setdefault(user_id, {"last2": 0.0, "last_team": 0.0})
                     penalties[user_id]["last_team"] += 3.0
 
@@ -799,7 +867,9 @@ def calendar_view(request):
     # Use Madrid as authoritative timezone; convert to UTC for DB queries
     now_madrid = _now_madrid()
     now_utc = now_madrid.astimezone(pytz.UTC)
-    gps = list(GrandPrix.objects.filter(season=season).order_by("nround", "id"))
+    gps = list(
+        GrandPrix.objects.filter(season=season, is_cancelled=False).order_by("nround", "id")
+    )
     race_complete_gp_ids = set(
         RaceResults.objects.filter(
             season=season,
@@ -938,7 +1008,9 @@ def statistics(request):
 def statistics_users(request):
     current_season = get_current_season()
     # Fetch all Grand Prix and Drivers
-    grand_prix_list = GrandPrix.objects.filter(season=current_season).order_by('nround')
+    grand_prix_list = GrandPrix.objects.filter(
+        season=current_season, is_cancelled=False
+    ).order_by('nround')
     driver_list = Driver.objects.filter(season=current_season).order_by('team__name')
 
     # Get selected filters from request
@@ -1320,7 +1392,9 @@ def standings(request):
     # Sort grand_prix_list by nround again in case we appended
     grand_prix_list = sorted(grand_prix_list, key=lambda gp: gp.nround)
 
-    closed_gps = GrandPrix.objects.filter(season=selected_season, last_edit_date__lte=now).order_by('nround')
+    closed_gps = GrandPrix.objects.filter(
+        season=selected_season, is_cancelled=False, last_edit_date__lte=now
+    ).order_by('nround')
     max_closed_gp = closed_gps.last() if closed_gps.exists() else None
 
     if selected_gp == 'overall':
@@ -1335,9 +1409,8 @@ def standings(request):
     drs_used_by_user = set()
     pit_used_by_user = set()
     if reference_round:
-        window = _chip_window(reference_round)
-        window_start = window * 12
-        window_end = min((window + 1) * 12, reference_round)
+        window_start, window_high = _chip_window_bounds(reference_round)
+        window_end = reference_round if window_high is None else min(window_high, reference_round)
         drs_used_by_user = set(
             Porra.objects.filter(
                 season=selected_season,
@@ -1950,8 +2023,9 @@ def team(request):
     drs_chip_reset_message = block_chip_reset_message
     if gp and gp.nround:
         season_last_round = GrandPrix.objects.filter(season=current_season).aggregate(max_nround=Max('nround'))['max_nround'] or gp.nround
-        next_window_round = ((_chip_window(gp.nround) + 1) * 12) + 1
-        if next_window_round > season_last_round:
+        _, window_high = _chip_window_bounds(gp.nround)
+        next_window_round = None if window_high is None else window_high + 1
+        if next_window_round is None or next_window_round > season_last_round:
             block_chip_reset_message = "Si activas este chip, no podrás volver a usarlo hasta el final de temporada."
         else:
             block_chip_reset_message = f"Si activas este chip, no podrás volver a usarlo hasta la ronda {next_window_round}."
@@ -1997,7 +2071,7 @@ def admin_points_review(request):
         return render(request, "admin_points_review.html", {"season": None})
 
     gp_id = request.GET.get("gp")
-    gps = GrandPrix.objects.filter(season=season).order_by("nround")
+    gps = GrandPrix.objects.filter(season=season, is_cancelled=False).order_by("nround")
 
     selected_gp = None
     driver_details = []

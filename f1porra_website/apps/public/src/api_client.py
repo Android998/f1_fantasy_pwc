@@ -45,6 +45,29 @@ def _safe_float(value, default: float = 0.0) -> float:
         return default
 
 
+def _position_sort_key(entry) -> float:
+    """Sort key that keeps entries without a real position at the back."""
+    return entry.position if entry.position and entry.position > 0 else float("inf")
+
+
+def _rank_unclassified(entries: list) -> list:
+    """
+    Give unclassified entries a position behind the classified ones.
+
+    OpenF1 reports ``position: null`` for DNF/DNS drivers, which ``_safe_int``
+    turns into 0 — that sorts *ahead* of the winner and corrupts every result
+    derived from finishing order. Jolpica instead ranks retirees after the
+    finishers, so renumber here to give both sources the same semantics.
+    """
+    classified = [e for e in entries if e.position and e.position > 0]
+    next_position = (max(e.position for e in classified) + 1) if classified else 1
+    for entry in entries:
+        if not entry.position or entry.position <= 0:
+            entry.position = next_position
+            next_position += 1
+    return entries
+
+
 # ---------------------------------------------------------------------------
 # Data containers
 # ---------------------------------------------------------------------------
@@ -226,7 +249,7 @@ def fetch_sprint_results_openf1(season: int, round_number: int) -> list[RaceResu
             fastest_lap_rank=None,
             laps=_safe_int(r.get("number_of_laps")),
         ))
-    return results
+    return _rank_unclassified(results)
 
 
 def fetch_gp_data_jolpica(season: int, round_number: int) -> Optional[GPSessionData]:
@@ -254,10 +277,10 @@ def fetch_gp_data_jolpica(season: int, round_number: int) -> Optional[GPSessionD
 
     # Derive key results
     if qualifying:
-        gp_data.pole_sitter = qualifying[0].driver_name
+        gp_data.pole_sitter = sorted(qualifying, key=_position_sort_key)[0].driver_name
 
     if race:
-        sorted_race = sorted(race, key=lambda r: r.position)
+        sorted_race = sorted(race, key=_position_sort_key)
         if len(sorted_race) >= 1:
             gp_data.race_winner = sorted_race[0].driver_name
             gp_data.winning_constructor = sorted_race[0].constructor_name
@@ -272,7 +295,7 @@ def fetch_gp_data_jolpica(season: int, round_number: int) -> Optional[GPSessionD
 
     # Sprint winner
     if sprint_race:
-        sorted_sprint = sorted(sprint_race, key=lambda r: r.position)
+        sorted_sprint = sorted(sprint_race, key=_position_sort_key)
         gp_data.sprint_winner = sorted_sprint[0].driver_name
 
     return gp_data
@@ -418,6 +441,7 @@ def fetch_gp_data_openf1(season: int, round_number: int) -> Optional[GPSessionDa
             fastest_lap_rank=None,  # would need laps endpoint
             laps=_safe_int(r.get("number_of_laps")),
         ))
+    _rank_unclassified(race)
 
     # Qualifying results
     qualifying = []
@@ -437,6 +461,7 @@ def fetch_gp_data_openf1(season: int, round_number: int) -> Optional[GPSessionDa
                     q2_time=str(durations[1]) if len(durations) > 1 and durations[1] else None,
                     q3_time=str(durations[2]) if len(durations) > 2 and durations[2] else None,
                 ))
+            _rank_unclassified(qualifying)
 
     # Find fastest lap from laps endpoint
     fastest_lap_driver = None
@@ -462,11 +487,11 @@ def fetch_gp_data_openf1(season: int, round_number: int) -> Optional[GPSessionDa
     )
 
     if qualifying:
-        sorted_q = sorted(qualifying, key=lambda q: q.position)
+        sorted_q = sorted(qualifying, key=_position_sort_key)
         gp_data.pole_sitter = sorted_q[0].driver_name
 
     if race:
-        sorted_race = sorted(race, key=lambda r: r.position)
+        sorted_race = sorted(race, key=_position_sort_key)
         if len(sorted_race) >= 1:
             gp_data.race_winner = sorted_race[0].driver_name
             gp_data.winning_constructor = sorted_race[0].constructor_name
@@ -476,7 +501,7 @@ def fetch_gp_data_openf1(season: int, round_number: int) -> Optional[GPSessionDa
             gp_data.third_place = sorted_race[2].driver_name
 
     if sprint_race:
-        sorted_sprint = sorted(sprint_race, key=lambda r: r.position)
+        sorted_sprint = sorted(sprint_race, key=_position_sort_key)
         gp_data.sprint_winner = sorted_sprint[0].driver_name
 
     gp_data.fastest_lap_driver = fastest_lap_driver
@@ -511,10 +536,10 @@ def fetch_qualy_data_jolpica(season: int, round_number: int) -> Optional[GPSessi
         race=[],  # no race data yet
         sprint_race=sprint_race,
     )
-    gp_data.pole_sitter = qualifying[0].driver_name
+    gp_data.pole_sitter = sorted(qualifying, key=_position_sort_key)[0].driver_name
 
     if sprint_race:
-        sorted_sprint = sorted(sprint_race, key=lambda r: r.position)
+        sorted_sprint = sorted(sprint_race, key=_position_sort_key)
         gp_data.sprint_winner = sorted_sprint[0].driver_name
 
     return gp_data
@@ -553,6 +578,8 @@ def fetch_qualy_data_openf1(season: int, round_number: int) -> Optional[GPSessio
     if not qualifying:
         return None
 
+    _rank_unclassified(qualifying)
+
     # Also try to fetch sprint data
     sprint_race = fetch_sprint_results_openf1(season, round_number)
 
@@ -564,11 +591,11 @@ def fetch_qualy_data_openf1(season: int, round_number: int) -> Optional[GPSessio
         race=[],
         sprint_race=sprint_race,
     )
-    sorted_q = sorted(qualifying, key=lambda q: q.position)
+    sorted_q = sorted(qualifying, key=_position_sort_key)
     gp_data.pole_sitter = sorted_q[0].driver_name
 
     if sprint_race:
-        sorted_sprint = sorted(sprint_race, key=lambda r: r.position)
+        sorted_sprint = sorted(sprint_race, key=_position_sort_key)
         gp_data.sprint_winner = sorted_sprint[0].driver_name
 
     return gp_data
