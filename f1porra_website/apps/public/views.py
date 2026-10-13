@@ -1310,6 +1310,12 @@ def use_block_chip(request):
         blocked_team=blocked_team,
     )
 
+    logger.info(
+        "Chip bloqueo ACTIVADO | usuario=%s | objetivo=%s | gp=%s | bloquea=%s",
+        request.user.username, target.username, gp.country,
+        blocked_driver.name if blocked_driver else (blocked_team.name if blocked_team else "?"),
+    )
+
     return JsonResponse({'success': True})
 
 
@@ -1342,6 +1348,10 @@ def cancel_block_chip(request):
     if _block_chip_deadline_passed(gp, now):
         return JsonResponse({'success': False, 'error': 'No se puede cancelar después del deadline.'}, status=400)
 
+    logger.info(
+        "Chip bloqueo CANCELADO | usuario=%s | objetivo=%s | gp=%s",
+        request.user.username, current_block.target.username, gp.country,
+    )
     current_block.delete()
     return JsonResponse({'success': True})
 
@@ -1714,6 +1724,10 @@ def team(request):
                 return JsonResponse({'success': False, 'error': 'Ese constructor está bloqueado para este GP.'}, status=400)
 
         if use_triple_points_chip and not _triple_chip_available(user, gp):
+            logger.warning(
+                "Chip triple RECHAZADO | usuario=%s | gp=%s | motivo=ya usado en la ventana",
+                user.username, gp.country,
+            )
             return JsonResponse({'success': False, 'error': 'Ya has usado el chip de triples puntos en este bloque de 12 GPs.'}, status=400)
 
         # Validate budget
@@ -1741,7 +1755,16 @@ def team(request):
                         total_cost += tp.price
 
         if total_cost > budget_cap:
+            logger.warning(
+                "Guardado RECHAZADO por presupuesto | usuario=%s | gp=%s | coste=%s | tope=%s",
+                request.user.username, gp.country, total_cost, budget_cap,
+            )
             return JsonResponse({'success': False, 'error': f'Presupuesto excedido. Máximo: {budget_cap}M'}, status=400)
+
+        # El chip solo viaja al guardar, asi que el cambio se detecta comparando con lo ya grabado.
+        chip_anterior = Porra.objects.filter(
+            user=request.user, gp=gp,
+        ).values_list('triple_points_chip', flat=True).first()
 
         # Create/update porra
         porra, created = Porra.objects.update_or_create(
@@ -1767,7 +1790,23 @@ def team(request):
             }
         )
 
-        logger.info(f"Team saved: {request.user.username} for GP {gp.country}")
+        if chip_anterior != use_triple_points_chip:
+            logger.info(
+                "Chip triple %s | usuario=%s | gp=%s",
+                "ACTIVADO" if use_triple_points_chip else "DESACTIVADO",
+                request.user.username, gp.country,
+            )
+
+        logger.info(
+            "Porra guardada | usuario=%s | gp=%s | nueva=%s | chip_triple=%s | "
+            "principal=%s | faltan=%s",
+            request.user.username,
+            gp.country,
+            created,
+            use_triple_points_chip,
+            porra.driver1.name if porra.driver1 else None,
+            ",".join(porra.missing_picks()) or "nada",
+        )
         return JsonResponse({'success': True})
 
 

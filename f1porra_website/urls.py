@@ -21,11 +21,15 @@ from django.urls import path, include, re_path
 from django.views.static import serve
 import os
 
+from . import views
+
 # Security: Use environment variable for admin URL
 ADMIN_URL = os.getenv('DJANGO_ADMIN_URL', 'admin/')
 
 urlpatterns = [
     path(ADMIN_URL, admin.site.urls),  # Use custom admin URL
+    # No trailing slash: App Service probes this exact path and does not follow redirects.
+    path('health_check', views.health_check, name='health_check'),
     path('', include("f1porra_website.apps.public.urls")),
     path('accounts/', include("f1porra_website.apps.accounts.urls")),
 ]
