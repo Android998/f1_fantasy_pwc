@@ -421,6 +421,15 @@ def _compute_sprint_race_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.D
             pd.DataFrame(columns=["Constructor", "TeamSprintRacePoints"]),
         )
 
+    # OpenF1 has no starting grid, so every entry arrives as 0. Scoring positions
+    # gained against that would hand the whole field a negative.
+    has_grid = any(r.grid > 0 for r in data.sprint_race)
+    if not has_grid:
+        logger.warning(
+            "Sprint grid unavailable from this source — scoring the sprint race "
+            "without positions gained."
+        )
+
     s_rows = []
     for r in data.sprint_race:
         s_rows.append({
@@ -439,6 +448,8 @@ def _compute_sprint_race_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.D
             return -10
         pos = int(row["Position_Sprint"])
         f1_pts = SPRINT_POSITION_POINTS.get(pos, 0)
+        if not has_grid:
+            return f1_pts
         positions_gained = int(row["SprintGrid"]) - pos
         return f1_pts + positions_gained
 
@@ -454,7 +465,7 @@ def _compute_sprint_race_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.D
         axis=1,
     )
     sdf["SprintPosGained"] = sdf.apply(
-        lambda r: 0 if int(r["SprintDNF"]) != 0
+        lambda r: 0 if (int(r["SprintDNF"]) != 0 or not has_grid)
                   else int(r["SprintGrid"]) - int(r["Position_Sprint"]),
         axis=1,
     )
@@ -496,6 +507,18 @@ def _compute_sprint_qualy_points(data: GPSessionData) -> tuple[pd.DataFrame, pd.
     Returns (driver_sprint_qualy_df, team_sprint_qualy_df).
     """
     if not data.sprint_race:
+        return (
+            pd.DataFrame(columns=["Driver", "Constructor", "SprintQualyPoints"]),
+            pd.DataFrame(columns=["Constructor", "TeamSprintQualyPoints"]),
+        )
+
+    # The whole scoring here is derived from the starting grid, and OpenF1 does not
+    # publish it. Without it every driver would look like a DNS and collect -10.
+    if not any(r.grid > 0 for r in data.sprint_race):
+        logger.warning(
+            "Sprint grid unavailable from this source — skipping sprint qualifying "
+            "points instead of penalising the whole field."
+        )
         return (
             pd.DataFrame(columns=["Driver", "Constructor", "SprintQualyPoints"]),
             pd.DataFrame(columns=["Constructor", "TeamSprintQualyPoints"]),
