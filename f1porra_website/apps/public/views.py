@@ -1714,6 +1714,10 @@ def team(request):
                 return JsonResponse({'success': False, 'error': 'Ese constructor está bloqueado para este GP.'}, status=400)
 
         if use_triple_points_chip and not _triple_chip_available(user, gp):
+            logger.warning(
+                "Chip triple RECHAZADO | usuario=%s | gp=%s | motivo=ya usado en la ventana",
+                user.username, gp.country,
+            )
             return JsonResponse({'success': False, 'error': 'Ya has usado el chip de triples puntos en este bloque de 12 GPs.'}, status=400)
 
         # Validate budget
@@ -1767,7 +1771,16 @@ def team(request):
             }
         )
 
-        logger.info(f"Team saved: {request.user.username} for GP {gp.country}")
+        logger.info(
+            "Porra guardada | usuario=%s | gp=%s | nueva=%s | chip_triple=%s | "
+            "principal=%s | faltan=%s",
+            request.user.username,
+            gp.country,
+            created,
+            use_triple_points_chip,
+            porra.driver1.name if porra.driver1 else None,
+            ",".join(porra.missing_picks()) or "nada",
+        )
         return JsonResponse({'success': True})
 
 

@@ -298,5 +298,27 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': False,
         },
+        # Sin handlers propios a proposito: propagan a root, que es donde Azure
+        # Monitor engancha el suyo. Asi el INFO llega a consola y a la nube sin duplicarse.
+        'f1porra_website': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'gp_pipeline': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'gp_scheduler': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'f1_api_client': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'process_gp_results': {
+            'level': 'INFO',
+            'propagate': True,
+        },
     },
 }
