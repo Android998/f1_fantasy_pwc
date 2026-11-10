@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 # Create your tests here.
 from django.contrib.auth.models import User
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase
 
 from f1porra_website.apps.accounts.models import UserProfile, UsersTeam
 from f1porra_website.apps.public import views
@@ -15,6 +15,11 @@ from f1porra_website.apps.public.models import (
     Season,
     Team,
     TeamPoints,
+)
+from f1porra_website.apps.public.src.api_client import (
+    GPSessionData,
+    QualifyingResult,
+    fetch_qualy_data,
 )
 
 
@@ -102,6 +107,53 @@ class TeamViewBudgetAndPricesTests(TestCase):
         expected_total_spent = sum(10 + i for i in range(1, 6)) + 20 + 25
         self.assertEqual(context['budget_cap'], 160.0)
         self.assertEqual(context['remain_price'], 160.0 - expected_total_spent)
+
+
+class QualifyingDataAvailabilityTests(SimpleTestCase):
+    @staticmethod
+    def _qualy_data(q1_time):
+        return GPSessionData(
+            season=2026,
+            round_number=20,
+            gp_name="Brazilian Grand Prix",
+            qualifying=[
+                QualifyingResult(
+                    position=1,
+                    driver_name="Lando Norris",
+                    constructor_name="McLaren",
+                    q1_time=q1_time,
+                    q2_time=None,
+                    q3_time=None,
+                ),
+            ],
+            pole_sitter="Lando Norris",
+        )
+
+    @patch("f1porra_website.apps.public.src.api_client.fetch_qualy_data_jolpica")
+    @patch("f1porra_website.apps.public.src.api_client.fetch_qualy_data_openf1")
+    def test_positions_without_any_q1_times_are_not_scored_as_dns(self, openf1, jolpica):
+        jolpica.return_value = None
+        openf1.return_value = self._qualy_data(None)
+
+        self.assertIsNone(fetch_qualy_data(2026, 20))
+
+    @patch("f1porra_website.apps.public.src.api_client.fetch_qualy_data_jolpica")
+    @patch("f1porra_website.apps.public.src.api_client.fetch_qualy_data_openf1")
+    def test_openf1_qualy_is_accepted_when_q1_timings_are_available(self, openf1, jolpica):
+        jolpica.return_value = None
+        expected = self._qualy_data("90.123")
+        openf1.return_value = expected
+
+        self.assertIs(fetch_qualy_data(2026, 20), expected)
+
+    @patch("f1porra_website.apps.public.src.api_client.fetch_qualy_data_jolpica")
+    @patch("f1porra_website.apps.public.src.api_client.fetch_qualy_data_openf1")
+    def test_incomplete_jolpica_data_falls_back_to_timed_openf1_data(self, openf1, jolpica):
+        jolpica.return_value = self._qualy_data(None)
+        expected = self._qualy_data("90.123")
+        openf1.return_value = expected
+
+        self.assertIs(fetch_qualy_data(2026, 20), expected)
 
 
 class StandingsSeasonScopedProfileTests(TestCase):
