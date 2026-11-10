@@ -607,17 +607,33 @@ def fetch_qualy_data(season: int, round_number: int) -> Optional[GPSessionData]:
     Returns GPSessionData with qualifying + pole_sitter but no race data.
     Returns None if neither API has qualifying data yet.
     """
+    def has_timing_data(data: Optional[GPSessionData]) -> bool:
+        return bool(data and any(
+            q.q1_time is not None and str(q.q1_time).strip()
+            for q in data.qualifying
+        ))
+
     logger.info("Fetching QUALY data for %s round %s from Jolpica...", season, round_number)
     data = fetch_qualy_data_jolpica(season, round_number)
-    if data:
+    if has_timing_data(data):
         logger.info("Successfully fetched qualy from Jolpica.")
         return data
+    if data:
+        logger.warning(
+            "Jolpica returned qualifying positions without Q1 times for %s round %s; "
+            "waiting for complete data.", season, round_number,
+        )
 
     logger.info("Jolpica qualy unavailable, trying OpenF1...")
     data = fetch_qualy_data_openf1(season, round_number)
-    if data:
+    if has_timing_data(data):
         logger.info("Successfully fetched qualy from OpenF1.")
         return data
+    if data:
+        logger.warning(
+            "OpenF1 returned qualifying positions without Q1 times for %s round %s; "
+            "will retry later rather than assign DNS penalties.", season, round_number,
+        )
 
     logger.warning("No qualifying data from either API for %s round %s.", season, round_number)
     return None
